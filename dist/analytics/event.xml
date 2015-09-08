@@ -1,0 +1,1 @@
+<?xml version=1.0 encoding=UTF-8?><request><sc_xml_ver>1.0</sc_xml_ver><evar3>@analytics.user@</evar3><events>@analytics.event@</events><pageURL>communities.demomachine.com/@analytics.pagename@.html</pageURL><pageName>@analytics.pagename@</pageName><visitorID>@analytics.user@</visitorID><reportSuiteID>@AdobeAnalytics.reportsuite@</reportSuiteID></request>

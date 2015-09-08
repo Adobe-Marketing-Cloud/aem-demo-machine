@@ -1,0 +1,3108 @@
+<?xml version="1.0"?>
+<project name="AEMDemo" default="default" basedir=".">
+	<!-- The conf/build-personal.properties file can be created to store your own values without touching the default build.xml file released with new demo machines -->
+	<property file="conf/build-personal.properties"/>
+	<!-- The build.properties file contains the default configuration value -->
+	<property file="build.properties"/>
+	<!-- This file requires the ant-contrib-1.0b3.jar file to be in the ant/lib folder -->
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<description>
+        This is the AEM Demo Machine. Comprensive toolkit for running and configuring integrated AEM demos.
+    </description>
+	<!-- Setting some global properties for this build -->
+	<property name="dist" location="./dist"/>
+	<property name="ant" location="./ant"/>
+	<property name="packages" location="./dist/packages"/>
+	<property name="hotfixes" location="./dist/hotfixes"/>
+	<property name="demos" location="./demos"/>
+	<property name="logs" location="./logs/${demo.build}"/>
+	<property name="mongodb" location="./mongodb"/>
+	<property name="mysql" location="./mysql"/>
+	<property name="ffmpeg" location="./ffmpeg"/>
+	<property name="solr" location="./solr"/>
+	<property name="java" location="./java"/>
+	<property name="james" location="./james"/>
+	<property name="archives" location="./archives"/>
+	<property name="bin" location="./bin"/>
+	<condition property="isWindows">
+		<os family="windows"/>
+	</condition>
+	<condition property="isUnix">
+		<os family="unix"/>
+	</condition>
+	<!-- build classpath for Java tools -->
+	<path id="demo.classpath">
+		<fileset dir="${java}/libs">
+			<include name="**/*.jar"/>
+		</fileset>
+		<fileset dir="${ant}/lib">
+			<include name="**/*.jar"/>
+		</fileset>
+		<pathelement location="${java}/bin"/>
+	</path>
+	<!-- Target for installing then configuring a new baseline demo -->
+	<target name="demo">
+		<antcall target="install"/>
+		<antcall target="configure"/>
+	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM Communities -->
+	<target name="demo_communities">
+		<antcall target="demo"/>
+		<antcall target="communities"/>
+	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM Forms -->
+	<target name="demo_forms">
+		<antcall target="demo"/>
+		<antcall target="forms"/>
+	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM Sites -->
+	<target name="demo_sites">
+		<antcall target="demo"/>
+		<antcall target="sites"/>
+	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM Commerce -->
+	<target name="demo_commerce">
+		<antcall target="demo"/>
+		<antcall target="commerce"/>
+	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM Assets -->
+	<target name="demo_assets">
+		<antcall target="demo"/>
+		<antcall target="assets"/>
+	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM Apps -->
+	<target name="demo_apps">
+		<antcall target="demo"/>
+		<antcall target="apps"/>
+	</target>
+	<!-- Target for installing then configuring EVERYTHING -->
+	<target name="demo_kitchensink">
+		<antcall target="demo"/>
+		<antcall target="sites"/>
+		<antcall target="communities"/>
+		<antcall target="apps"/>
+		<antcall target="assets"/>
+	</target>
+	<!-- Target for loading the persisted demo machine configuration -->
+	<target name="configuration">
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/demomachine.properties"/>
+			</resourceexists>
+			<then>
+				<property file="${demos}/${demo.build}/demomachine.properties"/>
+			</then>
+			<else>
+				<property name="demomachine.srp" value="${demo.srp}"/>
+				<property name="demomachine.type" value="${demo.type}"/>
+				<property name="demomachine.store" value="${demo.store}"/>
+				<property name="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
+			</else>
+		</if>
+		<echo message="Folder: ${demos}/${demo.build}"/>
+		<echo message="SRP: ${demomachine.srp}"/>
+		<echo message="Type: ${demomachine.type}"/>
+		<echo message="Store: ${demomachine.store}"/>
+		<echo message="Enablement Add-on: ${demomachine.communities.enablement}"/>
+	</target>
+	<!-- Target for installing and starting the default AUTHOR and PUBLISH servers -->
+	<target name="install">
+		<antcall target="uninstall"/>
+		<echo message="Installing the build ${demo.build}..."/>
+		<antcall target="demomachine_analytics_install"/>
+		<mkdir dir="${demos}/${demo.build}"/>
+		<mkdir dir="${logs}"/>
+		<echo message="Persisting runtime options in to demomachine.properties"/>
+		<propertyfile file="${demos}/${demo.build}/demomachine.properties" comment="Demo Machine Instance">
+			<entry key="demomachine.srp" value="${demo.srp}"/>
+			<entry key="demomachine.type" value="${demo.type}"/>
+			<entry key="demomachine.store" value="${demo.store}"/>
+			<entry key="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
+		</propertyfile>
+		<property file="${demos}/${demo.build}/demomachine.properties"/>
+		<property name="demo.spfile" value="${dist}/bin/${demo.jar}-sp.zip"/>
+		<echo message="AEM JAR to use: ${demo.jar}.jar"/>
+		<if>
+			<resourceexists>
+				<file file="${dist}/bin/${demo.jar}.jar"/>
+			</resourceexists>
+			<then>
+				<if>
+					<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+					<then>
+						<!-- Making sure we configure Solr with a new core for this demo build  -->
+						<antcall target="solr_stop"/>
+						<copy todir="${solr}/example/solr/${demo.build}" overwrite="true">
+							<fileset dir="${solr}/example/solr/collection1">
+								<include name="**/*"/>
+							</fileset>
+						</copy>
+						<replace file="${solr}/example/solr/${demo.build}/core.properties" token="collection1" value="${demo.build}"/>
+					</then>
+				</if>
+				<antcall target="install_instance">
+					<param name="demo.instance" value="author"/>
+					<param name="demo.mode" value="author"/>
+					<param name="demo.port" value="${AdobeAEM.authorport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.authorportdebug}"/>
+				</antcall>
+				<if>
+					<not>
+						<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
+					</not>
+					<then>
+						<antcall target="install_instance">
+							<param name="demo.instance" value="publish"/>
+							<param name="demo.mode" value="publish"/>
+							<param name="demo.port" value="${AdobeAEM.publishport}"/>
+							<param name="demo.portdebug" value="${AdobeAEM.publishportdebug}"/>
+						</antcall>
+					</then>
+				</if>
+				<if>
+					<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+					<then>
+						<antcall target="install_instance">
+							<param name="demo.instance" value="farm"/>
+							<param name="demo.mode" value="publish"/>
+							<param name="demo.port" value="${AdobeAEM.farmport}"/>
+							<param name="demo.portdebug" value="${AdobeAEM.farmportdebug}"/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+			<else>
+				<fail message="FATAL: File ${demo.jar}.jar does not exist"/>
+			</else>
+		</if>
+		<antcall target="start"/>
+	</target>
+	<!-- Target for setting permissions on bin folder -->
+	<target name="permissions">
+		<chmod dir="${bin}" perm="ugo+rx" includes="*.sh"/>
+	</target>
+	<!-- Target for deploying the hotfixes before the first startup -->
+	<target name="hotfix_instance" depends="version">
+		<if>
+			<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring the ${demo.instance} instance"/>
+				<foreach target="hotfix_package" param="package">
+					<path id="hotfix.packages">
+						<fileset dir="${hotfixes}" casesensitive="yes">
+							<include name="all/*.zip"/>
+							<include name="${demo.packages}/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
+	<target name="hotfix_package">
+		<copy file="${package}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+	</target>
+	<!-- Target to install a new instance -->
+	<target name="install_instance">
+		<echo message="Installing a new demo instance of type ${demo.mode} named ${demo.instance}..."/>
+		<mkdir dir="${demos}/${demo.build}/${demo.instance}"/>
+		<copy file="${dist}/license/license-${demo.license}.properties" tofile="${demos}/${demo.build}/${demo.instance}/license.properties"/>
+		<copy file="${dist}/bin/${demo.jar}.jar" tofile="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar"/>
+		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" output="${logs}/${demo.port}_${demo.instance}_unpack.txt" fork="true" spawn="false">
+			<arg line="-unpack -r ${demo.mode},${demomachine.store}"/>
+			<jvmarg value="-Djava.awt.headless=true"/>
+		</java>
+		<if>
+			<and>
+				<resourceexists>
+					<file file="${demo.spfile}"/>
+				</resourceexists>
+				<equals arg1="${demo.servicepack}" arg2="true" casesensitive="false"/>
+			</and>
+			<then>
+				<echo message="INFO: Installing a service pack for this build"/>
+				<copy file="${demo.spfile}" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/sp.zip"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
+			<then>
+				<antcall target="mysql_start"/>
+				<if>
+					<and>
+						<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+						<resourceexists>
+							<file file="${mysql}/bin/mysql"/>
+						</resourceexists>
+					</and>
+					<then>
+						<property name="mysql.exec" value="${mysql}/bin/mysql"/>
+					</then>
+					<else>
+						<property name="mysql.exec" value="${demo.mysql.path}"/>
+					</else>
+				</if>
+				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+				<copy file="${dist}/rdb/mysql.sql" tofile="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" overwrite="true"/>
+				<replace file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" token="@schema@" value="${mysql.prefix}${demo.instance}"/>
+				<exec executable="${mysql.exec}" spawn="false">
+					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/mysql_${demo.instance}${demo.build}.sql'"/>
+				</exec>
+				<delete file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql"/>
+				<unzip src="${dist}/rdb/mysql.zip" dest="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@SCHEMA@@" value="${mysql.prefix}${demo.instance}"/>
+				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@HOST@@" value="${demo.mysql.host}"/>
+				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@PORT@@" value="${demo.mysql.port}"/>
+				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@USER@@" value="${demo.mysql.user}"/>
+				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@PASSWORD@@" value="${demo.mysql.password}"/>
+			</then>
+		</if>
+		<antcall target="hotfix_instance"/>
+		<antcall target="community_instance"/>
+	</target>
+	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
+	<target name="start" depends="configuration,version">
+		<echo message="Starting the build for demo ${demo.build}..."/>
+		<antcall target="javaversion"/>
+		<antcall target="demomachine_analytics_start"/>
+		<if>
+			<equals arg1="${demo.emailserver}" arg2="true" casesensitive="false"/>
+			<then>
+				<!-- Making sure we start James SMTP server -->
+				<antcall target="james_stop"/>
+				<antcall target="james_start"/>
+			</then>
+		</if>
+		<if>
+			<or>
+				<equals arg1="${demomachine.store}" arg2="crx3,crx3mongo" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+			</or>
+			<then>
+				<!-- Making sure we start Mongo with the right data path -->
+				<antcall target="mongo_stop"/>
+				<antcall target="mongo_start"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+			<then>
+				<!-- Making sure we start Solr  -->
+				<antcall target="solr_stop"/>
+				<antcall target="solr_start"/>
+			</then>
+		</if>
+		<if>
+			<or>
+				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+				<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
+			</or>
+			<then>
+				<!-- Making sure we start MySQL  -->
+				<antcall target="mysql_stop"/>
+				<antcall target="mysql_start"/>
+			</then>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/author/aem-author-p${AdobeAEM.authorport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Starting the AUTHOR instance..."/>
+				<antcall target="aem_start">
+					<param name="demo.instance" value="author"/>
+					<param name="demo.mode" value="author"/>
+					<param name="demo.port" value="${AdobeAEM.authorport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.authorportdebug}"/>
+				</antcall>
+			</then>
+			<else>
+				<fail message="FATAL: There is no demo build named ${demo.build} to start"/>
+			</else>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/publish/aem-publish-p${AdobeAEM.publishport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Starting the PUBLISH instance..."/>
+				<antcall target="aem_start">
+					<param name="demo.instance" value="publish"/>
+					<param name="demo.mode" value="publish"/>
+					<param name="demo.port" value="${AdobeAEM.publishport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.publishportdebug}"/>
+				</antcall>
+			</then>
+		</if>
+		<echo message="Waiting for the Author instance to be started..."/>
+		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<and>
+				<socket server="${demo.host}" port="${AdobeAEM.authorport}"/>
+				<resourcecontains resource="${demos}/${demo.build}/author/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
+			</and>
+		</waitfor>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/publish/aem-publish-p${AdobeAEM.publishport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Waiting for the Publish instance to be started..."/>
+				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<and>
+						<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+						<resourcecontains resource="${demos}/${demo.build}/publish/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
+					</and>
+				</waitfor>
+			</then>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/farm/aem-publish-p${AdobeAEM.farmport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Starting the FARM instance..."/>
+				<antcall target="aem_start">
+					<param name="demo.instance" value="farm"/>
+					<param name="demo.mode" value="publish"/>
+					<param name="demo.port" value="${AdobeAEM.farmport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.farmportdebug}"/>
+				</antcall>
+				<echo message="Waiting for the Farm instance to be started..."/>
+				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<and>
+						<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+						<resourcecontains resource="${demos}/${demo.build}/farm/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
+					</and>
+				</waitfor>
+				<antcall target="configure_farm"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for restarting the default AUTHOR and PUBLISH servers -->
+	<target name="restart">
+		<antcall target="stop"/>
+		<antcall target="start"/>
+	</target>
+	<!-- Target for stopping all running servers -->
+	<target name="stop">
+		<echo message="Stopping all running demo instances"/>
+		<antcall target="demomachine_analytics_stop"/>
+		<antcall target="stop_unix"/>
+		<antcall target="stop_windows"/>
+	</target>
+	<target name="stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="'${demos}'"/>
+		</exec>
+		<sleep seconds="2"/>
+	</target>
+	<target name="stop_windows" if="isWindows">
+		<exec executable="taskkill.exe" spawn="true">
+			<arg line="/F /FI &quot;WINDOWTITLE eq Adobe Experience Manager*&quot;"/>
+		</exec>
+		<sleep seconds="4"/>
+	</target>
+	<!-- Target for starting an AEM server -->
+	<target name="aem_start">
+		<if>
+			<equals arg1="${demomachine.store}" arg2="crx3,crx3mongo" casesensitive="false"/>
+			<!-- Mongo use case -->
+			<then>
+				<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using Mongo DB..."/>
+				<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
+					<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
+					<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
+					<jvmarg value="-XX:MaxPermSize=256m"/>
+					<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
+					<jvmarg value="-Doak.mongo.db=${demo.mode}"/>
+					<jvmarg value="-Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port}"/>
+					<arg value="-r ${demo.mode},${demomachine.store}"/>
+					<arg value="-gui"/>
+				</java>
+			</then>
+			<else>
+				<if>
+					<equals arg1="${demo.license}" arg2="aem6" casesensitive="false"/>
+					<then>
+						<!-- AEM6 use case -->
+						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
+						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
+							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
+							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
+							<jvmarg value="-XX:MaxPermSize=256m"/>
+							<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
+							<arg value="-r ${demo.mode},${demomachine.store}"/>
+							<arg value="-gui"/>
+						</java>
+					</then>
+					<else>
+						<!-- CQ5 use case-->
+						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using CRX2..."/>
+						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
+							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
+							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
+							<jvmarg value="-XX:MaxPermSize=256m"/>
+							<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
+							<arg value="-r ${demo.mode}"/>
+							<arg value="-gui"/>
+						</java>
+					</else>
+				</if>
+			</else>
+		</if>
+	</target>
+	<!-- Target for starting the JAMES smtp server -->
+	<target name="james_start">
+		<echo message="Starting the James SMTP/POP server..."/>
+		<chmod dir="${james}/bin" perm="ugo+rx" includes="*.sh"/>
+		<exec executable="${james}/bin/run.sh" dir="${james}/bin" spawn="true"/>
+	</target>
+	<!-- Target for stopping the JAMES smtp server -->
+	<target name="james_stop">
+		<if>
+			<resourceexists>
+				<file file="${james}/bin/run.sh"/>
+			</resourceexists>
+			<then>
+				<echo message="Stopping the James SMTP/POP server..."/>
+				<antcall target="james_stop_unix"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for killing the JAMES smtp server, if needed -->
+	<target name="james_stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="james"/>
+		</exec>
+	</target>
+	<!-- Target for starting the SOLR server -->
+	<target name="solr_start">
+		<if>
+			<resourceexists>
+				<file file="${solr}/bin/solr"/>
+			</resourceexists>
+			<then>
+				<echo message="Starting the SOLR server..."/>
+				<exec executable="./solr" dir="${solr}/bin" spawn="true">
+					<arg line="start"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for stopping the SOLR server -->
+	<target name="solr_stop">
+		<if>
+			<resourceexists>
+				<file file="${solr}/bin/solr"/>
+			</resourceexists>
+			<then>
+				<echo message="Stopping the SOLR server..."/>
+				<exec executable="${solr}/bin/solr" dir="${solr}/bin" failonerror="false" failifexecutionfails="false" spawn="true">
+					<arg line="stop -all"/>
+				</exec>
+				<sleep seconds="4"/>
+				<antcall target="solr_stop_unix"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for killing the SOLR server, if needed -->
+	<target name="solr_stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="solr"/>
+		</exec>
+	</target>
+	<!-- Target for starting the MYSQL server -->
+	<target name="mysql_start">
+		<if>
+			<and>
+				<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+				<resourceexists>
+					<file file="${mysql}/bin/mysql"/>
+				</resourceexists>
+			</and>
+			<then>
+				<echo message="Starting the MySQL server..."/>
+				<exec executable="./bin/mysqld" dir="${mysql}" spawn="true">
+					<arg line="--basedir='${mysql}' --datadir='${mysql}/data/'"/>
+				</exec>
+				<sleep seconds="5"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
+				</waitfor>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the MYSQL server -->
+	<target name="community_mysql_schema">
+		<antcall target="mysql_start"/>
+		<if>
+			<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
+			<then>
+				<if>
+					<and>
+						<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+						<resourceexists>
+							<file file="${mysql}/bin/mysql"/>
+						</resourceexists>
+					</and>
+					<then>
+						<property name="mysql.exec" value="${mysql}/bin/mysql"/>
+					</then>
+					<else>
+						<property name="mysql.exec" value="${demo.mysql.path}"/>
+					</else>
+				</if>
+				<echo message="Dropping the MySQL schemas for SCORM and Reporting..."/>
+				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+				<echo message="${demo.build} ${mysql.prefix} ${mysql.exec}"/>
+				<copy file="${dist}/community/mysql/drop_schemas.sql" tofile="${dist}/community/mysql/drop_schemas_${demo.build}.sql" overwrite="true"/>
+				<replace file="${dist}/community/mysql/drop_schemas_${demo.build}.sql" token="enablementdb" value="${mysql.prefix}reporting"/>
+				<replace file="${dist}/community/mysql/drop_schemas_${demo.build}.sql" token="ScormEngineDB" value="${mysql.prefix}scorm"/>
+				<exec executable="${mysql.exec}" spawn="false">
+					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/community/mysql/drop_schemas_${demo.build}.sql'"/>
+				</exec>
+				<delete file="${dist}/community/mysql/drop_schemas_${demo.build}.sql"/>
+				<echo message="Configuring the MySQL server for Reporting..."/>
+				<antcall target="mysql_schema_instance">
+					<param name="mysql.path" value="${dist}/community/mysql"/>
+					<param name="mysql.file" value="database_schema"/>
+					<param name="mysql.schema" value="reporting"/>
+					<param name="mysql.db" value=""/>
+				</antcall>
+				<antcall target="mysql_schema_instance">
+					<param name="mysql.path" value="${dist}/community/mysql"/>
+					<param name="mysql.file" value="database_data"/>
+					<param name="mysql.schema" value="reporting"/>
+					<param name="mysql.db" value="${mysql.prefix}reporting"/>
+				</antcall>
+				<if>
+					<equals arg1="${demo.communities.scorm}" arg2="true" casesensitive="false"/>
+					<then>
+						<antcall target="mysql_schema_instance">
+							<param name="mysql.path" value="${dist}/community/mysql"/>
+							<param name="mysql.file" value="database_scormengine"/>
+							<param name="mysql.schema" value="scorm"/>
+							<param name="mysql.db" value=""/>
+						</antcall>
+						<antcall target="mysql_schema_instance">
+							<param name="mysql.path" value="${dist}/community/mysql"/>
+							<param name="mysql.file" value="database_scorm_integration"/>
+							<param name="mysql.schema" value="scorm"/>
+							<param name="mysql.db" value=""/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for schema substitution -->
+	<target name="mysql_schema_instance">
+		<echo message="Downloading the MySQL schema from /libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
+		<exec executable="curl">
+			<arg line="-u admin:admin"/>
+			<arg line="-s -o '${dist}/community/mysql/${mysql.file}.sql' http://${demo.host}:${AdobeAEM.authorport}/libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
+		</exec>
+		<replace file="${mysql.path}/${mysql.file}.sql" token="enablementdb" value="${mysql.prefix}${mysql.schema}"/>
+		<replace file="${mysql.path}/${mysql.file}.sql" token="ScormEngineDB" value="${mysql.prefix}${mysql.schema}"/>
+		<echo message="Loading SQL file into internal MySQL server..."/>
+		<exec executable="${mysql.exec}" spawn="false">
+			<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${mysql.path}/${mysql.file}.sql' ${mysql.db}"/>
+		</exec>
+		<delete file="${mysql.path}/${mysql.file}.sql"/>
+	</target>
+	<!-- Target for stopping the MySQL server -->
+	<target name="mysql_stop">
+		<if>
+			<and>
+				<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+				<resourceexists>
+					<file file="${mysql}/bin/mysql"/>
+				</resourceexists>
+			</and>
+			<then>
+				<echo message="Stopping the MySQL server..."/>
+				<exec executable="./bin/mysqladmin" dir="${mysql}" failonerror="false" failifexecutionfails="false" spawn="true">
+					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --password=${demo.mysql.password} shutdown"/>
+				</exec>
+				<antcall target="mysql_stop_unix"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for killing the MySQL server, if needed -->
+	<target name="mysql_stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="mysql"/>
+		</exec>
+	</target>
+	<!-- Target for starting the MONGO server -->
+	<target name="mongo_start">
+		<if>
+			<and>
+				<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
+				<resourceexists>
+					<file file="${mongodb}/bin/mongod"/>
+				</resourceexists>
+			</and>
+			<then>
+				<mkdir dir="${mongodb}/data/${demo.build}"/>
+				<echo message="Starting the Mongo DB server..."/>
+				<exec executable="${mongodb}/bin/mongod" dir="${mongodb}/bin" spawn="true">
+					<arg line="--dbpath ${mongodb}/data/${demo.build}"/>
+					<arg line="--port ${demo.mongo.port}"/>
+					<arg line="--fork"/>
+					<arg line="--logpath ${logs}/mongo.log"/>
+				</exec>
+			</then>
+			<else>
+				<if>
+					<equals arg1="${demo.mongo.service}" arg2="true" casesensitive="false"/>
+					<then>
+						<exec executable="service" spawn="false">
+							<arg line="mongod start"/>
+						</exec>
+					</then>
+				</if>
+			</else>
+		</if>
+	</target>
+	<!-- Target for stopping the MONGO server -->
+	<target name="mongo_stop">
+		<if>
+			<and>
+				<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
+				<resourceexists>
+					<file file="${mongodb}/bin/mongod"/>
+				</resourceexists>
+			</and>
+			<then>
+				<echo message="Stopping the Mongo DB server..."/>
+				<exec executable="${mongodb}/bin/mongo" dir="${mongodb}/bin" spawn="true">
+					<arg line="admin"/>
+					<arg line="--eval 'db.shutdownServer()'"/>
+				</exec>
+				<sleep seconds="4"/>
+				<antcall target="mongo_stop_unix"/>
+			</then>
+			<else>
+				<if>
+					<equals arg1="${demo.mongo.service}" arg2="true" casesensitive="false"/>
+					<then>
+						<exec executable="service" spawn="false">
+							<arg line="mongod stop"/>
+						</exec>
+					</then>
+				</if>
+			</else>
+		</if>
+	</target>
+	<!-- Target for killing the SOLR server, if needed -->
+	<target name="mongo_stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="'${mongodb}/bin'"/>
+		</exec>
+	</target>
+	<!-- Target for uninstalling a specific demo build -->
+	<target name="uninstall" depends="configuration">
+		<echo message="Stopping and installing demo instances for ${demo.build}"/>
+		<antcall target="stop"/>
+		<!-- check if we need to clean up the associated Mongo DB -->
+		<if>
+			<or>
+				<equals arg1="${demomachine.store}" arg2="crx3,crx3mongo" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
+			</or>
+			<then>
+				<antcall target="mongo_stop"/>
+				<if>
+					<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
+					<then>
+						<delete dir="${mongodb}/data/${demo.build}"/>
+					</then>
+					<else>
+						<delete>
+							<fileset dir="${demo.mongo.path}" includes="*"/>
+						</delete>
+					</else>
+				</if>
+			</then>
+		</if>
+		<!-- check if we need to clean up the associated SOLR index -->
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
+			<then>
+				<antcall target="solr_stop"/>
+				<delete dir="${solr}/example/solr/${demo.build}/data"/>
+			</then>
+		</if>
+		<delete dir="${demos}/${demo.build}" failonerror="false"/>
+		<delete dir="${logs}" failonerror="false"/>
+		<delete dir="./logs/build" failonerror="false"/>
+	</target>
+	<!-- Target for installing the Assets demo -->
+	<target name="assets" depends="version">
+		<antcall target="demomachine_analytics_assets"/>
+		<foreach target="package_author" param="package">
+			<path id="assets.packages">
+				<fileset dir="${dist}/assets" casesensitive="yes">
+					<include name="all/*.zip"/>
+					<include name="${demo.packages}/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+	</target>
+	<!-- Target for installing the Forms demo -->
+	<target name="forms" depends="version">
+		<antcall target="demomachine_analytics_forms"/>
+		<foreach target="package_author" param="package">
+			<path id="forms.packages">
+				<fileset dir="${dist}/forms" casesensitive="yes">
+					<include name="all/*.zip"/>
+					<include name="${demo.packages}/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+	</target>
+	<!-- Target for installing the Sites demo -->
+	<target name="sites" depends="version">
+		<foreach target="package_author" param="package">
+			<path id="sites.packages">
+				<fileset dir="${dist}/sites" casesensitive="yes">
+					<include name="all/*.zip"/>
+					<include name="${demo.packages}/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<antcall target="globallink">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+	</target>
+	<!-- Target for installing the Commerce demo -->
+	<target name="commerce" depends="version">
+		<foreach target="package_author" param="package">
+			<path id="sites.packages">
+				<fileset dir="${dist}/commerce" casesensitive="yes">
+					<include name="all/*.zip"/>
+					<include name="${demo.packages}/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+	</target>
+	<!-- Target for installing the Apps demo -->
+	<target name="apps" depends="version">
+		<foreach target="package_author" param="package">
+			<path id="apps.packages">
+				<fileset dir="${dist}/apps" casesensitive="yes">
+					<include name="all/*.zip"/>
+					<include name="${demo.packages}/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+	</target>
+	<!-- Targets for downloading release versions of QuickStart -->
+	<target name="download_aem61">
+		<echo message="Downloading AEM 6.1"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/aem61.jar' ${demo.download.aem.61}"/>
+		</exec>
+		<echo message="AEM 6.1 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/aem61.jar" todir="${dist}/bin"/>
+	</target>
+	<target name="download_aem60">
+		<echo message="Downloading AEM 6.0"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/aem60.jar' ${demo.download.aem.60}"/>
+		</exec>
+		<echo message="AEM 6.0 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/aem60.jar" todir="${dist}/bin"/>
+	</target>
+	<target name="download_cq561">
+		<echo message="Downloading CQ 5.6.1"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq561.jar' ${demo.download.aem.561}"/>
+		</exec>
+		<echo message="CQ 5.6.1 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/cq561.jar" todir="${dist}/bin"/>
+	</target>
+	<target name="download_cq56">
+		<echo message="Downloading CQ 5.6"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq56.jar' ${demo.download.aem.56}"/>
+		</exec>
+		<echo message="CQ 5.6 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/cq56.jar" todir="${dist}/bin"/>
+	</target>
+	<!-- Download demo extensions -->
+	<target name="download_demomachine">
+		<echo message="Downloading Latest Demo Machine in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine"/>
+			<param name="google.id" value="${demo.download.demomachine}"/>
+		</antcall>
+	</target>
+	<target name="download_all">
+		<antcall target="download_sites"/>
+		<antcall target="download_assets"/>
+		<antcall target="download_apps"/>
+		<antcall target="download_forms"/>
+		<antcall target="download_enablement"/>
+		<antcall target="download_commerce"/>
+	</target>
+	<target name="download_sites">
+		<echo message="Downloading Latest AEM Sites Demo Add-on in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine-sites"/>
+			<param name="google.id" value="${demo.download.demomachine.sites}"/>
+		</antcall>
+		<echo message="Extracting Latest AEM Sites Demo Add-on in /dist/sites"/>
+		<delete dir="${dist}/sites"/>
+		<unzip src="${dist}/downloads/aem-demomachine-sites.zip" dest="."/>
+	</target>
+	<target name="download_apps">
+		<echo message="Downloading Latest AEM Apps Demo Add-on in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine-apps"/>
+			<param name="google.id" value="${demo.download.demomachine.apps}"/>
+		</antcall>
+		<echo message="Extracting Latest AEM Apps Demo Add-on in /dist/apps"/>
+		<delete dir="${dist}/apps"/>
+		<unzip src="${dist}/downloads/aem-demomachine-apps.zip" dest="."/>
+	</target>
+	<target name="download_assets">
+		<echo message="Downloading Latest AEM Assets Demo Add-on in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine-assets"/>
+			<param name="google.id" value="${demo.download.demomachine.assets}"/>
+		</antcall>
+		<echo message="Extracting Latest AEM Assets Demo Add-on in /dist/assets"/>
+		<delete dir="${dist}/assets"/>
+		<unzip src="${dist}/downloads/aem-demomachine-assets.zip" dest="."/>
+	</target>
+	<target name="download_forms">
+		<echo message="Downloading Latest AEM Forms Demo Add-on in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine-forms"/>
+			<param name="google.id" value="${demo.download.demomachine.forms}"/>
+		</antcall>
+		<echo message="Extracting Latest AEM Forms Demo Add-on in /dist/forms"/>
+		<delete dir="${dist}/forms"/>
+		<unzip src="${dist}/downloads/aem-demomachine-forms.zip" dest="."/>
+	</target>
+	<target name="download_commerce">
+		<echo message="Downloading Latest AEM Commerce Demo Add-on in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine-commerce"/>
+			<param name="google.id" value="${demo.download.demomachine.commerce}"/>
+		</antcall>
+		<echo message="Extracting Latest AEM Assets Demo Add-on in /dist/commerce"/>
+		<delete dir="${dist}/commerce"/>
+		<unzip src="${dist}/downloads/aem-demomachine-commerce.zip" dest="."/>
+	</target>
+	<target name="download_enablement">
+		<echo message="Downloading Latest AEM Communities Enablement Demo Add-on in /dist/downloads"/>
+		<antcall target="download_google">
+			<param name="google.file" value="aem-demomachine-enablement"/>
+			<param name="google.id" value="${demo.download.demomachine.enablement}"/>
+		</antcall>
+		<echo message="Extracting Latest AEM Enablement Demo Add-on in /dist/enablement"/>
+		<delete dir="${dist}/enablement"/>
+		<unzip src="${dist}/downloads/aem-demomachine-enablement.zip" dest="."/>
+	</target>
+	<target name="download_google">
+		<exec executable="curl">
+			<arg line="--cookie-jar '${dist}/downloads/google.txt' -s -o '${dist}/downloads/google.html' https://drive.google.com/uc?export=download&amp;id=${google.id}"/>
+		</exec>
+		<loadfile property="googleFile" srcFile="${dist}/downloads/google.html"/>
+		<propertyregex property="confirmCode" input="${googleFile}" regexp="confirm=([-a-zA-Z0-9_]*)" select="\1"/>
+		<echo message="Download in progress, please wait until build is successful"/>
+		<exec executable="curl">
+			<arg line="--cookie '${dist}/downloads/google.txt' -L -s -o '${dist}/downloads/${google.file}.zip' https://drive.google.com/uc?export=download&amp;confirm=${confirmCode}&amp;id=${google.id}"/>
+		</exec>
+		<delete file="${dist}/downloads/google.txt"/>
+		<delete file="${dist}/downloads/google.html"/>
+	</target>
+	<!-- Target for downloading the latest QuickStart snapshot -->
+	<target name="download_snapshot">
+		<echo message="Downloading a AEM QuickStart snapshot build ${demo.snapshot}"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/maven-metadata.xml' http://nexus.bsl.eur.adobe.com/content/repositories/development-repositories/com/day/cq/cq-quickstart/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/maven-metadata.xml"/>
+		<if>
+			<equals arg1="${demo.snapshot}" arg2="latest" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/maven-metadata-snapshot.xml' http://nexus.bsl.eur.adobe.com/content/repositories/development-repositories/com/day/cq/cq-quickstart/${metadata.versioning.latest}/maven-metadata.xml"/>
+				</exec>
+			</then>
+			<else>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/maven-metadata-snapshot.xml' http://nexus.bsl.eur.adobe.com/content/repositories/development-repositories/com/day/cq/cq-quickstart/${demo.snapshot}/maven-metadata.xml"/>
+				</exec>
+			</else>
+		</if>
+		<if>
+			<resourcecontains resource="${dist}/downloads/maven-metadata-snapshot.xml" substring="404 - Path /com/day/cq"/>
+			<then>
+				<echo message="Downloading cq-quickstart-${demo.snapshot}.jar"/>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/snapshot.jar' http://nexus.bsl.eur.adobe.com/content/repositories/development-repositories/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${demo.snapshot}.jar"/>
+				</exec>
+			</then>
+			<else>
+				<xmlproperty file="${dist}/downloads/maven-metadata-snapshot.xml"/>
+				<propertyregex property="snapshotfile" input="${metadata.versioning.snapshotVersions.snapshotVersion.value}" regexp="(^\b.*?)," select="\1" casesensitive="false"/>
+				<echo message="Downloading cq-quickstart-${snapshotfile}.jar"/>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/snapshot.jar' http://nexus.bsl.eur.adobe.com/content/repositories/development-repositories/com/day/cq/cq-quickstart/${metadata.version}/cq-quickstart-${snapshotfile}.jar"/>
+				</exec>
+			</else>
+		</if>
+		<echo message="AEM Snapshot downloaded as snapshot.jar in /dist/bin"/>
+		<move file="${dist}/downloads/snapshot.jar" todir="${dist}/bin" overwrite="true"/>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for installing the infrastructure (MongoDB and SOLR) from scratch -->
+	<target name="infrastructure">
+		<antcall target="infrastructure_stop"/>
+		<antcall target="infrastructure_download"/>
+		<antcall target="infrastructure_install"/>
+	</target>
+	<target name="infrastructure_stop">
+		<antcall target="mongo_stop"/>
+		<antcall target="solr_stop"/>
+		<antcall target="mysql_stop"/>
+	</target>
+	<target name="infrastructure_download">
+		<antcall target="download_mongo"/>
+		<antcall target="download_solr"/>
+		<antcall target="download_mysql"/>
+		<antcall target="download_ffmpeg"/>
+	</target>
+	<target name="infrastructure_install">
+		<antcall target="install_mongo"/>
+		<antcall target="install_solr"/>
+		<antcall target="install_mysql"/>
+		<antcall target="install_ffmpeg"/>
+	</target>
+	<!-- Target for downloading the MongoDB software -->
+	<target name="download_mongo" if="isUnix">
+		<echo message="Downloading Mongo DB"/>
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/mongodb.tgz' https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
+		</exec>
+	</target>
+	<!-- Target for downloading the MySQL software -->
+	<target name="download_mysql" if="isUnix">
+		<echo message="Downloading MySQL DB"/>
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/mysql.tgz' http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
+		</exec>
+	</target>
+	<!-- Target for downloading FFMPEG -->
+	<target name="download_ffmpeg" if="isUnix">
+		<echo message="Downloading FFMpeg"/>
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/ffmpeg.zip' http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
+		</exec>
+	</target>
+	<!-- Target for downloading latest Forms uber -->
+	<target name="download_forms_fp">
+		<mkdir dir="${dist}/forms"/>
+		<echo message="Downloading latest AEM Forms add-on"/>
+		<antcall target="download_forms_win"/>
+		<antcall target="download_forms_macos"/>
+		<antcall target="download_forms_demo"/>
+	</target>
+	<target name="download_forms_demo">
+		<echo message="Downloading latest AEM Forms demo"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/forms/aem61/nexus-demo.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/forms/aem61/nexus-demo.xml"/>
+		<echo message="Downloading cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/forms/aem61/formsdemo.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/${metadata.versioning.release}/cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
+		</exec>
+		<delete>
+			<fileset dir="${dist}/forms/aem61" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for downloading the forms add-on, on MacOS then on Windows-->
+	<target name="download_forms_win" if="isWindows">
+		<antcall target="download_forms_os">
+			<param name="os.value" value="win"/>
+		</antcall>
+	</target>
+	<target name="download_forms_macos" if="isUnix">
+		<antcall target="download_forms_os">
+			<param name="os.value" value="osx"/>
+		</antcall>
+	</target>
+	<target name="download_forms_os">
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/forms/aem61/nexus-addon.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/forms/aem61/nexus-addon.xml"/>
+		<if>
+			<equals arg1="${demo.forms.addon}" arg2="release" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/forms/aem61/nexus-addon-details.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${metadata.versioning.latest}/maven-metadata.xml"/>
+				</exec>
+			</then>
+			<else>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/forms/aem61/nexus-addon-details.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${demo.forms.addon}/maven-metadata.xml"/>
+				</exec>
+			</else>
+		</if>
+		<xmlproperty file="${dist}/forms/aem61/nexus-addon-details.xml"/>
+		<propertyregex property="formsfile_addon" input="${metadata.versioning.snapshotVersions.snapshotVersion.value}" regexp="(^\b.*?)," select="\1" casesensitive="false"/>
+		<echo message="Downloading adobe-aemfd-${os.value}-pkg-${formsfile_addon}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/forms/aem61/formsaddon.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${metadata.version}/adobe-aemfd-${os.value}-pkg-${formsfile_addon}.zip"/>
+		</exec>
+	</target>
+	<!-- Target for downloading latest Communities uber -->
+	<target name="download_communities">
+		<echo message="Downloading latest Communities bundle"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/nexus.xml"/>
+		<if>
+			<equals arg1="${demo.communities.uber}" arg2="release" casesensitive="false"/>
+			<then>
+				<echo message="Downloading cq-socialcommunities-pkg-${metadata.versioning.release}.zip"/>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/communities.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/${metadata.versioning.release}/cq-socialcommunities-pkg-${metadata.versioning.release}.zip"/>
+				</exec>
+			</then>
+			<else>
+				<if>
+					<equals arg1="${demo.communities.uber}" arg2="latest" casesensitive="false"/>
+					<then>
+						<echo message="Downloading cq-socialcommunities-pkg-${metadata.versioning.latest}.zip"/>
+						<exec executable="curl">
+							<arg line="-s -o '${dist}/downloads/communities.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/${metadata.versioning.latest}/cq-socialcommunities-pkg-${metadata.versioning.latest}.zip"/>
+						</exec>
+					</then>
+					<else>
+						<echo message="Downloading cq-socialcommunities-pkg-${demo.communities.uber}.zip"/>
+						<exec executable="curl">
+							<arg line="-s -o '${dist}/downloads/communities.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/${demo.communities.uber}/cq-socialcommunities-pkg-${demo.communities.uber}.zip"/>
+						</exec>
+					</else>
+				</if>
+			</else>
+		</if>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for downloading latest Livefyre feature pack -->
+	<target name="download_livefyre">
+		<echo message="Downloading latest Livefyre feature pack"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/integrations/livefyre/community-integrations-livefyre-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/nexus.xml"/>
+		<echo message="Downloading community-integrations-livefyre-pkg-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/livefyre-fp.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/integrations/livefyre/community-integrations-livefyre-pkg/${metadata.versioning.release}/community-integrations-livefyre-pkg-${metadata.versioning.release}.zip"/>
+		</exec>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for downloading latest Sites feature pack -->
+	<target name="download_sites_fp">
+		<echo message="Downloading latest AEM Sites feature pack"/>
+		<mkdir dir="${dist}/downloads"/>
+		<mkdir dir="${dist}/sites/aem61"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://nexus.bsl.eur.adobe.com/content/repositories/releases/com/adobe/cq/feature/cq-6.1.0-featurepack-5715/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/nexus.xml"/>
+		<echo message="Downloading cq-6.1.0-featurepack-5715-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/sites/aem61/sites-fp.zip' http://nexus.bsl.eur.adobe.com/content/repositories/releases/com/adobe/cq/feature/cq-6.1.0-featurepack-5715/${metadata.versioning.release}/cq-6.1.0-featurepack-5715-${metadata.versioning.release}.zip"/>
+		</exec>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for downloading latest Scorm bundle -->
+	<target name="download_scorm">
+		<echo message="Downloading latest SCORM bundle"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scorm-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/nexus.xml"/>
+		<echo message="Downloading cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scorm-pkg/${metadata.versioning.release}/cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
+		</exec>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for installing the FFMPEG software -->
+	<target name="install_ffmpeg" if="isUnix">
+		<echo message="Installing FFMPEG"/>
+		<delete dir="${ffmpeg}"/>
+		<mkdir dir="${ffmpeg}"/>
+		<unzip src="${dist}/downloads/ffmpeg.zip" dest="${ffmpeg}"/>
+		<chmod dir="${ffmpeg}" perm="ugo+rx" includes="*"/>
+	</target>
+	<!-- Target for installing the MongoDB software -->
+	<target name="install_mongo" if="isUnix">
+		<echo message="Installing Mongo DB"/>
+		<delete dir="${mongodb}"/>
+		<gunzip src="${dist}/downloads/mongodb.tgz" dest="${dist}/downloads/mongodb.tar"/>
+		<untar src="${dist}/downloads/mongodb.tar" dest="."/>
+		<move file="./${demo.mongo}" tofile="${mongodb}"/>
+		<chmod dir="${mongodb}/bin" perm="ugo+rx" includes="*"/>
+	</target>
+	<!-- Target for installing the MySQL software -->
+	<target name="install_mysql" if="isUnix">
+		<echo message="Installing MySQL database"/>
+		<delete dir="${mysql}"/>
+		<gunzip src="${dist}/downloads/mysql.tgz" dest="${dist}/downloads/mysql.tar"/>
+		<untar src="${dist}/downloads/mysql.tar" dest="."/>
+		<move file="./mysql-${demo.mysql}" tofile="${mysql}"/>
+		<chmod dir="${mysql}/bin" perm="ugo+rx" includes="*"/>
+		<chmod dir="${mysql}/scripts" perm="ugo+rx" includes="*"/>
+		<chmod dir="${mysql}/data" perm="ugo+rx" includes="*"/>
+		<echo message="Initializing schema for ${mysql}"/>
+		<exec executable="./scripts/mysql_install_db" dir="${mysql}">
+			<arg line="--basedir='${mysql}' --datadir='${mysql}/data/'"/>
+		</exec>
+		<antcall target="mysql_start"/>
+		<echo message="Changing root user password to: ${demo.mysql.password}"/>
+		<exec executable="./bin/mysqladmin" dir="${mysql}">
+			<arg line="-u root password ${demo.mysql.password}"/>
+		</exec>
+		<antcall target="mysql_stop"/>
+	</target>
+	<!-- Target for downloading the SOLR software -->
+	<target name="download_solr">
+		<echo message="Downloading Apache SOLR"/>
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/solr.tgz' http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
+		</exec>
+	</target>
+	<!-- Target for installing the SOLR software -->
+	<target name="install_solr">
+		<echo message="Installing Apache SOLR"/>
+		<delete dir="${solr}"/>
+		<mkdir dir="${solr}"/>
+		<gunzip src="${dist}/downloads/solr.tgz" dest="${dist}/downloads/solr.tar"/>
+		<untar src="${dist}/downloads/solr.tar" dest="."/>
+		<move file="./solr-${demo.solr}" tofile="${solr}"/>
+		<chmod dir="${solr}/bin" perm="ugo+rx" includes="*"/>
+		<copy todir="${solr}/example/solr/collection1/conf" overwrite="true">
+			<fileset dir="${dist}/community/solr">
+				<include name="*"/>
+			</fileset>
+		</copy>
+	</target>
+	<!-- Target for installing and configuring the Livefyre feature pack -->
+	<target name="livefyre" if="aem61orlater" depends="version">
+		<antcall target="livefyre_instance">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+		<antcall target="livefyre_instance">
+			<param name="port" value="${AdobeAEM.publishport}"/>
+		</antcall>
+		<antcall target="livefyre_instance">
+			<param name="port" value="${AdobeAEM.farmport}"/>
+		</antcall>
+	</target>
+	<target name="livefyre_instance">
+		<if>
+			<and>
+				<socket server="${demo.host}" port="${port}"/>
+				<resourceexists>
+					<file file="${dist}/downloads/livefyre-fp.zip"/>
+				</resourceexists>
+				<resourceexists>
+					<file file="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
+				</resourceexists>
+			</and>
+			<then>
+				<echo message="Installing the livefyre FP on running instances"/>
+				<antcall target="package">
+					<param name="package" value="${dist}/downloads/livefyre-fp.zip"/>
+				</antcall>
+				<antcall target="package">
+					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
+				</antcall>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_livefyre.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./communities.integration.livefyre.networkkey=${Livefyre.networkkey}"/>
+					<arg line="-d ./communities.integration.livefyre.networkkey@Encrypted="/>
+					<arg line="-d ./communities.integration.livefyre.networkdomain=${Livefyre.networkdomain}"/>
+					<arg line="-d ./communities.integration.livefyre.sitekey=${Livefyre.sitekey}"/>
+					<arg line="-d ./communities.integration.livefyre.sitekey@Encrypted="/>
+					<arg line="-d ./communities.integration.livefyre.siteid=${Livefyre.siteid}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for getting version number -->
+	<target name="version">
+		<echo message="Retrieving the AEM Version number"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/demomachine.properties"/>
+			</resourceexists>
+			<then>
+				<path id="cq.path">
+					<fileset dir="${demos}/${demo.build}/author/crx-quickstart/app">
+						<include name="cq-quickstart-*.jar"/>
+					</fileset>
+				</path>
+				<property name="cq.file" refid="cq.path"/>
+				<propertyregex property="cq.version" input="${cq.file}" regexp="(.*)-(.*)(\.0|\.1|\.2|\.3)-(.*).jar" select="\2"/>
+			</then>
+			<else>
+				<property name="cq.version" value="${demo.version}"/>
+			</else>
+		</if>
+		<echo message="cq.version: ${cq.version}"/>
+		<!-- These conditions are used to run specitic targets only on certain releases -->
+		<condition property="aem62">
+			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+		</condition>
+		<condition property="aem61">
+			<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
+		</condition>
+		<condition property="aem60">
+			<equals arg1="${cq.version}" arg2="6.0" casesensitive="false"/>
+		</condition>
+		<condition property="cq56">
+			<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
+		</condition>
+		<!-- This property determines where to load the demo packages from -->
+		<if>
+			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem62"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem61"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${cq.version}" arg2="6.0" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem60"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="cq56"/>
+			</then>
+		</if>
+		<!-- These conditions are used to run specitic targets starting with a certain release or later -->
+		<condition property="aem62orlater">
+			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+		</condition>
+		<condition property="aem61orlater">
+			<or>
+				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
+			</or>
+		</condition>
+		<condition property="aem60orlater">
+			<or>
+				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.0" casesensitive="false"/>
+			</or>
+		</condition>
+		<condition property="cq56orlater">
+			<or>
+				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.0" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
+			</or>
+		</condition>
+		<echo message="demo.packages: ${demo.packages}"/>
+	</target>
+	<!-- Target for loading the packages -->
+	<target name="configure" depends="version">
+		<echo message="Configuring the Author instance"/>
+		<foreach target="package_author" param="package">
+			<path id="author.packages">
+				<fileset dir="${packages}" casesensitive="yes">
+					<include name="all/all/**/*.zip"/>
+					<include name="all/author/**/*.zip"/>
+					<include name="${demo.packages}/all/**/*.zip"/>
+					<include name="${demo.packages}/author/**/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<antcall target="configure_post">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Configuring the Publish instance"/>
+				<foreach target="package_publish" param="package">
+					<path id="publish.packages">
+						<fileset dir="${packages}" casesensitive="yes">
+							<include name="all/all/**/*.zip"/>
+							<include name="all/publish/**/*.zip"/>
+							<include name="${demo.packages}/all/**/*.zip"/>
+							<include name="${demo.packages}/publish/**/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+				<antcall target="configure_post">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+			<then>
+				<echo message="Configuring the Farm instance"/>
+				<foreach target="package_farm" param="package">
+					<path id="farm.packages">
+						<fileset dir="${packages}" casesensitive="yes">
+							<include name="all/all/**/*.zip"/>
+							<include name="all/farm/**/*.zip"/>
+							<include name="${demo.packages}/all/**/*.zip"/>
+							<include name="${demo.packages}/farm/**/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+				<antcall target="configure_post">
+					<param name="port" value="${AdobeAEM.farmport}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${Livefyre.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="livefyre"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the replication agents for the Farm instance -->
+	<target name="configure_farm">
+		<echo message="Configuring replication agent on Author for Farm instance"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/farm_replication_create.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-F cmd=copyPage"/>
+			<arg line="-F srcPath=/etc/replication/agents.author/publish"/>
+			<arg line="-F destParentPath=/etc/replication/agents.author"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/bin/wcmcommand"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/farm_replication_port.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./transportUri=http://${demo.host}:${AdobeAEM.farmport}/bin/receive?sling:authRequestLogin=1"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/etc/replication/agents.author/publish1/jcr:content"/>
+		</exec>
+	</target>
+	<!-- Target for post configuration steps -->
+	<target name="configure_post">
+		<antcall target="social_cloudstorage">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="social_cloudpage">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="demo_cloudservices">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="analytics">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="target">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="scene7_registration">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="dynamic_media">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="brightedge">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="notifications">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="community-moderators">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="phonegap">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="mobileservices">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="phonegapbuild">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<if>
+			<equals arg1="${port}" arg2="${AdobeAEM.authorport}" casesensitive="false"/>
+			<then>
+				<antcall target="assets_homepage">
+					<param name="port" value="${port}"/>
+				</antcall>
+				<antcall target="assets_versions">
+					<param name="port" value="${port}"/>
+				</antcall>
+			</then>
+		</if>
+		<antcall target="community_srp">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="autocomplete">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="users">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="ffmpeg">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="translations_geomedia">
+			<param name="port" value="${port}"/>
+		</antcall>
+	</target>
+	<!-- Target for loading a package on the AUTHOR instance -->
+	<target name="package_author">
+		<antcall target="package">
+			<param name="package" value="${package}"/>
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+	</target>
+	<!-- Target for loading a package on the PUBLISH instance -->
+	<target name="package_publish">
+		<antcall target="package">
+			<param name="package" value="${package}"/>
+			<param name="port" value="${AdobeAEM.publishport}"/>
+		</antcall>
+	</target>
+	<!-- Target for loading a package on the FARM instance -->
+	<target name="package_farm">
+		<antcall target="package">
+			<param name="package" value="${package}"/>
+			<param name="port" value="${AdobeAEM.farmport}"/>
+		</antcall>
+	</target>
+	<!-- Target for uploading and installing a package on a server instance  -->
+	<target name="package">
+		<echo message="Uploading ${package} on port ${port}"/>
+		<basename property="packagefilename" file="${package}"/>
+		<condition property="isHotFix">
+			<or>
+				<matches pattern="hotfix" string="${package}"/>
+			</or>
+		</condition>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_${packagefilename}.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-F force=true"/>
+			<arg line="-F install=true"/>
+			<arg line="-F 'file=@${package}'"/>
+			<arg line="http://${demo.host}:${port}/crx/packmgr/service.jsp"/>
+		</exec>
+		<antcall target="packageHotFix"/>
+	</target>
+	<target name="packageHotFix" if="isHotFix">
+		<echo message="Deploying a new hotfix ${package}..."/>
+	</target>
+	<!-- Adobe Social Communities - setting waiting.time to 10s for notifications -->
+	<target name="notifications">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_notifications.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./waiting.time=10"/>
+			<arg line="-d ./waiting.time@TypeHint=Long"/>
+			<arg line="http://${demo.host}:${port}/libs/wcm/notification/config/com.day.cq.wcm.notification.impl.NotificationManagerImpl"/>
+		</exec>
+	</target>
+	<!-- Configure the dispatcher flush on Publish -->
+	<target name="dispatcher">
+		<exec executable="curl">
+			<arg line="--output '${logs}/dispatcher_keys.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./enabled=true"/>
+			<arg line="-d ./enabled@Delete="/>
+			<arg line="-d ./transportUri=http://${demo.host}/dispatcher/invalidate.cache"/>
+			<arg line="-d ./sling:resourceType=cq/replication/components/agent"/>
+			<arg line="http://${demo.host}:${AdobeAEM.publishport}/etc/replication/agents.publish/flush/jcr:content"/>
+		</exec>
+	</target>
+	<!-- Adobe Social account: posting consumer and secret keys for social data store so that they are encrypted locally -->
+	<target name="social_cloudstorage" if="aem60">
+		<if>
+			<equals arg1="${AdobeSocial.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_keys.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./consumerkey=${AdobeSocial.consumerkey}"/>
+					<arg line="-d ./consumerkey@Encrypted="/>
+					<arg line="-d ./hosturl=${AdobeSocial.hosturl}"/>
+					<arg line="-d ./secret=${AdobeSocial.secretkey}"/>
+					<arg line="-d ./secret@Encrypted="/>
+					<arg line="-d ./reportsuite=${AdobeSocial.reportsuite}"/>
+					<arg line="-d ./asipath=/content/usergenerated/asi/cloud"/>
+					<arg line="-d ./sling:resourceType=social/config/datastore/cloud/components/asproviderconfigpage"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/socialdatastore/adobe-social/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe Scene7: posting Registration Id and Video Service URL -->
+	<target name="scene7_registration">
+		<if>
+			<equals arg1="${AdobeScene7.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_scene7.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./serviceUrl=${AdobeScene7.videoService}"/>
+					<arg line="-d ./registrationID=${AdobeScene7.registrationID}"/>
+					<arg line="-d ./registrationID@Encrypted="/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/dynamicmediaservices/dynamic-media/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe Analytics: posting username, password and secret key for encryption wiht local instance keys -->
+	<target name="analytics">
+		<if>
+			<equals arg1="${AdobeAnalytics.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_analytics.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./password=${AdobeAnalytics.password}"/>
+					<arg line="-d ./password@Encrypted="/>
+					<arg line="-d ./secret=${AdobeAnalytics.secret}"/>
+					<arg line="-d ./secret@Encrypted="/>
+					<arg line="-d ./username=${AdobeAnalytics.username}"/>
+					<arg line="-d ./server=${AdobeAnalytics.server}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe Target: posting email, client code and password -->
+	<target name="target">
+		<if>
+			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_target.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./password=${AdobeTarget.password}"/>
+					<arg line="-d ./password@Encrypted="/>
+					<arg line="-d ./email=${AdobeTarget.email}"/>
+					<arg line="-d ./public/clientcode=${AdobeTarget.clientcode}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/testandtarget/demomachine/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe Mobile Services: posting username, password and secret key for encryption wiht local instance keys -->
+	<target name="mobileservices" if="aem61orlater">
+		<if>
+			<equals arg1="${AdobeMobileServices.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_mobileservices.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./password=${AdobeMobileServices.password}"/>
+					<arg line="-d ./password@Encrypted="/>
+					<arg line="-d ./secret=${AdobeMobileServices.secret}"/>
+					<arg line="-d ./secret@Encrypted="/>
+					<arg line="-d ./username=${AdobeMobileServices.username}"/>
+					<arg line="-d ./server=${AdobeMobileServices.server}"/>
+					<arg line="-d ./company=${AdobeMobileServices.company}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/mobileservices/amsconfig/jcr:content"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_mobileservices_shell.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
+					<arg line="-d mobileServiceConfig=/etc/cloudservices/mobileservices/amsconfig/geometrixx-outdoors"/>
+					<arg line="-d :operation=mobileapps:appMetrics"/>
+					<arg line="http://${demo.host}:${port}/libs/mobileapps/admin/content/dashboard.html/content/phonegap/geometrixx-outdoors/shell"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe PhoneGap Build: posting username, password for encryption wiht local instance keys -->
+	<target name="phonegapbuild" if="aem61orlater">
+		<if>
+			<equals arg1="${AdobePhoneGapBuild.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_phonegapbuild.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./pgBuildPassword=${AdobePhoneGapBuild.password}"/>
+					<arg line="-d ./pgBuildPassword@Encrypted="/>
+					<arg line="-d ./pgBuildUserId=${AdobePhoneGapBuild.user}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/phonegap-build/phonegap-build/jcr:content"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_phonegapbuild_shell.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
+					<arg line="-d phonegapConfig=/etc/cloudservices/phonegap-build/phonegap-build"/>
+					<arg line="-d :operation=mobileapps:phoneGapBuildSettings"/>
+					<arg line="http://${demo.host}:${port}/libs/mobileapps/admin/content/dashboard.html/content/phonegap/geometrixx-outdoors/shell"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe AEM Assets: enabling the Home page feature -->
+	<target name="assets_homepage" if="aem61orlater">
+		<if>
+			<equals arg1="${demo.assets.homepage}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetshomepage.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d isEnabled=true"/>
+					<arg line="-d isEnabled=false"/>
+					<arg line="-d propertylist=isEnabled"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.core.impl.assethome.AssetHomePageConfiguration"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetsrecorder.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d event.filter=(!(event.application=*))"/>
+					<arg line="-d eventrecorder.enabled=true"/>
+					<arg line="-d eventrecorder.enabled=false"/>
+					<arg line="-d eventrecorder.blacklist="/>
+					<arg line="-d eventrecorder.eventtypes=ASSET_CREATED"/>
+					<arg line="-d eventrecorder.eventtypes=DOWNLOADED"/>
+					<arg line="-d eventrecorder.eventtypes=VERSIONED"/>
+					<arg line="-d eventrecorder.eventtypes=ASSET_VIEWED"/>
+					<arg line="-d eventrecorder.eventtypes=ASSET_SHARED"/>
+					<arg line="-d eventrecorder.eventtypes=ASSET_PUBLISHED"/>
+					<arg line="-d eventrecorder.eventtypes=PROJECT_VIEWED"/>
+					<arg line="-d eventrecorder.eventtypes=COLLECTION_VIEWED"/>
+					<arg line="-d eventrecorder.eventtypes=ADDED_COMMENT"/>
+					<arg line="-d propertylist=event.filter,eventrecorder.enabled,eventrecorder.blacklist,eventrecorder.eventtypes"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.core.impl.DamEventRecorderImpl"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe AEM Assets: enabling version linking on save via WebDav -->
+	<target name="assets_versions" if="aem61orlater">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_assetsversions.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d cq.dam.webdav.version.linking.enable=true"/>
+			<arg line="-d cq.dam.webdav.version.linking.enable=false"/>
+			<arg line="-d cq.dam.webdav.version.linking.scheduler.period=5"/>
+			<arg line="-d cq.dam.webdav.version.linking.staging.timeout=10"/>
+			<arg line="-d propertylist=cq.dam.webdav.version.linking.enable,cq.dam.webdav.version.linking.scheduler.period,cq.dam.webdav.version.linking.staging.timeout"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.dam.webdav.impl.io.DamWebdavVersionLinkingJob"/>
+		</exec>
+	</target>
+	<!-- Adobe AEM Apps: setting "allow empty" to true for PhoneGap Enterprise App -->
+	<target name="phonegap" if="aem61orlater">
+		<if>
+			<equals arg1="${demo.phonegap}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_phonegap.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d allow.empty=true"/>
+					<arg line="-d allow.empty=false"/>
+					<arg line="-d allow.hosts="/>
+					<arg line="-d allow.hosts.regexp="/>
+					<arg line="-d filter.methods=POST"/>
+					<arg line="-d filter.methods=PUT"/>
+					<arg line="-d filter.methods=DELETE"/>
+					<arg line="-d propertylist=allow.empty,allow.hosts,allow.hosts.regexp,filter.methods"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.security.impl.ReferrerFilter"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Brightedge Content Optimizer: posting password for encryption wiht local instance keys -->
+	<target name="brightedge" if="aem60orlater">
+		<if>
+			<equals arg1="${BrightEdge.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_brightedge.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./password=${BrightEdge.password}"/>
+					<arg line="-d ./password@Encrypted="/>
+					<arg line="-d ./username=${BrightEdge.username}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/brightedge/demo-brightedge/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- GlobalLink Translation connector: posting password for encryption wiht local instance keys -->
+	<target name="globallink" if="aem61orlater">
+		<if>
+			<equals arg1="${GlobalLink.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_globallink.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./pdUserPassword=${GlobalLink.password}"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/gs4tr-translation/demo-globallink/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe Social communities: set Read, Write and Delete permissions for the community-moderators group -->
+	<target name="community-moderators" if="aem60">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_permissions-moderators.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d authorizableId=community-moderators"/>
+			<arg line="-d changelog=path:/content/usergenerated/content,read:true,modify:true,create:true,delete:true,acl_read:true,acl_edit:true,replicate:true"/>
+			<arg line="http://${demo.host}:${port}/.cqactions.html"/>
+		</exec>
+	</target>
+	<!-- Adobe Social communities: sets the Adobe Social cloud storage for the Paladin Strikes back page -->
+	<target name="social_cloudpage" if="aem60">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_social_cloudpage.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d :cancelInheritance=true"/>
+			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
+			<arg line="-d ./cq:cloudserviceconfigs=/etc/cloudservices/msft-translation/msft_trial"/>
+			<arg line="-d ./cq:cloudserviceconfigs=/etc/cloudservices/socialdatastore/adobe-social"/>
+			<arg line="http://${demo.host}:${port}/content/geometrixx-media/en/community/paladin-strikes-back/jcr:content"/>
+		</exec>
+	</target>
+	<!-- FFMPEG: sets the desired list of profiles for video renditions -->
+	<target name="ffmpeg">
+		<if>
+			<equals arg1="${demo.ffmpeg.transcoding}" arg2="false" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_ffmpeg_renditions.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./PROCESS_ARGS@Delete"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/process3/metaData"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_ffmpeg_workflow.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content.generate.json"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- This target prepares the Geomedia site for future translation jobs -->
+	<target name="translations_geomedia" if="aem61orlater">
+		<antcall target="translations_page">
+			<param name="translation.language" value="fr"/>
+			<param name="translation.title" value="Francais"/>
+			<param name="translation.root" value="/content/geometrixx-media"/>
+		</antcall>
+		<antcall target="translations_page">
+			<param name="translation.language" value="es"/>
+			<param name="translation.title" value="Espanol"/>
+			<param name="translation.root" value="/content/geometrixx-media"/>
+		</antcall>
+		<antcall target="translations_page">
+			<param name="translation.language" value="de"/>
+			<param name="translation.title" value="Deutsch"/>
+			<param name="translation.root" value="/content/geometrixx-media"/>
+		</antcall>
+		<exec executable="curl">
+			<arg line="--output '${logs}/translations_page_rename_en.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
+			<arg line="-d ./cq:cloudserviceconfigs=/etc/cloudservices/msft-translation/msft_trial"/>
+			<arg line="http://${demo.host}:${port}/content/geometrixx-media/en/jcr:content"/>
+		</exec>
+	</target>
+	<target name="translations_page">
+		<!-- First we copy the pages -->
+		<exec executable="curl">
+			<arg line="--output '${logs}/translations_page_copy_${translation.language}.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-F shallowCbx=on"/>
+			<arg line="-F shallow=false"/>
+			<arg line="-F cmd=copyPage"/>
+			<arg line="-F destName=${translation.language}"/>
+			<arg line="-F srcPath=${translation.root}/en"/>
+			<arg line="-F destParentPath=${translation.root}/"/>
+			<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
+		</exec>
+		<!-- Then we rename and associate the cloud server to these pages-->
+		<exec executable="curl">
+			<arg line="--output '${logs}/translations_page_rename_${translation.language}.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./jcr:title=${translation.title}"/>
+			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
+			<arg line="-d ./cq:cloudserviceconfigs=/etc/cloudservices/msft-translation/msft_trial"/>
+			<arg line="http://${demo.host}:${port}${translation.root}/${translation.language}/jcr:content"/>
+		</exec>
+	</target>
+	<!-- This target sets some user preferences in advance for some users -->
+	<target name="users">
+		<echo message="Updating User Preferences on port ${port}..."/>
+		<java classname="com.adobe.aem.demo.communities.Loader">
+			<classpath refid="demo.classpath"/>
+			<arg line="-h ${demo.loader.host} -p ${port} -a ${demo.loader.altport} -f &quot;${dist}/users/loader-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+		</java>
+	</target>
+	<!-- Adobe Dynamic Media: enables dynamic media on the AEM instance -->
+	<target name="dynamic_media" if="aem61orlater">
+		<if>
+			<equals arg1="${demo.dynamicmedia}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_dynamicmedia.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d dynamicMediaEnabled=true"/>
+					<arg line="http://${demo.host}:${port}/etc/dam/dynamicmediaconfig"/>
+				</exec>
+			</then>
+		</if>
+		<!-- Need to restart the bundle for Dynamic Media -->
+		<antcall target="bundle_restart">
+			<param name="bundle.port" value="${port}"/>
+			<param name="bundle.name" value="Adobe CQ DAM Scene7 Dynamic Imaging"/>
+		</antcall>
+	</target>
+	<!-- Creates a backup file for the demo machine and scripts and other assets, wihch doesn't include the AEM loads/snaphots and license files -->
+	<target name="archive" depends="permissions">
+		<mkdir dir="${archives}"/>
+		<tstamp>
+			<format property="archive-file-name" pattern="dd-MMM-yy" locale="en,US"/>
+		</tstamp>
+		<echo message="Creating an archive for the Demo Machine..."/>
+		<delete file="${archives}/demomachine-${archive-file-name}.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}.zip" basedir="." excludes="dist/license/*.properties,dist/bin/*.jar,dist/bin/*.zip,archives/**,logs/**,dist/commerce/**,mongodb/**,conf/*.properties,demos/**,mysql/**,solr/**,ffmpeg/**,ant/manual/**,dist/apps/**,dist/assets/**,dist/forms/**,dist/sites/**,dist/enablement/**,dist/downloads/**,james/log/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}.zip" tofile="${archives}/aem-demomachine.zip" overwrite="true"/>
+		<echo message="Creating an archive for the Enablement content..."/>
+		<delete file="${archives}/demomachine-${archive-file-name}-enablement.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-enablement.zip" basedir="." includes="dist/enablement/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}-enablement.zip" tofile="${archives}/aem-demomachine-enablement.zip" overwrite="true"/>
+		<echo message="Creating an archive for the Forms content..."/>
+		<delete file="${archives}/demomachine-${archive-file-name}-forms.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}-forms.zip" tofile="${archives}/aem-demomachine-forms.zip" overwrite="true"/>
+		<echo message="Creating an archive for the Assets content..."/>
+		<delete file="${archives}/demomachine-${archive-file-name}-assets.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-assets.zip" basedir="." includes="dist/assets/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}-assets.zip" tofile="${archives}/aem-demomachine-assets.zip" overwrite="true"/>
+		<echo message="Creating an archive for the Sites content..."/>
+		<delete file="${archives}/demomachine-${archive-file-name}-sites.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-sites.zip" basedir="." includes="dist/sites/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}-sites.zip" tofile="${archives}/aem-demomachine-sites.zip" overwrite="true"/>
+		<echo message="Creating an archive for the Apps content..."/>
+		<delete file="${archives}/demomachine-${archive-file-name}-apps.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-apps.zip" basedir="." includes="dist/apps/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}-apps.zip" tofile="${archives}/aem-demomachine-apps.zip" overwrite="true"/>
+		<delete file="${archives}/demomachine-${archive-file-name}-commerce.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-commerce.zip" basedir="." includes="dist/commerce/**"/>
+		<copy file="${archives}/demomachine-${archive-file-name}-commerce.zip" tofile="${archives}/aem-demomachine-commerce.zip" overwrite="true"/>
+	</target>
+	<!-- Creates a backup file for a specific demo image using an external script -->
+	<target name="backup" depends="permissions">
+		<antcall target="stop"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/author/aem-author-p${AdobeAEM.authorport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Creating a snapshot for AUTHOR demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-c -f -p ${demos}/${demo.build}/author"/>
+				</exec>
+			</then>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/publish/aem-publish-p${AdobeAEM.publishport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Creating a snapshot for PUBLISH demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-c -f -p ${demos}/${demo.build}/publish"/>
+				</exec>
+			</then>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/farm/aem-publish-p${AdobeAEM.farmport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Creating a snapshot for FARM demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-c -f -p ${demos}/${demo.build}/farm"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Restores a backup file for a specific demo image using an external script -->
+	<target name="restore" depends="permissions">
+		<antcall target="stop"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/author/crx-quickstart-demo-snapshot.tar"/>
+			</resourceexists>
+			<then>
+				<echo message="Restoring a snapshot for AUTHOR demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-r -f -p ${demos}/${demo.build}/author"/>
+				</exec>
+			</then>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/publish/crx-quickstart-demo-snapshot.tar"/>
+			</resourceexists>
+			<then>
+				<echo message="Restoring a snapshot for PUBLISH demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-r -f -p ${demos}/${demo.build}/publish"/>
+				</exec>
+			</then>
+		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/farm/crx-quickstart-demo-snapshot.tar"/>
+			</resourceexists>
+			<then>
+				<echo message="Restoring a snapshot for FARM demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-r -f -p ${demos}/${demo.build}/farm"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for compiling the Java tools for the Demo Machine -->
+	<target name="compile">
+		<if>
+			<and>
+				<equals arg1="${demo.compile}" arg2="true" casesensitive="false"/>
+				<not>
+					<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
+				</not>
+			</and>
+			<then>
+				<delete dir="${java}/bin/com"/>
+				<echo message="Compiling the Java demo tools..."/>
+				<javac srcdir="${java}/src" includeantruntime="false" target="1.7" source="1.7" debug="true" nowarn="on" failonerror="false" destdir="${java}/bin">
+					<classpath refid="demo.classpath"/>
+				</javac>
+			</then>
+		</if>
+	</target>
+	<!-- Target for intepreting flags for loader routine -->
+	<target name="community_loader_flag">
+		<if>
+			<equals arg1="${demo.loader.reset}" arg2="true" casesensitive="false"/>
+			<then>
+				<property name="demo.loader.resetflag" value="-r"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demo.loader.configure}" arg2="true" casesensitive="false"/>
+			<then>
+				<property name="demo.loader.configureflag" value="-c"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demo.communities.samples.analytics}" arg2="true" casesensitive="false"/>
+			<then>
+				<property name="demo.loader.analyticsflag" value="-t"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for loading a CSV file with UGC into a demo instance which might happen just on author (if MSRP or ASRP), or on multiple instances -->
+	<target name="community_loader" depends="community_loader_flag,compile">
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Loading Community content on Publish ${demo.loader.currentfile}..."/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</then>
+			<else>
+				<echo message="Loading Community content on Author ${demo.loader.currentfile}..."/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${AdobeAEM.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</else>
+		</if>
+	</target>
+	<!-- Target for loading all available CSV files for community content into a demo instance -->
+	<target name="community_loader_content" depends="community_loader_flag,compile">
+		<!-- We only process the Samples files if ASRP or MSRP is in use (as no content will be there by default) -->
+		<if>
+			<not>
+				<equals arg1="${demomachine.srp}" arg2="JSRP" casesensitive="false"/>
+			</not>
+			<then>
+				<echo message="Updating the Geometrixx Sites with Community content for ${demomachine.srp}"/>
+				<foreach target="community_loader" param="demo.loader.currentfile">
+					<fileset dir="${dist}/community/samples" casesensitive="yes">
+						<include name="**/*.csv"/>
+					</fileset>
+				</foreach>
+			</then>
+		</if>
+		<!-- We always process the files resulting in new Sites and new Content -->
+		<echo message="Updating with new Community content for ${demomachine.srp}"/>
+		<antcall target="community_loader">
+			<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities.csv"/>
+		</antcall>
+		<if>
+			<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader">
+					<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp2.csv"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
+	<!-- Target for loading all available CSV files for new community site templates and new community sites into a demo instance -->
+	<target name="community_loader_sites" depends="community_loader_flag,compile">
+		<if>
+			<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
+			<then>
+				<echo message="Loading Community Site Templates (for FP1)"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp1.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</then>
+			<else>
+				<if>
+					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+					<then>
+						<echo message="Loading Community Site Templates (for Latest)"/>
+						<java classname="com.adobe.aem.demo.communities.Loader">
+							<classpath refid="demo.classpath"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+						</java>
+					</then>
+					<else>
+						<echo message="Loading Community Site Templates (No feature pack)"/>
+						<java classname="com.adobe.aem.demo.communities.Loader">
+							<classpath refid="demo.classpath"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+						</java>
+					</else>
+				</if>
+			</else>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Loading Community sites (and publishing)..."/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</then>
+			<else>
+				<echo message="Loading Community sites (without publishing)..."/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${AdobeAEM.authorport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</else>
+		</if>
+	</target>
+	<!-- Target for waiting for AEM to be available -->
+	<target name="community_uber_wait">
+		<echo message="Waiting 60 seconds..."/>
+		<sleep seconds="60"/>
+		<echo message="Waiting for login URL..."/>
+		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		</waitfor>
+		<echo message="Waiting 10 more seconds..."/>
+		<sleep seconds="10"/>
+	</target>
+	<!-- Target for installing the Scorm bundle for Communities -->
+	<target name="community_scorm_bundle">
+		<antcall target="community_scorm_bundle_instance">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+		<antcall target="community_scorm_bundle_instance">
+			<param name="port" value="${AdobeAEM.publishport}"/>
+		</antcall>
+		<antcall target="community_scorm_bundle_instance">
+			<param name="port" value="${AdobeAEM.farmport}"/>
+		</antcall>
+	</target>
+	<target name="community_scorm_bundle_instance">
+		<if>
+			<socket server="${demo.host}" port="${port}"/>
+			<then>
+				<echo message="Upgrading the AEM instance on port ${port} with AEM Communities Scorm bundle"/>
+				<if>
+					<and>
+						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+						<resourceexists>
+							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
+						</resourceexists>
+					</and>
+					<then>
+						<antcall target="package">
+							<param name="package" value="${dist}/downloads/cq-social-scorm-pkg.zip"/>
+						</antcall>
+					</then>
+					<else>
+						<if>
+							<and>
+								<not>
+									<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+								</not>
+								<resourceexists>
+									<file file="${dist}/community/featurepacks/${demo.communities.featurepack}-scorm.zip"/>
+								</resourceexists>
+							</and>
+							<then>
+								<antcall target="package">
+									<param name="package" value="${dist}/community/featurepacks/${demo.communities.featurepack}-scorm.zip"/>
+								</antcall>
+							</then>
+						</if>
+					</else>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for bootstrapping AEM with the latest Community uber -->
+	<target name="community_instance" depends="version" if="aem61">
+		<if>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			<then>
+				<if>
+					<and>
+						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+						<resourceexists>
+							<file file="${dist}/downloads/communities.zip"/>
+						</resourceexists>
+					</and>
+					<then>
+						<copy file="${dist}/downloads/communities.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+					</then>
+					<else>
+						<if>
+							<and>
+								<not>
+									<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+								</not>
+								<resourceexists>
+									<file file="${dist}/community/featurepacks/${demo.communities.featurepack}.zip"/>
+								</resourceexists>
+							</and>
+							<then>
+								<copy file="${dist}/community/featurepacks/${demo.communities.featurepack}.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+							</then>
+						</if>
+					</else>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for uploading the latest Communities uber -->
+	<target name="community_uber">
+		<if>
+			<and>
+				<equals arg1="${demo.external}" arg2="true" casesensitive="false"/>
+				<equals arg1="${demo.version}" arg2="aem61" casesensitive="false"/>
+			</and>
+			<then>
+				<antcall target="community_hotfix_install">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+				</antcall>
+				<antcall target="community_hotfix_install">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+				</antcall>
+				<antcall target="community_hotfix_install">
+					<param name="port" value="${AdobeAEM.farmport}"/>
+				</antcall>
+				<sleep seconds="30"/>
+			</then>
+		</if>
+		<if>
+			<or>
+				<equals arg1="${demo.communities.upload}" arg2="true" casesensitive="false"/>
+				<equals arg1="${demo.external}" arg2="true" casesensitive="false"/>
+			</or>
+			<then>
+				<antcall target="community_uber_install">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+				</antcall>
+				<antcall target="community_uber_install">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+				</antcall>
+				<antcall target="community_uber_install">
+					<param name="port" value="${AdobeAEM.farmport}"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
+	<target name="community_uber_install">
+		<if>
+			<socket server="${demo.host}" port="${port}"/>
+			<then>
+				<echo message="Upgrading the AEM instance on port ${port} with AEM Communities uber"/>
+				<if>
+					<and>
+						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+						<resourceexists>
+							<file file="${dist}/downloads/communities.zip"/>
+						</resourceexists>
+					</and>
+					<then>
+						<antcall target="package">
+							<param name="package" value="${dist}/downloads/communities.zip"/>
+						</antcall>
+						<antcall target="community_uber_wait"/>
+					</then>
+					<else>
+						<if>
+							<and>
+								<not>
+									<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+								</not>
+								<resourceexists>
+									<file file="${dist}/community/featurepacks/${demo.communities.featurepack}.zip"/>
+								</resourceexists>
+							</and>
+							<then>
+								<antcall target="package">
+									<param name="package" value="${dist}/community/featurepacks/${demo.communities.featurepack}.zip"/>
+								</antcall>
+								<antcall target="community_uber_wait"/>
+							</then>
+						</if>
+					</else>
+				</if>
+			</then>
+		</if>
+	</target>
+	<target name="community_hotfix_install" if="aem61">
+		<if>
+			<socket server="${demo.host}" port="${port}"/>
+			<then>
+				<echo message="Installing AEM Communities HotFixes for AEM 6.1 for External AEM instance"/>
+				<antcall target="package">
+					<param name="package" value="${dist}/hotfixes/aem61/cq-6.1.0-hotfix-6640-1.2.zip"/>
+				</antcall>
+				<antcall target="package">
+					<param name="package" value="${dist}/hotfixes/aem61/cq-6.1.0-hotfix-6680-1.2.zip"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
+	<target name="autocomplete">
+		<!-- Turns autocomplete on or off for AEM login screens -->
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_autocomplete.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./autocomplete=${demo.autocomplete}"/>
+			<arg line="-d ./autocomplete@TypeHint=boolean"/>
+			<arg line="http://${demo.host}:${port}/libs/granite/core/content/login/configs/cq/box"/>
+		</exec>
+	</target>
+	<!-- Target for loading the SCF upgrade package -->
+	<target name="community_upgrade">
+		<foreach target="package_author" param="package">
+			<path id="communities.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="community/packages/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<foreach target="package_publish" param="package">
+					<path id="communities.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="community/packages/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+			<then>
+				<foreach target="package_farm" param="package">
+					<path id="communities.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="community/packages/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring a new demo environment -->
+	<target name="communities" if="aem61orlater" depends="configuration,version">
+		<mkdir dir="${logs}"/>
+		<antcall target="demomachine_analytics_communities"/>
+		<antcall target="community_uber"/>
+		<if>
+			<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+			<then>
+				<if>
+					<and>
+						<resourceexists>
+							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
+						</resourceexists>
+						<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+					</and>
+					<then>
+						<antcall target="community_scorm_bundle"/>
+					</then>
+				</if>
+				<antcall target="community_mysql_schema"/>
+				<antcall target="community_reporting_configure"/>
+				<if>
+					<and>
+						<resourceexists>
+							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
+						</resourceexists>
+						<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+					</and>
+					<then>
+						<antcall target="community_scorm_configure"/>
+					</then>
+				</if>
+			</then>
+		</if>
+		<antcall target="community_upgrade"/>
+		<antcall target="community_tunnel"/>
+		<antcall target="community_users"/>
+		<if>
+			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_sites"/>
+				<antcall target="community_loader_content"/>
+				<antcall target="community_loader_cloudservices"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_enablement"/>
+				<antcall target="community_loader_cloudservices_enablement"/>
+			</then>
+		</if>
+		<antcall target="community_warmup"/>
+	</target>
+	<!-- Targets for setting the Cloud Services on the Community Sites -->
+	<target name="community_loader_cloudservices">
+		<antcall target="cloudservices">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+			<param name="path" value="/content/sites/communities/en/jcr:content"/>
+		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<antcall target="cloudservices">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+					<param name="path" value="/content/sites/communities/en/jcr:content"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
+	<target name="community_loader_cloudservices_enablement">
+		<antcall target="cloudservices">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+			<param name="path" value="/content/sites/enablement/en/jcr:content"/>
+		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<antcall target="cloudservices">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+					<param name="path" value="/content/sites/enablement/en/jcr:content"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring and preparing MySQL for reporting purposes, if a running MySQL server can be found -->
+	<target name="community_reporting_configure">
+		<if>
+			<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
+			<then>
+				<antcall target="community_jdbc">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+					<then>
+						<antcall target="community_jdbc">
+							<param name="port" value="${AdobeAEM.publishport}"/>
+						</antcall>
+					</then>
+				</if>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+					<then>
+						<antcall target="community_jdbc">
+							<param name="port" value="${AdobeAEM.farmport}"/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring and preparing MySQL for SCORM purposes, if a running MySQL server can be found -->
+	<target name="community_scorm_configure">
+		<if>
+			<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
+			<then>
+				<antcall target="community_scorm">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+					<then>
+						<antcall target="community_scorm">
+							<param name="port" value="${AdobeAEM.publishport}"/>
+						</antcall>
+					</then>
+				</if>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+					<then>
+						<antcall target="community_scorm">
+							<param name="port" value="${AdobeAEM.farmport}"/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for adding users to the right Communities groups -->
+	<target name="community_users" depends="compile">
+		<echo message="Updating all demo users on the Author instance to be administrators"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/roles_community_administrators.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d memberAction=members"/>
+			<arg line="-d memberEntry=admin"/>
+			<arg line="-d memberEntry=replication-receiver"/>
+			<arg line="-d memberEntry=rebekah.larsen@trashymail.com"/>
+			<arg line="-d memberEntry=andrew.schaeffer@trashymail.com"/>
+			<arg line="-d memberEntry=aaron.mcdonald@mailinator.com"/>
+			<arg line="-d memberEntry=jason.werner@dodgit.com"/>
+			<arg line="-d memberEntry=weston.mccall@dodgit.com"/>
+			<arg line="-d memberEntry=boyd.larsen@dodgit.com"/>
+			<arg line="-d memberEntry=emily.andrews@mailinator.com"/>
+			<arg line="-d memberEntry=josh.bradley@pookmail.com"/>
+			<arg line="-d memberEntry=ryan.palmer@spambob.com"/>
+			<arg line="-d memberEntry=felicia.carter@trashymail.com"/>
+			<arg line="-d memberEntry=donna.billups@pookmail.com"/>
+			<arg line="-d memberEntry=ashley.thompson@spambob.com"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/home/groups/a/administrators.html"/>
+		</exec>
+		<echo message="Adding demo users to the content managers group"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/roles_content_managers.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d memberAction=members"/>
+			<arg line="-d memberEntry=author"/>
+			<arg line="-d memberEntry=analytics-administrators"/>
+			<arg line="-d memberEntry=andrew.schaeffer@trashymail.com"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/home/groups/c/content-authors.html"/>
+		</exec>
+		<echo message="Updating Members on the Author instance"/>
+		<java classname="com.adobe.aem.demo.communities.Loader">
+			<classpath refid="demo.classpath"/>
+			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+		</java>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Updating Members on the Publish instance"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</then>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+			<then>
+				<echo message="Updating Members on the Farm instance"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.farmport} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</then>
+		</if>
+	</target>
+	<!-- Target for loading the reference Community site forum with content during a demo -->
+	<target name="community_wizard">
+		<antcall target="community_loader">
+			<param name="demo.loader.currentfile" value="${dist}/community/wizard/loader-engage.csv"/>
+		</antcall>
+	</target>
+	<!-- Target for loading the fake stats to Geometrixx outdoors -->
+	<target name="stats_wizard">
+		<antcall target="community_loader">
+			<param name="demo.loader.currentfile" value="${dist}/community/wizard/loader-stats.csv"/>
+		</antcall>
+	</target>
+	<!-- Target for configuring the Communities Enablement managers -->
+	<target name="community_enablement_managers">
+		<echo message="Adding demo users to the enablement managers group"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/roles_content_managers.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d memberAction=members"/>
+			<arg line="-d memberEntry=andrew.schaeffer@trashymail.com"/>
+			<arg line="-d memberEntry=jason.werner@dodgit.com"/>
+			<arg line="-d memberEntry=rebekah.larsen@trashymail.com"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/home/groups/community/community-enablementmanagers.html"/>
+		</exec>
+	</target>
+	<!-- Target for configuring the Communities Tunnel service (allowing requests from author to publish) -->
+	<target name="community_tunnel">
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Configuring AEM Communities Tunnel service on port ${AdobeAEM.authorport}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${AdobeAEM.authorport}_tunnel.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d enable=true"/>
+					<arg line="-d enable=false"/>
+					<arg line="-d agent.configuration=/etc/replication/agents.author/publish"/>
+					<arg line="-d disabled.cipher.suites="/>
+					<arg line="-d enabled.cipher.suites="/>
+					<arg line="-d propertylist=enable,agent.configuration,disabled.cipher.suites,enabled.cipher.suites"/>
+					<arg line="http://${demo.host}:${AdobeAEM.authorport}/system/console/configMgr/com.adobe.cq.social.user.impl.transport.HttpToPublisher"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the SCORM engine -->
+	<target name="community_scorm">
+		<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_scorm.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d jdbc.connection.uri=jdbc:mysql://${demo.mysql.host}:${demo.mysql.port}/${mysql.prefix}scorm"/>
+			<arg line="-d jdbc.username=${demo.mysql.user}"/>
+			<arg line="-d jdbc.password=${demo.mysql.password}"/>
+			<arg line="-d scorm.password=${demo.mysql.password}"/>
+			<arg line="-d propertylist=jdbc.connection.uri,jdbc.username,jdbc.password,scorm.password"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.social.scorm.impl.ScormEngineServiceImpl"/>
+		</exec>
+	</target>
+	<!-- Target for configuring the SRP according to the property configuration -->
+	<target name="community_srp" depends="configuration">
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
+			<!-- MongoDB storage use case for 6.1 and beyond -->
+			<then>
+				<echo message="Configuring MSRP on port ${port}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_msrp.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d mongouri=mongodb://${demo.mongo.host}:${demo.mongo.port}/?maxPoolSize=10&amp;waitQueueMultiple=5&amp;readPreference=secondaryPreferred"/>
+					<arg line="-d type=msrp"/>
+					<arg line="-d zkhost="/>
+					<arg line="-d ugc=communities"/>
+					<arg line="-d collection=content"/>
+					<arg line="-d attachments=attachments"/>
+					<arg line="-d solr.url=http://127.0.0.1:8983/solr/"/>
+					<arg line="-d solr.collection=${demo.build}"/>
+					<arg line="-d asipath=/content/usergenerated/asi/mongo"/>
+					<arg line="-d jcr:primaryType=nt:unstructured"/>
+					<arg line="http://${demo.host}:${port}/etc/socialconfig/srpc/defaultconfiguration"/>
+				</exec>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="ASRP" casesensitive="false"/>
+			<!-- Cloud Storage use case for 6.1 and beyond -->
+			<then>
+				<echo message="Configuring ASRP on port ${port}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_asrp.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./type=asrp"/>
+					<arg line="-d ./consumerkey=${AdobeSocial.consumerkey}"/>
+					<arg line="-d ./consumerkey@Encrypted="/>
+					<arg line="-d ./hosturl=${AdobeSocial.hosturl}"/>
+					<arg line="-d ./secret=${AdobeSocial.secretkey}"/>
+					<arg line="-d ./secret@Encrypted="/>
+					<arg line="-d ./reportsuite=${AdobeSocial.reportsuite}"/>
+					<arg line="-d ./asipath=/content/usergenerated/asi/cloud"/>
+					<arg line="http://${demo.host}:${port}/etc/socialconfig/srpc/defaultconfiguration"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the Enablement features -->
+	<target name="community_enablement">
+		<echo message="Enabling the enablement module..."/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${AdobeAEM.authorport}_enablement.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d isEnablementActive=true"/>
+			<arg line="-d isEnablementActive=false"/>
+			<arg line="-d propertylist=isEnablementActive"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/system/console/configMgr/com.adobe.cq.social.enablement.impl.site.EnablementSiteServiceImpl"/>
+		</exec>
+		<antcall target="community_enablement_managers"/>
+		<antcall target="community_enablement_notifications"/>
+		<if>
+			<equals arg1="${demo.communities.samples.enablement}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_enablement_loader"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_enablement_loader_communities"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for enabling the Enablement notifications -->
+	<target name="community_enablement_notifications">
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Enabling the enablement notifications..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${AdobeAEM.authorport}_enablement_notifications.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d enable.email=true"/>
+					<arg line="-d enable.email=false"/>
+					<arg line="-d enable.activitystream=false"/>
+					<arg line="-d enable.enrollment=true"/>
+					<arg line="-d enable.enrollment=false"/>
+					<arg line="-d enable.unenrollment=true"/>
+					<arg line="-d enable.unenrollment=false"/>
+					<arg line="-d email.template=/etc/social/notification/emailtemplates/enrollment/emailtemplate.txt"/>
+					<arg line="-d propertylist=enable.email,enable.activitystream,enable.enrollment,enable.unenrollment,email.template"/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/system/console/configMgr/com.adobe.cq.social.enablement.impl.notifications.EnablementNotificationService"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<target name="community_enablement_loader" depends="community_loader_flag,compile">
+		<if>
+			<and>
+				<resourceexists>
+					<file file="${dist}/enablement/loader-enablement-author.csv"/>
+				</resourceexists>
+				<resourceexists>
+					<file file="${dist}/enablement/loader-enablement-resources.csv"/>
+				</resourceexists>
+				<resourceexists>
+					<file file="${dist}/enablement/loader-enablement-users.csv"/>
+				</resourceexists>
+				<resourceexists>
+					<file file="${dist}/enablement/loader-enablement-tags.csv"/>
+				</resourceexists>
+				<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			</and>
+			<then>
+				<echo message="Creating Enablement tags (on Author and Publish)"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+				<echo message="Creating Enablement site (on Author)"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+				<echo message="Creating Enablement users (on Publish)"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+				<antcall target="community_enablement_loader_resources"/>
+				<echo message="Creating Enablement UGC (on Publish)"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-publish.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
+			</then>
+			<else>
+				<echo message="Conditions not met to configure the Enablement site"/>
+			</else>
+		</if>
+	</target>
+	<target name="community_enablement_loader_resources" depends="community_loader_flag,compile">
+		<echo message="Creating Enablement Resources (on Author - 20+ minutes)"/>
+		<java classname="com.adobe.aem.demo.communities.Loader">
+			<classpath refid="demo.classpath"/>
+			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-resources.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
+		</java>
+	</target>
+	<target name="community_enablement_loader_communities" depends="community_loader_flag,compile">
+		<if>
+			<and>
+				<resourceexists>
+					<file file="${dist}/enablement/loader-enablement-communities.csv"/>
+				</resourceexists>
+				<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			</and>
+			<then>
+				<echo message="Creating Enablement Resources for Communities (on Author)"/>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-communities.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
+				</java>
+			</then>
+		</if>
+	</target>
+	<target name="community_jdbc">
+		<echo message="Enabling the JDBC driver to Reporting database on port ${port}..."/>
+		<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_jdbc_reporting.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=com.day.commons.datasource.jdbcpool.JdbcPoolService"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d jdbc.driver.class=com.mysql.jdbc.Driver"/>
+			<arg line="-d jdbc.connection.uri=jdbc:mysql://${demo.mysql.host}:${demo.mysql.port}/${mysql.prefix}reporting"/>
+			<arg line="-d jdbc.username=${demo.mysql.user}"/>
+			<arg line="-d jdbc.password=${demo.mysql.password}"/>
+			<arg line="-d jdbc.validation.query="/>
+			<arg line="-d default.readonly=false"/>
+			<arg line="-d default.autocommit=true"/>
+			<arg line="-d default.autocommit=false"/>
+			<arg line="-d pool.size=10"/>
+			<arg line="-d pool.max.wait.msec=1000"/>
+			<arg line="-d datasource.name=enablement"/>
+			<arg line="-d datasource.svc.properties="/>
+			<arg line="-d propertylist=jdbc.driver.class,jdbc.connection.uri,jdbc.username,jdbc.password,jdbc.validation.query,default.readonly,default.autocommit,pool.size,pool.max.wait.msec,datasource.name,datasource.svc.properties"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/[Temporary%20PID%20replaced%20by%20real%20PID%20upon%20save]"/>
+		</exec>
+	</target>
+	<target name="community_warmup">
+		<echo message="Preloading the main pages......"/>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/preload_communities_publish.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/content/sites/communities.html"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/preload_communities_moderation.html'"/>
+					<arg line="-u admin:admin"/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/content/sites/communities/moderation.html"/>
+				</exec>
+			</then>
+		</if>
+		<exec executable="curl">
+			<arg line="--output '${logs}/preload_communities_author.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/content/sites/communities.html"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/preload_communities.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/communities/sites"/>
+		</exec>
+	</target>
+	<!-- These targets send specific records to Adobe Analytics related to demo machine activity -->
+	<target name="demomachine_analytics_install">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event6"/>
+			<param name="analytics.pagename" value="install"/>
+		</antcall>
+	</target>
+	<target name="demomachine_analytics_start">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event5"/>
+			<param name="analytics.pagename" value="start"/>
+		</antcall>
+	</target>
+	<target name="demomachine_analytics_stop">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event7"/>
+			<param name="analytics.pagename" value="stop"/>
+		</antcall>
+	</target>
+	<target name="demomachine_analytics_forms">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event9"/>
+			<param name="analytics.pagename" value="forms"/>
+		</antcall>
+	</target>
+	<target name="demomachine_analytics_assets">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event10"/>
+			<param name="analytics.pagename" value="assets"/>
+		</antcall>
+	</target>
+	<target name="demomachine_analytics_communities">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event8"/>
+			<param name="analytics.pagename" value="communities"/>
+		</antcall>
+	</target>
+	<!-- This target restarts a bundle -->
+	<target name="bundle_restart">
+		<exec executable="curl">
+			<arg line="-u admin:admin"/>
+			<arg line="-o '${logs}/${bundle.port}_bundles.json' http://${demo.host}:${bundle.port}/system/console/bundles.json"/>
+		</exec>
+		<loadfile property="bundle.list" srcFile="${logs}/${bundle.port}_bundles.json"/>
+		<propertyregex property="bundle.id" input="${bundle.list}" regexp="\{&quot;id&quot;:([0-9]+),&quot;name&quot;:&quot;${bundle.name}" select="\1"/>
+		<echo message="Bundle ID to restart: ${bundle.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${bundle.port}_bundle_${bundle.id}_stop.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d action=stop"/>
+			<arg line="http://${demo.host}:${bundle.port}/system/console/bundles/${bundle.id}"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${bundle.port}_bundle_${bundle.id}_start.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d action=start"/>
+			<arg line="http://${demo.host}:${bundle.port}/system/console/bundles/${bundle.id}"/>
+		</exec>
+	</target>
+	<!-- This target gets the current hostname -->
+	<target name="hostname" depends="compile">
+		<if>
+			<not>
+				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
+			</not>
+			<then>
+				<java classname="com.adobe.aem.demo.Hostname" outputproperty="demo.hostname">
+					<classpath refid="demo.classpath"/>
+				</java>
+			</then>
+		</if>
+	</target>
+	<!-- This target posts a record to Adobe Analytics about a specific demo machine activity -->
+	<target name="demomachine_analytics" depends="hostname">
+		<if>
+			<and>
+				<equals arg1="${demo.analytics.track}" arg2="true" casesensitive="false"/>
+				<not>
+					<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
+				</not>
+			</and>
+			<then>
+				<copy file="${dist}/analytics/event.xml" tofile="${dist}/analytics/event-data.xml" overwrite="true"/>
+				<replace file="${dist}/analytics/event-data.xml" token="@analytics.event@" value="${analytics.event}"/>
+				<replace file="${dist}/analytics/event-data.xml" token="@analytics.user@" value="${demo.hostname}"/>
+				<replace file="${dist}/analytics/event-data.xml" token="@analytics.pagename@" value="${analytics.pagename}"/>
+				<replace file="${dist}/analytics/event-data.xml" token="@AdobeAnalytics.reportsuite@" value="${demo.analytics.reportsuite}"/>
+				<java classname="com.adobe.aem.demo.Analytics">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.analytics.reportsuite}.d3.sc.omtrdc.net -u /b/ss//6 -f &quot;${dist}/analytics/event-data.xml&quot;"/>
+				</java>
+				<delete file="${dist}/analytics/event-data.xml"/>
+			</then>
+		</if>
+	</target>
+	<target name="cloudservices">
+		<propertyselector property="constituents" match="demo.cloudservices\.([^\.]*)\.enabled" select="\1" casesensitive="false"/>
+		<echo message="Configuring cloud services on port ${port} for path ${path}: ${constituents}"/>
+		<delete file="cloudservices.txt"/>
+		<foreach list="${constituents}" target="cloudservices.process" param="myparam"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_cloudservices.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
+			<arg line="-d @cloudservices.txt"/>
+			<arg line="http://${demo.host}:${port}${path}"/>
+		</exec>
+		<delete file="cloudservices.txt"/>
+	</target>
+	<target name="cloudservices.process">
+		<propertycopy property="key" from="demo.cloudservices.${myparam}.path"/>
+		<propertycopy property="enabled" from="demo.cloudservices.${myparam}.enabled"/>
+		<if>
+			<equals arg1="${enabled}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo file="cloudservices.txt" append="true" message="./cq:cloudserviceconfigs=/etc/cloudservices${key}&amp;"/>
+			</then>
+		</if>
+	</target>
+	<!-- Sets the Cloud Services as per the configuration for the standard demo sites Geometrixx Outdoors and Geometrix Media  -->
+	<target name="demo_cloudservices">
+		<antcall target="cloudservices">
+			<param name="path" value="/content/geometrixx-outdoors/jcr:content"/>
+		</antcall>
+		<antcall target="cloudservices">
+			<param name="path" value="/content/geometrixx-media/jcr:content"/>
+		</antcall>
+		<antcall target="cloudservices">
+			<param name="path" value="/content/community-components/en/jcr:content"/>
+		</antcall>
+	</target>
+	<!-- Verifies the Java version compatibility -->
+	<target name="javaversion" depends="version">
+		<echo message="Java version in use: ${ant.java.version}"/>
+		<if>
+			<and>
+				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
+				<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
+			</and>
+			<then>
+				<fail message="AEM 6.1 cannot run with Java6 - please install a Java7 or Java8 JDK"/>
+			</then>
+		</if>
+		<if>
+			<and>
+				<equals arg1="${ant.java.version}" arg2="1.8" casesensitive="false"/>
+				<equals arg1="${demo.packages}" arg2="cq56" casesensitive="false"/>
+			</and>
+			<then>
+				<fail message="CQ 5.6.x cannot run with Java8 - please install a Java6 JDK"/>
+			</then>
+		</if>
+		<echo message="Java version ${ant.java.version} is compatible with AEM version: ${demo.packages}"/>
+	</target>
+	<target name="gui_build" depends="compile">
+		<delete file="demomachine.jar"/>
+		<jar destfile="demomachine.jar" basedir="${java}/bin" includes="**">
+			<zipgroupfileset dir="${java}/libs" includes="**/*.jar"/>
+			<zipgroupfileset dir="${ant}/lib" includes="**/*.jar"/>
+			<manifest>
+				<attribute name="Main-Class" value="com.adobe.aem.demo.gui.AemDemo"/>
+			</manifest>
+		</jar>
+	</target>
+	<target name="gui">
+		<java dir="." jar="demomachine.jar" fork="true" spawn="true"/>
+	</target>
+	<target name="default">
+		<echo message="Welcome to the AEM Demo Machine! Please use the install target to setup your first environment"/>
+	</target>
+</project>

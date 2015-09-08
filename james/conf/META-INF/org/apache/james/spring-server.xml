@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.    
+-->
+
+<beans xmlns="http://www.springframework.org/schema/beans" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xmlns:amq="http://activemq.apache.org/schema/core" 
+       xsi:schemaLocation="
+          http://www.springframework.org/schema/beans classpath:org/springframework/beans/factory/xml/spring-beans-3.0.xsd
+          http://camel.apache.org/schema/spring classpath:camel-spring.xsd
+          http://activemq.apache.org/schema/core classpath:activemq.xsd">
+
+    <!-- 
+    ===========================================================================
+       Spring Wiring for James Server: Annotation, Bean Post-Processors...
+    ===========================================================================
+    -->
+          
+    <!-- 
+      Enable Java Annotations processing.
+     -->
+    <bean class="org.springframework.context.annotation.CommonAnnotationBeanPostProcessor">
+        <property name="order" value="3" />
+    </bean>
+    
+    <!-- 
+      Enable support for Persistence Annotations processing.
+     -->
+    <bean class="org.springframework.orm.jpa.support.PersistenceAnnotationBeanPostProcessor"/>
+
+    <!-- 
+      Spring "Bean-Post-Processor" for LogEnabled interface.
+     -->
+    <bean class="org.apache.james.container.spring.lifecycle.LogEnabledBeanPostProcessor">
+        <property name="logProvider" ref="logprovider" />
+        <property name="order" value="0" />
+    </bean>
+    <bean id="logprovider" class="org.apache.james.container.spring.lifecycle.LogProviderImpl">
+    </bean>
+
+    <!-- 
+      Configuration "Bean-Factory-Post-Processor"
+        responsible to register beans from James specific configuration files
+    -->
+    <bean class="org.apache.james.container.spring.bean.factorypostprocessor.ConfigurationBeanFactoryPostProcessor">
+        <property name="beans">
+          <map>
+            <!-- User Repository-->
+            <entry>
+              <key>
+                <value>usersrepository</value>
+              </key>
+               <!-- no alias needed -->
+              <value></value>
+            </entry>
+            <!-- Recipient Rewrite Table-->
+            <entry>
+              <key>
+                <value>recipientrewritetable</value>
+              </key>
+              <!-- no alias needed -->
+              <value></value>
+            </entry>
+            <!-- Domain List -->
+            <entry>
+              <key>
+                <value>domainlist</value>
+              </key>
+              <!-- no alias needed -->
+              <value></value>
+            </entry>
+            <entry>
+              <key>
+                <value>usersrepository23</value>
+              </key>
+<!--               no alias needed -->
+              <value></value>
+            </entry>
+          </map>
+        </property>
+    </bean>
+
+    <!-- 
+      Spring "Bean-Post-Processor" for Configurable interface.
+     -->
+    <bean class="org.apache.james.container.spring.lifecycle.ConfigurableBeanPostProcessor">
+        <property name="configurationProvider" ref="configurationprovider" />
+        <property name="order" value="1" />
+    </bean>
+    <bean id="configurationprovider" class="org.apache.james.container.spring.lifecycle.ConfigurationProviderImpl">
+        <property name="configurationMappings">
+            <map>
+                <entry key="mailprocessor" value="mailetcontainer.processors"/>
+                <entry key="mailspooler" value="mailetcontainer.spooler"/>
+                <entry key="mailetcontext" value="mailetcontainer.context"/>
+             </map>
+        </property>
+    </bean>
+
+    <!-- 
+      Mail Repository Store "Bean-Factory"
+     -->
+    <bean id="mailrepositorystore" class="org.apache.james.container.spring.bean.factory.mailrepositorystore.MailRepositoryStoreBeanFactory" />
+
+    <!-- 
+    ===========================================================================
+       Queues
+    ===========================================================================
+    -->
+          
+    <!-- 
+      Mail Queue Factory
+     -->
+    <bean id="mailqueuefactory" class="org.apache.james.queue.activemq.ActiveMQMailQueueFactory" depends-on="broker"/>
+
+    <!-- 
+      ActiveMQ: Broker, Connections, BlobTransferPolicy...
+     -->
+    <amq:broker useJmx="true" persistent="true" brokerName="james" dataDirectory="filesystem=file://var/store/activemq/brokers" useShutdownHook="false" schedulerSupport="false" id="broker">
+        <amq:destinationPolicy>
+            <amq:policyMap>
+                <amq:policyEntries>
+                    <!-- Support priority handling of messages -->
+                    <!-- http://activemq.apache.org/how-can-i-support-priority-queues.html -->
+                    <amq:policyEntry queue=">" prioritizedMessages="true"/>
+                </amq:policyEntries>
+            </amq:policyMap>
+        </amq:destinationPolicy>
+        <amq:managementContext>
+            <amq:managementContext createConnector="false"/>
+        </amq:managementContext>
+        <amq:persistenceAdapter>
+            <amq:amqPersistenceAdapter/>
+        </amq:persistenceAdapter>
+        <amq:plugins>
+            <amq:statisticsBrokerPlugin/>
+        </amq:plugins>
+        <amq:transportConnectors>
+            <amq:transportConnector uri="tcp://localhost:0" />
+        </amq:transportConnectors>
+    </amq:broker>
+    <amq:connectionFactory id="amqConnectionFactory" brokerURL="vm://james?create=false">
+        <amq:prefetchPolicy>
+            <!-- Disable prefetch so slow consuming can not block other threads -->
+            <!-- See JAMES-1253 -->
+            <amq:prefetchPolicy queuePrefetch="0" topicPrefetch="0"/>
+        </amq:prefetchPolicy>
+        <property name="blobTransferPolicy" ref="blobTransferPolicy"/>
+    </amq:connectionFactory>
+    <bean id="blobTransferPolicy" class="org.apache.james.queue.activemq.FileSystemBlobTransferPolicy">
+        <property name="defaultUploadUrl" value="file://var/store/activemq/blob-transfer"/>
+    </bean>
+    <bean id="jmsConnectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+       <property name="targetConnectionFactory" ref="amqConnectionFactory"/>
+       <property name="sessionCacheSize" value="10"/>
+       <property name="cacheConsumers" value="false"/>
+       <property name="cacheProducers" value="true"/>
+    </bean>
+    <bean id="jmsTransactionManager" class="org.springframework.jms.connection.JmsTransactionManager">
+        <property name="connectionFactory" ref="jmsConnectionFactory"/>
+    </bean>
+
+    <!-- 
+    ===========================================================================
+       Mailet Container
+    ===========================================================================
+    -->
+          
+    <!-- 
+      Mailet Container Beans.
+     -->
+    <bean id="mailprocessor" name="processorRoute" class="org.apache.james.mailetcontainer.impl.camel.CamelCompositeProcessor"/>
+  
+    <!-- 
+      !!! mailetcontext bean must be defined after mailProcessor 
+          otherwise LogEnabled injection via LogEnabledBeanPostProcessor will not occur before 
+          it is used - Seems like a Spring bug...
+    -->
+    <bean id="mailetcontext" class="org.apache.james.mailetcontainer.impl.JamesMailetContext"/>
+    <bean id="mailspooler" class="org.apache.james.mailetcontainer.impl.JamesMailSpooler"/>
+
+    <!-- 
+      Mailet and Matcher "Bean-Factory".
+     -->
+    <bean id="mailetloader" class="org.apache.james.container.spring.bean.factory.mailetcontainer.MailetLoaderBeanFactory" />
+    <bean id="matcherloader" class="org.apache.james.container.spring.bean.factory.mailetcontainer.MatcherLoaderBeanFactory" />
+
+    <!-- 
+      Camel Context
+     -->
+    <camel:camelContext id="jamesCamelContext" trace="false" >
+        <camel:jmxAgent id="agent" disabled="false" createConnector="false" serviceUrlPath="/jmxrmi/jamescamel"/>
+        <camel:template id="producerTemplate"/>   
+    </camel:camelContext>
+
+    <!-- 
+    ===========================================================================
+       File System
+    ===========================================================================
+    -->
+          
+    <bean class="org.apache.james.container.spring.bean.factorypostprocessor.FileSystemBeanFactoryPostProcessor">
+        <property name="fileSystem" ref="filesystem" />
+    </bean>
+    <bean id="filesystem" class="org.apache.james.container.spring.filesystem.FileSystemImpl" />
+
+    <!-- 
+    ===========================================================================
+       DNS Service
+    ===========================================================================
+    -->
+          
+    <bean id="dnsservice" class="org.apache.james.dnsservice.dnsjava.DNSJavaService" />
+
+    <!-- 
+    ===========================================================================
+       FetchMail
+    ===========================================================================
+    -->
+
+    <bean id="fetchmail" class="org.apache.james.fetchmail.FetchScheduler" />
+
+
+    <!-- 
+    ===========================================================================
+       Mail Protocol Servers
+    ===========================================================================
+    -->
+   <bean id="protocolhandlerloader" class="org.apache.james.container.spring.bean.factory.protocols.ProtocolHandlerLoaderBeanFactory" />
+    
+    <!-- 
+      SMTP Server
+     -->
+    <bean id="smtpserver" class="org.apache.james.smtpserver.netty.SMTPServerFactory"/>
+
+    <!-- 
+      LMTP Server
+     -->
+    <bean id="lmtpserver" class="org.apache.james.lmtpserver.netty.LMTPServerFactory"/>
+ 
+    <!-- 
+      POP3 Server
+     -->
+    <bean id="pop3server"  class="org.apache.james.pop3server.netty.POP3ServerFactory"/>
+
+    <!-- 
+      IMAP Server
+     -->
+    <bean id="imapserver" class="org.apache.james.imapserver.netty.IMAPServerFactory">
+        <property name="imapDecoder" ref="imapDecoder"/>
+        <property name="imapEncoder" ref="imapEncoder"/>    
+    </bean>
+    <!-- The imapProcessor configuration will be reviewed when IMAP will be integrated into Protocols project -->
+    <!-- Temporary configuration - see IMAP-357 -->
+    <bean id="imapProcessor" class="org.apache.james.imap.processor.main.DefaultImapProcessorFactory" factory-method="createXListSupportingProcessor">
+        <constructor-arg index="0" ref="mailboxmanager"/>
+        <constructor-arg index="1" ref="subscriptionManager"/>
+        <!-- The mailboxTyper -->
+        <constructor-arg index="2" value="#{null}"/>
+        <!-- The idleKeepAlive -->
+        <constructor-arg index="3" value="120"/>
+        <!-- The list of disabled capabilities -->
+        <constructor-arg index="4">
+          <set>
+            <value>ACL</value>
+          </set>
+       </constructor-arg>
+    </bean>
+    <bean id="imapDecoder" factory-bean="imapDecoderFactory" factory-method="buildImapDecoder"/>
+    <bean id="imapDecoderFactory" class="org.apache.james.imap.main.DefaultImapDecoderFactory"/>
+    <bean id="imapEncoder" factory-bean="imapEncoderFactory"  factory-method="buildImapEncoder"/>
+    <bean id="imapEncoderFactory" class="org.apache.james.imap.encode.main.DefaultImapEncoderFactory"/>
+
+    <!-- 
+    ===========================================================================
+       Mailbox
+    ===========================================================================
+    -->
+          
+    <!-- 
+      Mailbox Managers
+     -->
+    <bean class="org.apache.james.container.spring.bean.factorypostprocessor.MailboxConfigurationBeanFactoryPostProcessor"/>
+     
+    <bean id="locker" class="org.apache.james.mailbox.store.JVMMailboxPathLocker"/>
+    <import resource="classpath:META-INF/org/apache/james/spring-mailbox.xml" />
+
+    <!-- 
+      Mailbox Copier
+     -->
+    <bean id="mailboxcopier" class="org.apache.james.mailbox.copier.MailboxCopierImpl"/>
+          
+    <!-- 
+      Mailbox Importer
+     -->
+    <bean id="james23importer" class="org.apache.james.container.spring.tool.James23Importer"/>
+          
+    <!-- 
+    ===========================================================================
+       Database DataSource
+    ===========================================================================
+    -->
+          
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+        <property name ="location" value="classpath:james-database.properties"/>
+    </bean>
+    <bean id="datasource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${database.driverClassName}" />
+        <property name="url" value="${database.url}" />
+        <property name="username" value="${database.username}" />
+        <property name="password" value="${database.password}" />
+        <!--The value for maxActive should always be larger than the number of spooler threads. The-->
+        <!--reason is that a spooler thread normally requires 1 connection to process a mail, however-->
+        <!--sometimes OpenJPA requires 1 connection to finish the processing on top of that. If-->
+        <!--    maxActive <= num spooler threads,-->
+        <!--it can happen that the spooler threads grab all maxActive connections but then cannot-->
+        <!--finish processing because each of them blocks waiting for OpenJPA which itself is waiting-->
+        <!--for a connection. See https://issues.apache.org/jira/browse/JAMES-1317.-->
+        <property name="maxActive" value="21"/>
+        <!-- This lets a mail fail to be processed rather than the server freezing. -->
+        <property name="maxWait" value="30000"/>
+        <!-- This keeps the number of connections in the pool low on average -->
+        <property name="timeBetweenEvictionRunsMillis" value="300000"/>
+        <property name="minEvictableIdleTimeMillis" value="300000"/>
+        <property name="removeAbandoned" value="true"/>
+        <property name="logAbandoned" value="true"/>
+        <property name="removeAbandonedTimeout" value="300"/>
+    </bean>
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="datasource"/>
+        <property name="jpaVendorAdapter" ref="vendorAdapter"/>
+        <property name="persistenceXmlLocation" value="classpath:META-INF/persistence.xml"/>
+    </bean>
+    <bean id="vendorAdapter" class="org.springframework.orm.jpa.vendor.OpenJpaVendorAdapter">
+        <property name="database" value="${vendorAdapter.database}"/>
+        <!-- set this to true for debugging purposes -->
+        <property name="showSql" value="false"/>
+    </bean>
+    
+    <!-- 
+    ===========================================================================
+       JMX
+    ===========================================================================
+    -->
+          
+    <!-- 
+      JMX Server
+     -->
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+        <property name="location" value="classpath:jmx.properties"/>
+    </bean>
+    <bean id="mbeanserver" class="org.springframework.jmx.support.MBeanServerFactoryBean" >
+        <property name="locateExistingServerIfPossible" value="true"/>
+        <property name="registerWithFactory" value="true"/>
+    </bean>
+    <bean id="serverConnector" class="org.springframework.jmx.support.ConnectorServerFactoryBean" depends-on="registry">
+        <property name="objectName" value="connector:name=rmi" />
+        <property name="serviceUrl" value="service:jmx:rmi://${jmx.address}/jndi/rmi://${jmx.address}:${jmx.port}/jmxrmi" />
+    </bean> 
+    <bean id="registry" class="org.springframework.remoting.rmi.RmiRegistryFactoryBean">
+        <property name="port" value="${jmx.port}" />
+        <property name="serverSocketFactory" ref="restrictedRmiSocketFactory"/>
+        <property name="clientSocketFactory" ref="restrictedRmiSocketFactory"/>
+    </bean> 
+    <bean id="restrictedRmiSocketFactory" class="org.apache.james.util.RestrictingRMISocketFactory">
+        <constructor-arg value="${jmx.address}"/>
+    </bean>   
+
+    <!-- 
+      JMX Export
+     -->
+    <bean id="exporter" class="org.springframework.jmx.export.MBeanExporter" lazy-init="false">
+      <property name="beans">
+        <map>
+          <entry key="org.apache.james:type=component,name=domainlist" value-ref="domainlistmanagement"/>
+          <entry key="org.apache.james:type=component,name=dnsservice" value-ref="dnsservice"/>
+          <entry key="org.apache.james:type=component,name=recipientrewritetable" value-ref="recipientrewritetablemanagement"/>
+          <entry key="org.apache.james:type=component,name=usersrepository" value-ref="usersrepositorymanagement"/>
+          <entry key="org.apache.james:type=component,name=fetchmail" value-ref="fetchmail"/>
+          <entry key="org.apache.james:type=component,name=mailboxmanagement" value-ref="mailboxmanagermanagement"/>
+          <entry key="org.apache.james:type=component,component=mailetcontainer,name=mailspooler" value-ref="mailspooler"/>
+          <entry key="org.apache.james:type=component,name=mailboxcopier" value-ref="mailboxcopiermanagement"/>
+          <entry key="org.apache.james:type=component,name=james23importer" value-ref="james23importermanagement"/>
+          <entry key="org.apache.james:type=container,name=logprovider" value-ref="logprovider"/>
+        </map>
+      </property>
+      <property name="assembler">
+          <bean class="org.springframework.jmx.export.assembler.InterfaceBasedMBeanInfoAssembler">
+            <property name="managedInterfaces" value="org.apache.james.fetchmail.FetchSchedulerMBean,org.apache.james.domainlist.api.DomainListManagementMBean,org.apache.james.dnsservice.api.DNSServiceMBean,org.apache.james.rrt.api.RecipientRewriteTableManagementMBean,org.apache.james.user.api.UsersRepositoryManagementMBean,org.apache.james.adapter.mailbox.MailboxManagerManagementMBean,org.apache.james.container.spring.mailbox.MailboxCopierManagementMBean,org.apache.james.mailetcontainer.api.jmx.MailSpoolerMBean,org.apache.james.container.spring.lifecycle.LogProviderManagementMBean"/>
+          </bean>
+      </property>
+    </bean>
+    <bean id="usersrepositorymanagement" class="org.apache.james.user.lib.UsersRepositoryManagement" />
+    <bean id="recipientrewritetablemanagement" class="org.apache.james.rrt.lib.RecipientRewriteTableManagement" />
+    <bean id="domainlistmanagement" class="org.apache.james.domainlist.lib.DomainListManagement" />
+    <bean id="mailboxmanagermanagement" class="org.apache.james.adapter.mailbox.MailboxManagerManagement" />
+    <bean id="mailboxcopiermanagement" class="org.apache.james.container.spring.mailbox.MailboxCopierManagement" />
+    <bean id="james23importermanagement" class="org.apache.james.container.spring.tool.James23ImporterManagement" />
+
+</beans>

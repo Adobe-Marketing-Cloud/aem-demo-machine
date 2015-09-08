@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+
+ ADOBE CONFIDENTIAL
+ __________________
+
+  Copyright 2013 Adobe Systems Incorporated
+  All Rights Reserved.
+
+ NOTICE:  All information contained herein is, and remains
+ the property of Adobe Systems Incorporated and its suppliers,
+ if any.  The intellectual and technical concepts contained
+ herein are proprietary to Adobe Systems Incorporated and its
+ suppliers and are protected by trade secret or copyright law.
+ Dissemination of this information or reproduction of this material
+ is strictly forbidden unless prior written permission is obtained
+ from Adobe Systems Incorporated.
+
+-->
+<schema name="base" version="1.5">
+    <types>
+        <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true" />
+        <fieldtype name="binary" class="solr.BinaryField" />
+        <fieldType name="float" class="solr.TrieFloatField" precisionStep="0" positionIncrementGap="0"/>
+        <fieldType name="long" class="solr.TrieLongField" precisionStep="0" positionIncrementGap="0"/>
+        <fieldType name="double" class="solr.TrieDoubleField" precisionStep="0" positionIncrementGap="0"/>
+
+        <fieldType name="tint" class="solr.TrieIntField" precisionStep="8" omitNorms="true" positionIncrementGap="0" />
+        <fieldType name="tfloat" class="solr.TrieFloatField" precisionStep="8" omitNorms="true" positionIncrementGap="0" />
+        <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true" positionIncrementGap="0" />
+        <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="8" omitNorms="true" positionIncrementGap="0" />
+
+        <fieldType name="date" class="solr.TrieDateField" precisionStep="0" positionIncrementGap="0"/>
+        <fieldType name="tdate" class="solr.TrieDateField" omitNorms="true" precisionStep="6" positionIncrementGap="0" />
+
+        <fieldType name="minimalText" class="solr.TextField" positionIncrementGap="100">
+           <analyzer>
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.ASCIIFoldingFilterFactory"/>
+            </analyzer>
+        </fieldType>
+        <fieldType name="multiPurposeText" class="solr.TextField" positionIncrementGap="100">
+            <analyzer type="index">
+                <tokenizer class="solr.StandardTokenizerFactory" />
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" enablePositionIncrements="true" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.ReversedWildcardFilterFactory" withOriginal="true" maxPosAsterisk="3" maxPosQuestion="2"
+                    maxFractionAsterisk="0.33" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.StandardTokenizerFactory" />
+                <filter class="solr.SynonymFilterFactory" synonyms="synonyms.txt" ignoreCase="true" expand="true" />
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" enablePositionIncrements="true" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+
+        <fieldType name="en_text" class="solr.TextField" positionIncrementGap="100" autoGeneratePhraseQueries="true">
+            <analyzer type="index">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_en.txt" enablePositionIncrements="true" />
+                <filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="1" catenateNumbers="1" catenateAll="0" splitOnCaseChange="1" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt" />
+                <filter class="solr.PorterStemFilterFactory" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.SynonymFilterFactory" synonyms="synonyms.txt" ignoreCase="true" expand="true" />
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_en.txt" enablePositionIncrements="true" />
+                <filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="0" catenateNumbers="0" catenateAll="0" splitOnCaseChange="1" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt" />
+                <filter class="solr.PorterStemFilterFactory" />
+            </analyzer>
+        </fieldType>
+
+        <fieldType name="de_text" class="solr.TextField" positionIncrementGap="100">
+            <analyzer type="index">
+                <tokenizer class="solr.StandardTokenizerFactory" />
+                <filter class="solr.LengthFilterFactory" min="2" max="5000" />
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_de.txt" />
+                <filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="1" catenateNumbers="1" catenateAll="0" splitOnCaseChange="1" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.SnowballPorterFilterFactory" language="German" />
+                <filter class="solr.RemoveDuplicatesTokenFilterFactory" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.StandardTokenizerFactory" />
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_de.txt" />
+                <filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="0" catenateNumbers="0" catenateAll="0" splitOnCaseChange="1" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.SnowballPorterFilterFactory" language="German" />
+                <filter class="solr.RemoveDuplicatesTokenFilterFactory" />
+            </analyzer>
+        </fieldType>
+                
+        <!-- Simple text field for Japanese pulled from solr 3.6 example schema -->
+        <fieldType name="ja_text" class="solr.TextField" omitNorms="false">
+            <analyzer>
+                <tokenizer class="solr.JapaneseTokenizerFactory" mode="search" />
+                <!-- Reduces inflected verbs and adjectives to their base/dictionary forms -->
+                <filter class="solr.JapaneseBaseFormFilterFactory"/>
+                <!-- Removes tokens with certain part-of-speech tags -->
+                <filter class="solr.JapanesePartOfSpeechStopFilterFactory" tags="lang/stoptags_ja.txt" enablePositionIncrements="true"/>
+                <!-- Normalize full-width romaji to half-width, and half-width kana to full-width -->
+                <filter class="solr.CJKWidthFilterFactory" />
+                <!-- Removes common tokens typically not useful for search, but which have a negative effect on ranking -->
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_ja.txt" enablePositionIncrements="true" />
+                <!-- Normalizes common katakana spelling variations by removing any last long sound character -->
+                <filter class="solr.JapaneseKatakanaStemFilterFactory" minimumLength="4"/>
+                <!-- Lower-case any romaji characters, or english tokens -->
+                <filter class="solr.LowerCaseFilterFactory"/>
+            </analyzer>
+        </fieldType>
+
+        <!-- geo spacial query -->
+        <fieldType name="latLonCoordinates" class="solr.LatLonType" subFieldSuffix="_latLon_coordinate" />
+        <fieldType name="pointCoordinates" class="solr.PointType" dimension="2" subFieldSuffix="_point_coordinate" />
+        <fieldtype name="geohash" class="solr.GeoHashField" />
+
+        <!-- currency field -->
+        <fieldType name="currency" class="solr.CurrencyField" precisionStep="8" currencyConfig="currency.xml" defaultCurrency="USD" />
+    </types>
+
+
+    <fields>
+        <field name="id" type="string" indexed="true" stored="true" required="true" />
+        <field name="_version_" type="tlong" indexed="true" stored="true" /> <!-- version needs to be stored -->
+        
+        <field name="provider_id" type="string" indexed="true" stored="false" multiValued="false"/>
+        <field name="provider" type="string" indexed="true" stored="false" multiValued="false"/>
+        <field name="title_t" type="minimalText" indexed="true" stored="false" multiValued="false" termVectors="true"/>
+        <field name="verbatim_en" type="en_text" indexed="true" stored="false" multiValued="false" termVectors="true"/>
+        <field name="verbatim_ja" type="ja_text" indexed="true" stored="false" multiValued="false" termVectors="true"/>
+        <field name="verbatim_other" type="multiPurposeText" indexed="true" stored="false" multiValued="false" termVectors="true"/>
+        <field name="author_username" type="minimalText" indexed="true" stored="false" multiValued="false"/>
+        <field name="author_username_ci" type="minimalText" indexed="true" stored="false" multiValued="false"/>
+        <field name="author_display_name" type="minimalText" indexed="true" stored="false" multiValued="false"/>
+        <field name="timestamp" type="tdate" indexed="true" stored="false" multiValued="false"/>
+        <field name="report_suite" type="string" indexed="true" stored="false" multiValued="false"/>
+        <field name="emotion" type="string" indexed="true" stored="false" multiValued="false"/>
+        <field name="language" type="string" indexed="true" stored="false" multiValued="false"/>
+        <field name="sentiment" type="tint" indexed="true" stored="false" multiValued="false"/>
+
+        <!-- string -->
+        <dynamicField name="*_s" type="string" indexed="true" stored="false" />
+        <dynamicField name="*_ss" type="string" indexed="true" stored="false" multiValued="true" />
+        
+        <!-- minimal text -->
+        <dynamicField name="*_t" type="minimalText" indexed="true" stored="false" />
+        <dynamicField name="*_ts" type="minimalText" indexed="true" stored="false" multiValued="true" />
+        
+        <!-- boolean -->
+        <dynamicField name="*_b" type="boolean" indexed="true" stored="false" />
+        <dynamicField name="*_bs" type="boolean" indexed="true" stored="true"  multiValued="true"/>            
+        <!-- int -->
+        <dynamicField name="*_i" type="tint" indexed="true" stored="false" />
+        <dynamicField name="*_is" type="tint" indexed="true" stored="false" multiValued="true" />
+                    
+        <!-- long -->
+        <dynamicField name="*_tl" type="tlong" indexed="true" stored="false" />
+        <dynamicField name="*_tls" type="tlong" indexed="true" stored="false" multiValued="true" />
+                        
+        <!-- float -->
+        <dynamicField name="*_f" type="float" indexed="true" stored="false" />
+        <dynamicField name="*_fs" type="float" indexed="true" stored="false" multiValued="true" />
+        
+        <!-- double -->
+        <dynamicField name="*_d" type="double" indexed="true" stored="false" />
+        <dynamicField name="*_ds" type="double" indexed="true" stored="false" multiValued="true" />
+                
+        <!-- date -->
+        <dynamicField name="*_dt" type="date" indexed="true" stored="false" />
+        <dynamicField name="*_dts" type="date" indexed="true" stored="false" multiValued="true" />
+        
+        <dynamicField name="*_tf" type="tfloat"  indexed="true"  stored="false"/>
+        <dynamicField name="*_tfs" type="tfloat"  indexed="true"  stored="false" multiValued="true" />
+        <dynamicField name="*_td" type="tdouble" indexed="true"  stored="false"/>
+        <dynamicField name="*_tds" type="tdouble" indexed="true"  stored="false" multiValued="true" />
+        <dynamicField name="*_tdt" type="tdate"  indexed="true"  stored="false"/>
+        <dynamicField name="*_tdts" type="tdate"  indexed="true"  stored="false" multiValued="true" />
+
+        <dynamicField name="*_latlong"  type="latLonCoordinates" indexed="true"  stored="false" />
+        <dynamicField name="*_latlongs"  type="latLonCoordinates" indexed="true"  stored="false" multiValued="true" />
+        
+        <dynamicField name="*_tg"  type="multiPurposeText" indexed="true"  stored="false" />
+        <dynamicField name="*_tgs"  type="multiPurposeText" indexed="true" stored='false' multiValued="true" />
+
+        <dynamicField name="*_en"  type="en_text" indexed="true"  stored="false" />
+        <dynamicField name="*_ens"  type="en_text" indexed="true" stored='false' multiValued="true" />
+
+        <dynamicField name="*_ja"  type="ja_text" indexed="true"  stored="false" />
+        <dynamicField name="*_jas"  type="ja_text" indexed="true" stored='false' multiValued="true" />
+        
+        <!-- sub field prefix for LatLon and Point type fields, multivalued must be false, due to the fieldcache. -->
+        <dynamicField name="*_coordinate" type="tdouble" indexed="true" stored="false" multiValued="false"/>
+
+        <!-- latitude/longitude fields -->
+        <!-- 
+             These are needed for geo spacial searching. The field type "location" stores the coordiantes separatly
+             in a dynamic field that matches the subFieldSuffix defined in the fiedType definition. Review http://wiki.apache.org/solr/SpatialSearch 
+             and http://wiki.apache.org/solr/SpatialSearchDev for more info.
+
+             Both latLonCoordinates and pointCoordinates field types can share the same subFieldPrefix since they are both doubles    
+        -->
+        <!--
+        <dynamicField name="*__latLon" type="latLonCoordinates" indexed="true" stored="false" multiValued="false" />
+        <dynamicField name="*__point" type="latLonCoordinates" indexed="true" stored="false" multiValued="false" />
+        -->
+                <!-- sub field prefix for LatLon and Point type fields -->
+        <!--
+        <dynamicField name="*_coordinate" type="tdouble" indexed="true" stored="false" multiValued="true"/>
+        -->
+
+        <!--
+        According to the wiki - the geohash is limited and shouln't be used unless you're using
+        the contributed module 2155 http://wiki.apache.org/solr/SpatialSearch#SOLR-2155
+        <dynamicField name="*__geohash" type="geohash" indexed="true" stored="false" multiValued="false" />
+        -->
+
+
+        <!-- multi-purpose text
+        <dynamicField name="*__multiPurposeText" type="multiPurposeText" indexed="true" stored="false" multiValued="false" termVectors="true" />
+            <dynamicField name="*__mult_multiPurposeText" type="multiPurposeText" indexed="true" stored="false" multiValued="true" termVectors="true" />
+            -->
+        
+        <!-- language specific text
+        <dynamicField name="*__en_text" type="en_text" indexed="true" stored="false" multiValued="false" termVectors="true" />
+          <dynamicField name="*__mult_en_text" type="en_text" indexed="true" stored="false" multiValued="true" termVectors="true" />
+        -->
+        
+        <!-- japanese
+        <dynamicField name="*__ja_text" type="ja_text" indexed="true" stored="false" multiValued="false" />
+        <dynamicField name="*__mult_ja_text" type="ja_text" indexed="true" stored="false" multiValued="true" />
+          -->
+          
+        <!-- german 
+        <dynamicField name="*__de_text" type="de_text" indexed="true" stored="false" multiValued="false"/>
+        <dynamicField name="*__mult_de_text" type="de_text" indexed="true" stored="false" multiValued="true"/>
+        -->
+        
+        <!-- TODO add the following additional fields/types -->
+        <!--
+             Currency Field
+             White space text field
+             Autocomplete field
+        -->
+        <field name="text" type="minimalText" indexed="true" stored="false" multiValued="true" termVectors="true"/>
+    </fields>
+
+    <uniqueKey>id</uniqueKey>
+
+    <solrQueryParser defaultOperator="OR" />
+
+    <defaultSearchField>text</defaultSearchField>
+    <copyField source="verbatim_*" dest="text" />
+    <copyField source="title_t" dest="text" />
+
+    <copyField source="author_username" dest="author_username_ci" />
+
+</schema>
