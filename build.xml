@@ -908,13 +908,13 @@
 	</target>
 	<target name="download_google">
 		<exec executable="curl">
-			<arg line="--cookie-jar '${dist}/downloads/google.txt' -s -o '${dist}/downloads/google.html' https://drive.google.com/uc?export=download&amp;id=${google.id}"/>
+			<arg line="--cookie-jar '${dist}/downloads/google.txt' -s -k -o '${dist}/downloads/google.html' https://drive.google.com/uc?export=download&amp;id=${google.id}"/>
 		</exec>
 		<loadfile property="googleFile" srcFile="${dist}/downloads/google.html"/>
 		<propertyregex property="confirmCode" input="${googleFile}" regexp="confirm=([-a-zA-Z0-9_]*)" select="\1"/>
 		<echo message="Download in progress, please wait until build is successful"/>
 		<exec executable="curl">
-			<arg line="--cookie '${dist}/downloads/google.txt' -L -s -o '${dist}/downloads/${google.file}.zip' https://drive.google.com/uc?export=download&amp;confirm=${confirmCode}&amp;id=${google.id}"/>
+			<arg line="--cookie '${dist}/downloads/google.txt' -L -s -k -o '${dist}/downloads/${google.file}.zip' https://drive.google.com/uc?export=download&amp;confirm=${confirmCode}&amp;id=${google.id}"/>
 		</exec>
 		<delete file="${dist}/downloads/google.txt"/>
 		<delete file="${dist}/downloads/google.html"/>
