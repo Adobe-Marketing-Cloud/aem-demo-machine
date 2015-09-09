@@ -25,9 +25,9 @@ public class AemDemoOptions extends JDialog {
 
 		this.aemDemo = aemDemoInput;
 
-		setBounds(150,150,760,600);
+		setBounds(150,150,860,600);
 		getContentPane().setLayout(null);
-		contentPanel.setBounds(0, 0, 760, 600);
+		contentPanel.setBounds(0, 0, 860, 600);
 		getContentPane().add(contentPanel);
 		contentPanel.setLayout(null);
 
@@ -92,7 +92,7 @@ public class AemDemoOptions extends JDialog {
 			@Override
 			public boolean isCellEditable(int row, int column) {
 
-				if (column==0 || column==3) return true;
+				if (column==0 || column==3 || column==4) return true;
 				return false;
 
 			}
@@ -102,12 +102,12 @@ public class AemDemoOptions extends JDialog {
 		table.getRowSorter().toggleSortOrder(1);
 		table.getColumnModel().getColumn(0).setPreferredWidth(10);
 		JScrollPane scrollPane = new JScrollPane(table);
-		scrollPane.setBounds(20, 20, 700, 500);
+		scrollPane.setBounds(20, 20, 800, 500);
 		contentPanel.add(scrollPane);
 
 		// Create Button (DEFAULT)
 		JButton applyButton = new JButton("Apply");
-		applyButton.setBounds(520, 535, 100, 30);
+		applyButton.setBounds(620, 535, 100, 30);
 		applyButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
@@ -121,7 +121,7 @@ public class AemDemoOptions extends JDialog {
 
 		// Cancel Button
 		JButton cancelButton = new JButton("Cancel");
-		cancelButton.setBounds(640, 535, 100, 30);
+		cancelButton.setBounds(740, 535, 100, 30);
 		cancelButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 

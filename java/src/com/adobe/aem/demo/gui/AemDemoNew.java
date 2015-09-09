@@ -16,6 +16,7 @@ import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.text.Position;
 
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.ProjectHelper;
@@ -132,7 +133,7 @@ public class AemDemoNew extends JDialog {
 			JLabel lblCommunityPersistence = new JLabel("Communities");
 			lblCommunityPersistence.setBounds(500, 135, 118, 16);
 			contentPanel.add(lblCommunityPersistence);
-			
+
 			// List of SRPs
 			JScrollPane scrollSRP = new JScrollPane();
 			scrollSRP.setBounds(500, 160, 140, 60);
@@ -169,39 +170,47 @@ public class AemDemoNew extends JDialog {
 
 						// Alphanumeric characters only for build name
 						JOptionPane.showMessageDialog(null, "Please use alphanumeric characters only for your demo configuration");
-
-					} else {
-
-						// New ANT project
-						AemDemoProject p = new AemDemoProject(aemDemo);
-
-						// Overriding with the New Dialog properties
-						p.setUserProperty("demo.jar", selectedJar.getValue());
-						p.setUserProperty("demo.srp", selectedSRP.getValue());
-						p.setUserProperty("demo.store", selectedMK.getValue());
-						p.setUserProperty("demo.type", selectedTopology.getValue());
-						p.setUserProperty("demo.build", demoBuildName.getText());
-						p.init();
-
-						ProjectHelper helper = ProjectHelper.getProjectHelper();
-						p.addReference("ant.projectHelper", helper);
-						helper.parse(p, aemDemo.getBuildFile());
-
-						// Running the target name as a new Thread
-						System.out.println("Building a new " + selectedTopology.getValue() + " demo named " + demoBuildName.getText());
-						Thread t = new Thread(new AemDemoRunnable(aemDemo, p, selectedConfig.getValue()));
-						t.start();
-
-						// Closing the dialog
-						dispose();
+						return;
 
 					}
+
+					// Confirmation dialog to avoid accidental replacement of demo machine instances
+					int index = aemDemo.getListDemoMachines().getNextMatch(demoBuildName.getText(),0,Position.Bias.Forward);
+					if (index != -1)  {
+						int dialogResult = JOptionPane.showConfirmDialog (null, "There's already a demo environmnent with the same name, do you really want to replace it?","Warning",JOptionPane.YES_NO_OPTION);
+						if(dialogResult == JOptionPane.NO_OPTION) {
+							return;
+						}
+					}	
+
+					// New ANT project
+					AemDemoProject p = new AemDemoProject(aemDemo);
+
+					// Overriding with the New Dialog properties
+					p.setUserProperty("demo.jar", selectedJar.getValue());
+					p.setUserProperty("demo.srp", selectedSRP.getValue());
+					p.setUserProperty("demo.store", selectedMK.getValue());
+					p.setUserProperty("demo.type", selectedTopology.getValue());
+					p.setUserProperty("demo.build", demoBuildName.getText());
+					p.init();
+
+					ProjectHelper helper = ProjectHelper.getProjectHelper();
+					p.addReference("ant.projectHelper", helper);
+					helper.parse(p, aemDemo.getBuildFile());
+
+					// Running the target name as a new Thread
+					System.out.println("Building a new " + selectedTopology.getValue() + " demo named " + demoBuildName.getText());
+					Thread t = new Thread(new AemDemoRunnable(aemDemo, p, selectedConfig.getValue()));
+					t.start();
+
+					// Closing the dialog
+					dispose();
 
 				}
 			});
 
 			contentPanel.add(createButton);
-		
+
 			// Cancel Button
 			JButton cancelButton = new JButton("Cancel");
 			cancelButton.setBounds(340, 275, 100, 30);
@@ -219,7 +228,7 @@ public class AemDemoNew extends JDialog {
 			rootPane.setDefaultButton(createButton);
 
 		} else {
-			  
+
 			setBounds(150,150,660,340);
 			getContentPane().setLayout(null);
 			contentPanel.setBounds(0, 0, 660, 340);
@@ -237,7 +246,7 @@ public class AemDemoNew extends JDialog {
 				contentPanel.add(lblError);
 				pos=pos+40;
 			}
-			
+
 			JButton closeButton = new JButton("Close");
 			closeButton.setBounds(200, 160, 60, 30);
 			closeButton.addActionListener(new ActionListener() {
@@ -250,7 +259,7 @@ public class AemDemoNew extends JDialog {
 			contentPanel.add(closeButton);
 
 		}
-			
+
 		// Closing ESC
 		AemDemoUtils.installEscapeCloseOperation(this);
 

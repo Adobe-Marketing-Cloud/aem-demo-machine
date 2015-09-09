@@ -1539,9 +1539,18 @@
 			<arg line="http://${demo.host}:${port}/crx/packmgr/service.jsp"/>
 		</exec>
 		<antcall target="packageHotFix"/>
+		<if>
+			<resourceexists>
+				<file file="${package}.txt"/>
+			</resourceexists>
+			<then>
+				<loadfile property="packageHelp" srcFile="${package}.txt"/>
+				<echo message="Uploaded: ${packageHelp}"/>
+			</then>
+		</if>
 	</target>
 	<target name="packageHotFix" if="isHotFix">
-		<echo message="Deploying a new hotfix ${package}..."/>
+		<echo message="Warning: Deployed a new hotfix ${package}, consider moving into the /dist/hotfixes folder instead"/>
 	</target>
 	<!-- Adobe Social Communities - setting waiting.time to 10s for notifications -->
 	<target name="notifications">
@@ -2458,6 +2467,7 @@
 		</if>
 		<antcall target="community_upgrade"/>
 		<antcall target="community_tunnel"/>
+		<antcall target="community_login"/>
 		<antcall target="community_users"/>
 		<if>
 			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
@@ -2650,6 +2660,30 @@
 			<arg line="-d memberEntry=rebekah.larsen@trashymail.com"/>
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/home/groups/community/community-enablementmanagers.html"/>
 		</exec>
+	</target>
+	<!-- Target for configuring the Communities Default Login pages, for each site -->
+	<target name="community_login">
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Configuring AEM Communities Logging Mappings service on port ${AdobeAEM.publishport}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${AdobeAEM.publishport}_loginmappings.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:admin"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d auth.loginselector.mappings=/libs/granite/core/content/login:/login"/>
+					<arg line="-d auth.loginselector.mappings=/content/geometrixx-media/en/toolbar/account/login:/content/geometrixx-media/en"/>
+					<arg line="-d auth.loginselector.mappings=/content/sites/communities/en/signin:/content/sites/communities/en"/>
+					<arg line="-d auth.loginselector.mappings=/content/sites/enablement/en/signin:/content/sites/enablement/en"/>
+					<arg line="-d propertylist=auth.loginselector.mappings"/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/system/console/configMgr/com.day.cq.auth.impl.LoginSelectorHandler"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the Communities Tunnel service (allowing requests from author to publish) -->
 	<target name="community_tunnel">
