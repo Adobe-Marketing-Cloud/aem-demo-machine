@@ -78,10 +78,11 @@
 	<!-- Target for installing then configuring EVERYTHING -->
 	<target name="demo_kitchensink">
 		<antcall target="demo"/>
-		<antcall target="sites"/>
 		<antcall target="communities"/>
+		<antcall target="sites"/>
 		<antcall target="apps"/>
 		<antcall target="assets"/>
+		<antcall target="forms"/>
 	</target>
 	<!-- Target for loading the persisted demo machine configuration -->
 	<target name="configuration">

@@ -175,14 +175,16 @@ public class AemDemoNew extends JDialog {
 					}
 
 					// Confirmation dialog to avoid accidental replacement of demo machine instances
-					int index = aemDemo.getListDemoMachines().getNextMatch(demoBuildName.getText(),0,Position.Bias.Forward);
-					if (index != -1)  {
-						int dialogResult = JOptionPane.showConfirmDialog (null, "There's already a demo environmnent with the same name, do you really want to replace it?","Warning",JOptionPane.YES_NO_OPTION);
-						if(dialogResult == JOptionPane.NO_OPTION) {
-							return;
-						}
-					}	
-
+					if (aemDemo.getListDemoMachines().getModel().getSize()>0) {
+						int index = aemDemo.getListDemoMachines().getNextMatch(demoBuildName.getText(),0,Position.Bias.Forward);
+						if (index != -1)  {
+							int dialogResult = JOptionPane.showConfirmDialog (null, "There's already a demo environmnent with the same name, do you really want to replace it?","Warning",JOptionPane.YES_NO_OPTION);
+							if(dialogResult == JOptionPane.NO_OPTION) {
+								return;
+							}
+						}	
+					}
+					
 					// New ANT project
 					AemDemoProject p = new AemDemoProject(aemDemo);
 
