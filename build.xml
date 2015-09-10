@@ -1022,14 +1022,23 @@
 		<antcall target="download_forms_demo"/>
 	</target>
 	<target name="download_forms_demo">
-		<echo message="Downloading latest AEM Forms demo"/>
+		<echo message="Downloading latest AEM Forms Finance demo"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/forms/aem61/nexus-demo.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/forms/aem61/nexus-demo.xml"/>
 		<echo message="Downloading cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/formsdemo.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/${metadata.versioning.release}/cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
+			<arg line="-s -o '${dist}/forms/aem61/formsdemo-finance.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/${metadata.versioning.release}/cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
+		</exec>
+		<echo message="Downloading latest AEM Forms Gov demo"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/forms/aem61/nexus-demo.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-gov-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/forms/aem61/nexus-demo.xml"/>
+		<echo message="Downloading cq-geometrixx-gov-pkg-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/forms/aem61/formsdemo-gov.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-gov-pkg/${metadata.versioning.release}/cq-geometrixx-gov-pkg-${metadata.versioning.release}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/forms/aem61" includes="*.xml"/>
@@ -1048,28 +1057,27 @@
 	</target>
 	<target name="download_forms_os">
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/nexus-addon.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/maven-metadata.xml"/>
+			<arg line="-s -o '${dist}/forms/aem61/nexus-addon.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/forms/aem61/nexus-addon.xml"/>
 		<if>
 			<equals arg1="${demo.forms.addon}" arg2="release" casesensitive="false"/>
 			<then>
+				<echo message="Downloading adobe-aemfd-${os.value}-pkg-${metadata.versioning.release}.zip"/>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/forms/aem61/nexus-addon-details.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${metadata.versioning.latest}/maven-metadata.xml"/>
+					<arg line="-s -o '${dist}/forms/aem61/formsaddon-${os.value}.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${metadata.versioning.release}/adobe-aemfd-${os.value}-pkg-${metadata.versioning.release}.zip"/>
 				</exec>
 			</then>
 			<else>
+				<echo message="Downloading adobe-aemfd-${os.value}-pkg-${demo.forms.addon}.zip"/>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/forms/aem61/nexus-addon-details.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${demo.forms.addon}/maven-metadata.xml"/>
+					<arg line="-s -o '${dist}/forms/aem61/formsaddon-${os.value}.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${demo.forms.addon}/adobe-aemfd-${os.value}-pkg-${demo.forms.addon}.zip"/>
 				</exec>
 			</else>
 		</if>
-		<xmlproperty file="${dist}/forms/aem61/nexus-addon-details.xml"/>
-		<propertyregex property="formsfile_addon" input="${metadata.versioning.snapshotVersions.snapshotVersion.value}" regexp="(^\b.*?)," select="\1" casesensitive="false"/>
-		<echo message="Downloading adobe-aemfd-${os.value}-pkg-${formsfile_addon}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/formsaddon.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/development-repositories/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${metadata.version}/adobe-aemfd-${os.value}-pkg-${formsfile_addon}.zip"/>
-		</exec>
+		<delete>
+			<fileset dir="${dist}/forms/aem61" includes="*.xml"/>
+		</delete>
 	</target>
 	<!-- Target for downloading latest Communities uber -->
 	<target name="download_communities">
@@ -1969,7 +1977,7 @@
 		<copy file="${archives}/demomachine-${archive-file-name}-enablement.zip" tofile="${archives}/aem-demomachine-enablement.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Forms content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-forms.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**" excludes="dist/forms/**/forms*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-forms.zip" tofile="${archives}/aem-demomachine-forms.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Assets content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-assets.zip"/>

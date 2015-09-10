@@ -266,13 +266,21 @@ public class AemDemo {
 		JMenu mnForms = new JMenu("Forms");
 		mnUpdate.add(mnForms);
 		
-		JMenuItem mntmAemForms = new JMenuItem("Download Add-on");
+		JMenuItem mntmAemForms = new JMenuItem("Download Demo Add-on");
 		mntmAemForms.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_forms");
 			}
 		});
 		mnForms.add(mntmAemForms);
+
+		JMenuItem mntmAemFormsFP = new JMenuItem("Download Forms Add-on (VPN)");
+		mntmAemFormsFP.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_forms_fp");
+			}
+		});
+		mnForms.add(mntmAemFormsFP);
 
 		mnForms.addSeparator();
 
