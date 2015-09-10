@@ -193,6 +193,15 @@ public class AemDemo {
 			}
 		});
 		mnSites.add(mntmSitesDownloadAddOn);
+
+		JMenuItem mntmSitesDownloadFP = new JMenuItem("Download Feature Pack (VPN)");
+		mntmSitesDownloadFP.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_sites_fp");
+			}
+		});
+		mnSites.add(mntmSitesDownloadFP);
+
 		mnSites.addSeparator();
 		
 		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install Add-on");
@@ -274,7 +283,7 @@ public class AemDemo {
 		});
 		mnForms.add(mntmAemForms);
 
-		JMenuItem mntmAemFormsFP = new JMenuItem("Download Forms Add-on (VPN)");
+		JMenuItem mntmAemFormsFP = new JMenuItem("Download Feature Pack (VPN)");
 		mntmAemFormsFP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_forms_fp");

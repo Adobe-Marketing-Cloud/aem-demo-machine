@@ -1985,7 +1985,7 @@
 		<copy file="${archives}/demomachine-${archive-file-name}-assets.zip" tofile="${archives}/aem-demomachine-assets.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Sites content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-sites.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-sites.zip" basedir="." includes="dist/sites/**"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-sites.zip" basedir="." includes="dist/sites/**" excludes="dist/sites/**/*-fp.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-sites.zip" tofile="${archives}/aem-demomachine-sites.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Apps content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-apps.zip"/>
