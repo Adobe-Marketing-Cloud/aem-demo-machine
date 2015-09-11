@@ -28,7 +28,7 @@ public class AemDemoRunnable implements Runnable {
 		p.executeTarget(t);
 		p.fireBuildFinished(null);
 		
-		if (Arrays.asList(AemDemoConstants.BUILD_ACTIONS).contains(t)) {
+		if (Arrays.asList(AemDemoConstants.BUILD_ACTIONS).contains(t) || Arrays.asList(AemDemoConstants.STOP_ACTIONS).contains(t)) {
 			aemDemo.setBuildInProgress(false);
 		}
 

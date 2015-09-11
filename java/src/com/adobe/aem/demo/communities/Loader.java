@@ -113,6 +113,7 @@ public class Loader {
 		String location = null;
 		String language = "en";
 		String analytics = null;
+		String adminPassword = "admin";
 		String[] url = new String[10];  // Handling 10 levels maximum for nested comments 
 		boolean reset = false;
 		boolean configure = false;
@@ -127,6 +128,7 @@ public class Loader {
 		options.addOption("a", true, "Alternate Port");
 		options.addOption("f", true, "CSV file");
 		options.addOption("r", false, "Reset");
+		options.addOption("u", true, "Admin Password");
 		options.addOption("c", false, "Configure");
 		options.addOption("s", true, "Analytics Endpoint");
 		options.addOption("t", false, "Analytics Tracking");
@@ -150,6 +152,10 @@ public class Loader {
 				csvfile = cmd.getOptionValue("f");
 			}
 
+			if(cmd.hasOption("u")) {
+				adminPassword = cmd.getOptionValue("u");
+			}
+
 			if(cmd.hasOption("t")) {
 				if(cmd.hasOption("s")) {
 					analytics = cmd.getOptionValue("s");
@@ -166,7 +172,7 @@ public class Loader {
 
 
 			if (csvfile==null || port == null || hostname == null) {
-				System.out.println("Request parameters: -h hostname -p port -a alternateport -f path_to_CSV_file -r (true|false, delete content before import) -c (true|false, post additional properties)");
+				System.out.println("Request parameters: -h hostname -p port -a alternateport -u adminPassword -f path_to_CSV_file -r (true|false, delete content before import) -c (true|false, post additional properties)");
 				System.exit(-1);
 			}
 
@@ -179,6 +185,8 @@ public class Loader {
 		String componentType = null;
 
 		try {
+			
+			logger.debug("AEM Demo Loader: Processing file " + csvfile);
 
 			// Reading the CSV file, line by line
 			Reader in = new FileReader(csvfile);
@@ -246,7 +254,7 @@ public class Loader {
 					// Site creation
 					String siteId = doPost(hostname, port,
 							"/content.social.json",
-							"admin", "admin",
+							"admin", adminPassword,
 							builder.build(),
 							"response/siteId");
 
@@ -260,13 +268,13 @@ public class Loader {
 
 						doPost(hostname, port,
 								"/communities/sites.html",
-								"admin", "admin",
+								"admin", adminPassword,
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
 
 						// Wait for site to be available on Publish
 						doWait(hostname, altport,
-								"admin", "admin",
+								"admin", adminPassword,
 								(siteId!=null?siteId:urlName) + "-groupadministrators");
 					}
 
@@ -295,7 +303,7 @@ public class Loader {
 					// Tag creation
 					doPost(hostname, port,
 							"/bin/tagcommand",
-							"admin", "admin",
+							"admin", adminPassword,
 							builder.build(),
 							null);
 
@@ -325,7 +333,7 @@ public class Loader {
 					// Site template creation
 					doPost(hostname, port,
 							"/content.social.json",
-							"admin", "admin",
+							"admin", adminPassword,
 							builder.build(),
 							null);
 
@@ -365,14 +373,14 @@ public class Loader {
 					// Group creation
 					String memberGroupId = doPost(hostname, port,
 							record.get(1),
-							getUserName(record.get(2)), getPassword(record.get(2)),
+							getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
 							builder.build(),
 							"response/memberGroupId");
 
 					// Wait for group to be available on Publish, if available
 					logger.debug("Waiting for completion of Community Group creation");
 					doWait(hostname, port,
-								"admin", "admin",
+								"admin", adminPassword,
 								memberGroupId);
 
 					continue;
@@ -384,7 +392,7 @@ public class Loader {
 
 					doDelete(hostname, port,
 							record.get(1),
-							"admin", "admin");
+							"admin", adminPassword);
 
 					continue;
 
@@ -400,7 +408,7 @@ public class Loader {
 						// Let's fetch the siteId for this Community Site Url
 						String siteConfig = doGet(hostname, port,
 								groupName,
-								"admin","admin",
+								"admin",adminPassword,
 								null);
 
 						try {
@@ -419,7 +427,7 @@ public class Loader {
 
 					// Pause until the group can found
 					doWait(hostname, port,
-							"admin", "admin",
+							"admin", adminPassword,
 							groupName
 							);
 
@@ -428,7 +436,7 @@ public class Loader {
 					nameValuePairs.add(new BasicNameValuePair("type", "groups"));
 					String groupList = doGet(hostname, port,
 							"/libs/social/console/content/content/userlist.social.0.10.json",
-							"admin","admin",
+							"admin",adminPassword,
 							nameValuePairs);
 
 					logger.debug("List of groups" + groupList);
@@ -457,7 +465,7 @@ public class Loader {
 								// Adding the list of group members
 								doPost(hostname, port,
 										groupPath + ".rw.userprops.html",
-										"admin", "admin",
+										"admin", adminPassword,
 										builder.build(),
 										null);
 
@@ -479,7 +487,7 @@ public class Loader {
 					//First we need to get the path to the user node
 					String json = doGet(hostname, port,
 							"/libs/granite/security/currentuser.json",
-							getUserName(record.get(1)), getPassword(record.get(1)),
+							getUserName(record.get(1)), getPassword(record.get(1), adminPassword),
 							null);
 
 					if (json!=null) {
@@ -499,7 +507,7 @@ public class Loader {
 							List<NameValuePair> nameValuePairs = buildNVP(record, 3);
 							doPost(hostname, port,
 									home,
-									"admin", "admin",
+									"admin", adminPassword,
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
@@ -545,7 +553,7 @@ public class Loader {
 						if (pos>0) 
 							doDelete(hostname, port,
 									"/content/usergenerated" + record.get(1).substring(0,pos),
-									"admin", "admin");
+									"admin", adminPassword);
 
 					}
 
@@ -558,7 +566,7 @@ public class Loader {
 						if (nameValuePairs.size()>2)    // Only do this when really have configuration settings
 							doPost(hostname, port,
 									configurePath,
-									"admin", "admin",
+									"admin", adminPassword,
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
@@ -580,7 +588,7 @@ public class Loader {
 				}
 
 				// Get the credentials or fall back to password
-				String password = getPassword(record.get(0));
+				String password = getPassword(record.get(0), adminPassword);
 				String userName = getUserName(record.get(0));
 
 				// Adding the generic properties for all POST requests
@@ -744,7 +752,7 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(hostname, port, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
+						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
 					} else {
 						nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
 					}
@@ -772,7 +780,7 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("card-image", doThumbnail(hostname, port, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
+						nameValuePairs.add(new BasicNameValuePair("card-image", doThumbnail(hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
 					}
 
 					// Building the learning path fragment
@@ -883,7 +891,7 @@ public class Loader {
 				if (componentType.equals(ASSET)) {
 					int pathIndex = url[urlLevel].lastIndexOf(".createasset.html");
 					if (pathIndex>0)
-						doWaitPath(hostname, port, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions", "nt:file");
+						doWaitPath(hostname, port, adminPassword, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions", "nt:file");
 				}
 
 				// Let's see if it needs to be added to a learning path
@@ -914,7 +922,7 @@ public class Loader {
 
 					// Waiting for the learning path to be published
 					Loader.doWait(hostname, altport,
-							"admin", "admin",
+							"admin", adminPassword,
 							location.substring(1 + location.lastIndexOf("/"))     // Only search for groups with the learning path in it
 							);
 
@@ -936,7 +944,7 @@ public class Loader {
 				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null) {
 
 					// Wait for the data to be fully copied
-					doWaitPath(hostname, port, location + "/assets/asset", "nt:file");
+					doWaitPath(hostname, port, adminPassword, location + "/assets/asset", "nt:file");
 
 					// If we are dealing with a SCORM asset, we wait a little bit before publishing the resource to that the SCORM workflow is completed 
 					if (record.get(2).indexOf(".zip")>0) {
@@ -956,7 +964,7 @@ public class Loader {
 
 					// Waiting for the resource to be published
 					Loader.doWait(hostname, altport,
-							"admin", "admin",
+							"admin", adminPassword,
 							location.substring(1 + location.lastIndexOf("/"))     // Only search for groups with the resource path in it
 							);
 
@@ -1000,14 +1008,23 @@ public class Loader {
 	}
 
 	// This method extracts the password for a record
-	private static String getPassword(String record) {
+	private static String getPassword(String record, String adminPassword) {
 
-		String password = PASSWORD;
+		String defaultPassword = PASSWORD;
+		
+		// If this is the AEM admin user, always return the configured admin password
+		if (getUserName(record).equals("admin")) {
+			return adminPassword;
+		}
+		
+		// If not and if a password is provided in the CSV record, return this password
 		int pass = record.indexOf("/");
 		if (pass>0) {
-			password = record.substring(pass+1);
+			return record.substring(pass+1);
 		}	
-		return password;
+		
+		// If not, return the defaut password 
+		return defaultPassword;
 
 	}
 
@@ -1037,7 +1054,7 @@ public class Loader {
 	}
 
 	// This method POSTs a file to be used as a thumbnail later on
-	private static String doThumbnail(String hostname, String port, String csvfile, String filename) {
+	private static String doThumbnail(String hostname, String port, String adminPassword, String csvfile, String filename) {
 
 		String pathToFile = "/content/tmp/thumbnails/" + filename;
 		File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + filename);
@@ -1061,7 +1078,7 @@ public class Loader {
 
 		Loader.doPost(hostname, port,
 				pathToFile,
-				"admin", "admin",
+				"admin", adminPassword,
 				builder.build(),
 				null);
 
@@ -1361,6 +1378,7 @@ public class Loader {
 									if (jsonArray.length()==1) {
 										JSONObject jsonObject = jsonArray.getJSONObject(0);
 										jsonElement = jsonObject.getString(lookup.substring(1 + separatorIndex));
+										logger.debug("JSON value (jsonArray) returned is " + jsonElement);
 									}
 
 								} else if (object instanceof JSONObject) {
@@ -1368,6 +1386,7 @@ public class Loader {
 									logger.debug("JSON object is a JSONObject");
 									JSONObject jsonobject = (JSONObject) object; 
 									jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));	
+									logger.debug("JSON value (jsonObject) returned is " + jsonElement);
 									
 								}
 							}
@@ -1375,6 +1394,8 @@ public class Loader {
 						} else {
 							// Grabbing element at the top of the JSON response
 							jsonElement = new JSONObject(responseString).getString(lookup);
+							logger.debug("JSON (top) value returned is " + jsonElement);
+
 						}
 					}
 
@@ -1395,7 +1416,6 @@ public class Loader {
 			logger.error(e.getMessage());				
 		}
 
-		logger.debug("JSON value returned is " + jsonElement);
 		return jsonElement;
 
 	}
@@ -1455,7 +1475,7 @@ public class Loader {
 
 				String groupList = Loader.doGet(hostname, port,
 						"/libs/social/console/content/content/userlist.social.0.10.json",
-						"admin","admin",
+						user, password,
 						nameValuePairs);
 
 				logger.debug(groupList);
@@ -1483,7 +1503,7 @@ public class Loader {
 	}
 
 	// This method runs a QUERY against an AEM instance
-	private static String doQuery(String hostname, String port, String path, String type) {
+	private static String doQuery(String hostname, String port, String adminPassword, String path, String type) {
 
 		String query = null;
 
@@ -1494,7 +1514,7 @@ public class Loader {
 			nameValuePairs.add(new BasicNameValuePair("type", type));
 			String nodeList = Loader.doGet(hostname, port,
 					"/bin/querybuilder.json",
-					"admin","admin",
+					"admin", adminPassword,
 					nameValuePairs);
 
 			logger.debug(nodeList);
@@ -1505,12 +1525,12 @@ public class Loader {
 	}
 
 	// This method WAITS for a node to be available
-	private static void doWaitPath(String hostname, String port, String path, String type) {
+	private static void doWaitPath(String hostname, String port, String adminPassword, String path, String type) {
 
 		int retries = 0;
 		while (retries++ < MAXRETRIES) {
 
-			String nodeList = doQuery(hostname, port, path, type);
+			String nodeList = doQuery(hostname, port, adminPassword, path, type);
 			try {            
 				JSONObject nodeListJson = new JSONObject(nodeList);
 				int results = nodeListJson.getInt("results");

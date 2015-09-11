@@ -79,10 +79,10 @@
 	<target name="demo_kitchensink">
 		<antcall target="demo"/>
 		<antcall target="communities"/>
+		<antcall target="forms"/>
 		<antcall target="sites"/>
 		<antcall target="apps"/>
 		<antcall target="assets"/>
-		<antcall target="forms"/>
 	</target>
 	<!-- Target for loading the persisted demo machine configuration -->
 	<target name="configuration">
@@ -599,7 +599,7 @@
 	<target name="mysql_schema_instance">
 		<echo message="Downloading the MySQL schema from /libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
 		<exec executable="curl">
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-s -o '${dist}/community/mysql/${mysql.file}.sql' http://${demo.host}:${AdobeAEM.authorport}/libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
 		</exec>
 		<replace file="${mysql.path}/${mysql.file}.sql" token="enablementdb" value="${mysql.prefix}${mysql.schema}"/>
@@ -761,6 +761,7 @@
 				</fileset>
 			</path>
 		</foreach>
+		<sleep seconds="60"/>
 	</target>
 	<!-- Target for installing the Sites demo -->
 	<target name="sites" depends="version">
@@ -1262,7 +1263,7 @@
 				</antcall>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_livefyre.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./communities.integration.livefyre.networkkey=${Livefyre.networkkey}"/>
 					<arg line="-d ./communities.integration.livefyre.networkkey@Encrypted="/>
@@ -1363,7 +1364,29 @@
 	</target>
 	<!-- Target for loading the packages -->
 	<target name="configure" depends="version">
-		<echo message="Configuring the Author instance"/>
+		<echo message="Configuring the Admin password on the Author instance"/>
+		<antcall target="configure_admin">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<echo message="Configuring the Admin password on the Publish instance"/>
+				<antcall target="configure_admin">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+			<then>
+				<echo message="Configuring the Admin password on the Farm instance"/>
+				<antcall target="configure_admin">
+					<param name="port" value="${AdobeAEM.farmport}"/>
+				</antcall>
+			</then>
+		</if>		
+		<antcall target="configure_replication"/>
 		<foreach target="package_author" param="package">
 			<path id="author.packages">
 				<fileset dir="${packages}" casesensitive="yes">
@@ -1381,6 +1404,21 @@
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
 				<echo message="Configuring the Publish instance"/>
+				<echo message="Activating the Crypto keys in /etc/key from Author to Publish"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${AdobeAEM.authorport}_cryptokey.html'"/>
+					<arg line="-v -u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d path=/etc/key"/>
+					<arg line="-d cmd=activate"/>
+					<arg line="-d ignoredeactivated=true"/>
+					<arg line="http://${demo.host}:${AdobeAEM.authorport}/etc/replication/treeactivation.html"/>
+				</exec>
+				<echo message="Restarting the Crypto Bundle on Publish instance"/>
+				<antcall target="bundle_restart">
+					<param name="bundle.port" value="${AdobeAEM.publishport}"/>
+					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
+				</antcall>
 				<foreach target="package_publish" param="package">
 					<path id="publish.packages">
 						<fileset dir="${packages}" casesensitive="yes">
@@ -1400,6 +1438,11 @@
 			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
 			<then>
 				<echo message="Configuring the Farm instance"/>
+				<echo message="Restarting the Crypto Bundle on Farm instance"/>
+				<antcall target="bundle_restart">
+					<param name="bundle.port" value="${AdobeAEM.farmport}"/>
+					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
+				</antcall>
 				<foreach target="package_farm" param="package">
 					<path id="farm.packages">
 						<fileset dir="${packages}" casesensitive="yes">
@@ -1422,12 +1465,48 @@
 			</then>
 		</if>
 	</target>
+	<!-- Target for configuring the Replication agents -->
+	<target name="configure_replication" if="aem60orlater">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${AdobeAEM.authorport}_replication1.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d transportPassword=${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/etc/replication/agents.author/publish/jcr:content"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${AdobeAEM.authorport}_replication1.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d transportPassword=${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/etc/replication/agents.author/publish_reverse/jcr:content"/>
+		</exec>
+	</target>
+	<!-- Target for configuring the Admin account -->
+	<target name="configure_admin" if="aem60orlater">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_admininfo.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="http://${demo.host}:${port}/libs/granite/security/currentuser.json"/>
+		</exec>
+		<loadfile property="admin.info" srcFile="${logs}/${port}_admininfo.html"/>
+		<propertyregex property="admin.path" input="${admin.info}" regexp="&quot;home&quot;:&quot;([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="Administrator user path: ${admin.path}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_adminchangepassword.html'"/>
+			<arg line="-u admin:admin"/>
+			<arg line="-X POST"/>
+			<arg line="-d rep:password=${demo.admin.password}"/>
+			<arg line="-d :currentPassword=admin"/>
+			<arg line="http://${demo.host}:${port}${admin.path}.rw.userprops.html"/>
+		</exec>
+	</target>
 	<!-- Target for configuring the replication agents for the Farm instance -->
 	<target name="configure_farm">
 		<echo message="Configuring replication agent on Author for Farm instance"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/farm_replication_create.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-F cmd=copyPage"/>
 			<arg line="-F srcPath=/etc/replication/agents.author/publish"/>
 			<arg line="-F destParentPath=/etc/replication/agents.author"/>
@@ -1435,7 +1514,7 @@
 		</exec>
 		<exec executable="curl">
 			<arg line="--output '${logs}/farm_replication_port.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./transportUri=http://${demo.host}:${AdobeAEM.farmport}/bin/receive?sling:authRequestLogin=1"/>
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/etc/replication/agents.author/publish1/jcr:content"/>
@@ -1541,7 +1620,7 @@
 		</condition>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_${packagefilename}.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-F force=true"/>
 			<arg line="-F install=true"/>
 			<arg line="-F 'file=@${package}'"/>
@@ -1565,7 +1644,7 @@
 	<target name="notifications">
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_notifications.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./waiting.time=10"/>
 			<arg line="-d ./waiting.time@TypeHint=Long"/>
@@ -1576,7 +1655,7 @@
 	<target name="dispatcher">
 		<exec executable="curl">
 			<arg line="--output '${logs}/dispatcher_keys.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./enabled=true"/>
 			<arg line="-d ./enabled@Delete="/>
@@ -1592,7 +1671,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_keys.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./consumerkey=${AdobeSocial.consumerkey}"/>
 					<arg line="-d ./consumerkey@Encrypted="/>
@@ -1614,7 +1693,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_scene7.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./serviceUrl=${AdobeScene7.videoService}"/>
 					<arg line="-d ./registrationID=${AdobeScene7.registrationID}"/>
@@ -1631,7 +1710,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_analytics.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./password=${AdobeAnalytics.password}"/>
 					<arg line="-d ./password@Encrypted="/>
@@ -1651,7 +1730,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_target.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./password=${AdobeTarget.password}"/>
 					<arg line="-d ./password@Encrypted="/>
@@ -1669,7 +1748,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_mobileservices.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./password=${AdobeMobileServices.password}"/>
 					<arg line="-d ./password@Encrypted="/>
@@ -1682,7 +1761,7 @@
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_mobileservices_shell.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
 					<arg line="-d mobileServiceConfig=/etc/cloudservices/mobileservices/amsconfig/geometrixx-outdoors"/>
@@ -1699,7 +1778,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_phonegapbuild.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./pgBuildPassword=${AdobePhoneGapBuild.password}"/>
 					<arg line="-d ./pgBuildPassword@Encrypted="/>
@@ -1708,7 +1787,7 @@
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_phonegapbuild_shell.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
 					<arg line="-d phonegapConfig=/etc/cloudservices/phonegap-build/phonegap-build"/>
@@ -1725,7 +1804,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetshomepage.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="--globoff"/>
 					<arg line="-d apply=true"/>
@@ -1738,7 +1817,7 @@
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetsrecorder.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="--globoff"/>
 					<arg line="-d apply=true"/>
@@ -1767,7 +1846,7 @@
 	<target name="assets_versions" if="aem61orlater">
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_assetsversions.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="--globoff"/>
 			<arg line="-d apply=true"/>
@@ -1788,7 +1867,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_phonegap.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="--globoff"/>
 					<arg line="-d apply=true"/>
@@ -1814,7 +1893,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_brightedge.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./password=${BrightEdge.password}"/>
 					<arg line="-d ./password@Encrypted="/>
@@ -1831,7 +1910,7 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_globallink.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./pdUserPassword=${GlobalLink.password}"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/gs4tr-translation/demo-globallink/jcr:content"/>
@@ -1843,7 +1922,7 @@
 	<target name="community-moderators" if="aem60">
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_permissions-moderators.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d authorizableId=community-moderators"/>
 			<arg line="-d changelog=path:/content/usergenerated/content,read:true,modify:true,create:true,delete:true,acl_read:true,acl_edit:true,replicate:true"/>
@@ -1854,7 +1933,7 @@
 	<target name="social_cloudpage" if="aem60">
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_social_cloudpage.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d :cancelInheritance=true"/>
 			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
@@ -1870,14 +1949,14 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_ffmpeg_renditions.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./PROCESS_ARGS@Delete"/>
 					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/process3/metaData"/>
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_ffmpeg_workflow.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content.generate.json"/>
 				</exec>
@@ -1903,7 +1982,7 @@
 		</antcall>
 		<exec executable="curl">
 			<arg line="--output '${logs}/translations_page_rename_en.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
 			<arg line="-d ./cq:cloudserviceconfigs=/etc/cloudservices/msft-translation/msft_trial"/>
@@ -1914,7 +1993,7 @@
 		<!-- First we copy the pages -->
 		<exec executable="curl">
 			<arg line="--output '${logs}/translations_page_copy_${translation.language}.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-F shallowCbx=on"/>
 			<arg line="-F shallow=false"/>
 			<arg line="-F cmd=copyPage"/>
@@ -1926,7 +2005,7 @@
 		<!-- Then we rename and associate the cloud server to these pages-->
 		<exec executable="curl">
 			<arg line="--output '${logs}/translations_page_rename_${translation.language}.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./jcr:title=${translation.title}"/>
 			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
@@ -1939,7 +2018,7 @@
 		<echo message="Updating User Preferences on port ${port}..."/>
 		<java classname="com.adobe.aem.demo.communities.Loader">
 			<classpath refid="demo.classpath"/>
-			<arg line="-h ${demo.loader.host} -p ${port} -a ${demo.loader.altport} -f &quot;${dist}/users/loader-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+			<arg line="-h ${demo.loader.host} -p ${port} -a ${demo.loader.altport} -u ${demo.admin.password} -f &quot;${dist}/users/loader-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 	</target>
 	<!-- Adobe Dynamic Media: enables dynamic media on the AEM instance -->
@@ -1949,18 +2028,18 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_dynamicmedia.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d dynamicMediaEnabled=true"/>
 					<arg line="http://${demo.host}:${port}/etc/dam/dynamicmediaconfig"/>
 				</exec>
+				<!-- Need to restart the bundle for Dynamic Media -->
+				<antcall target="bundle_restart">
+					<param name="bundle.port" value="${port}"/>
+					<param name="bundle.name" value="Adobe CQ DAM Scene7 Dynamic Imaging"/>
+				</antcall>
 			</then>
 		</if>
-		<!-- Need to restart the bundle for Dynamic Media -->
-		<antcall target="bundle_restart">
-			<param name="bundle.port" value="${port}"/>
-			<param name="bundle.name" value="Adobe CQ DAM Scene7 Dynamic Imaging"/>
-		</antcall>
 	</target>
 	<!-- Creates a backup file for the demo machine and scripts and other assets, wihch doesn't include the AEM loads/snaphots and license files -->
 	<target name="archive" depends="permissions">
@@ -2117,14 +2196,14 @@
 				<echo message="Loading Community content on Publish ${demo.loader.currentfile}..."/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
 				<echo message="Loading Community content on Author ${demo.loader.currentfile}..."/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${AdobeAEM.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${AdobeAEM.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</else>
 		</if>
@@ -2167,7 +2246,7 @@
 				<echo message="Loading Community Site Templates (for FP1)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp1.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp1.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
@@ -2177,14 +2256,14 @@
 						<echo message="Loading Community Site Templates (for Latest)"/>
 						<java classname="com.adobe.aem.demo.communities.Loader">
 							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
 					</then>
 					<else>
 						<echo message="Loading Community Site Templates (No feature pack)"/>
 						<java classname="com.adobe.aem.demo.communities.Loader">
 							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
 					</else>
 				</if>
@@ -2196,14 +2275,14 @@
 				<echo message="Loading Community sites (and publishing)..."/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
 				<echo message="Loading Community sites (without publishing)..."/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${AdobeAEM.authorport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${AdobeAEM.authorport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</else>
 		</if>
@@ -2399,7 +2478,7 @@
 		<!-- Turns autocomplete on or off for AEM login screens -->
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_autocomplete.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./autocomplete=${demo.autocomplete}"/>
 			<arg line="-d ./autocomplete@TypeHint=boolean"/>
@@ -2586,7 +2665,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/roles_community_administrators.html'"/>
 			<arg line="--globoff"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d memberAction=members"/>
 			<arg line="-d memberEntry=admin"/>
@@ -2609,7 +2688,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/roles_content_managers.html'"/>
 			<arg line="--globoff"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d memberAction=members"/>
 			<arg line="-d memberEntry=author"/>
@@ -2620,7 +2699,7 @@
 		<echo message="Updating Members on the Author instance"/>
 		<java classname="com.adobe.aem.demo.communities.Loader">
 			<classpath refid="demo.classpath"/>
-			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
@@ -2628,7 +2707,7 @@
 				<echo message="Updating Members on the Publish instance"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 		</if>
@@ -2638,7 +2717,7 @@
 				<echo message="Updating Members on the Farm instance"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.farmport} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.farmport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 		</if>
@@ -2661,7 +2740,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/roles_content_managers.html'"/>
 			<arg line="--globoff"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d memberAction=members"/>
 			<arg line="-d memberEntry=andrew.schaeffer@trashymail.com"/>
@@ -2679,7 +2758,7 @@
 				<exec executable="curl">
 					<arg line="--output '${logs}/${AdobeAEM.publishport}_loginmappings.html'"/>
 					<arg line="--globoff"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
@@ -2703,7 +2782,7 @@
 				<exec executable="curl">
 					<arg line="--output '${logs}/${AdobeAEM.authorport}_tunnel.html'"/>
 					<arg line="--globoff"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
@@ -2725,7 +2804,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_scorm.html'"/>
 			<arg line="--globoff"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d apply=true"/>
 			<arg line="-d action=ajaxConfigManager"/>
@@ -2748,7 +2827,7 @@
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_msrp.html'"/>
 					<arg line="--globoff"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d mongouri=mongodb://${demo.mongo.host}:${demo.mongo.port}/?maxPoolSize=10&amp;waitQueueMultiple=5&amp;readPreference=secondaryPreferred"/>
 					<arg line="-d type=msrp"/>
@@ -2772,7 +2851,7 @@
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_asrp.html'"/>
 					<arg line="--globoff"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./type=asrp"/>
 					<arg line="-d ./consumerkey=${AdobeSocial.consumerkey}"/>
@@ -2793,7 +2872,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${AdobeAEM.authorport}_enablement.html'"/>
 			<arg line="--globoff"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d apply=true"/>
 			<arg line="-d action=ajaxConfigManager"/>
@@ -2827,7 +2906,7 @@
 				<exec executable="curl">
 					<arg line="--output '${logs}/${AdobeAEM.authorport}_enablement_notifications.html'"/>
 					<arg line="--globoff"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
@@ -2867,27 +2946,27 @@
 				<echo message="Creating Enablement tags (on Author and Publish)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<echo message="Creating Enablement site (on Author)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<echo message="Creating Enablement users (on Publish)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<antcall target="community_enablement_loader_resources"/>
 				<echo message="Creating Enablement UGC (on Publish)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-publish.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-publish.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
@@ -2899,7 +2978,7 @@
 		<echo message="Creating Enablement Resources (on Author - 20+ minutes)"/>
 		<java classname="com.adobe.aem.demo.communities.Loader">
 			<classpath refid="demo.classpath"/>
-			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-resources.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
+			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-resources.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
 		</java>
 	</target>
 	<target name="community_enablement_loader_communities" depends="community_loader_flag,compile">
@@ -2914,7 +2993,7 @@
 				<echo message="Creating Enablement Resources for Communities (on Author)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-communities.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-communities.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
 				</java>
 			</then>
 		</if>
@@ -2925,7 +3004,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_jdbc_reporting.html'"/>
 			<arg line="--globoff"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d apply=true"/>
 			<arg line="-d factoryPid=com.day.commons.datasource.jdbcpool.JdbcPoolService"/>
@@ -2954,24 +3033,24 @@
 			<then>
 				<exec executable="curl">
 					<arg line="--output '${logs}/preload_communities_publish.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${AdobeAEM.publishport}/content/sites/communities.html"/>
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/preload_communities_moderation.html'"/>
-					<arg line="-u admin:admin"/>
+					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${AdobeAEM.publishport}/content/sites/communities/moderation.html"/>
 				</exec>
 			</then>
 		</if>
 		<exec executable="curl">
 			<arg line="--output '${logs}/preload_communities_author.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/content/sites/communities.html"/>
 		</exec>
 		<exec executable="curl">
 			<arg line="--output '${logs}/preload_communities.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/communities/sites"/>
 		</exec>
 	</target>
@@ -3015,7 +3094,7 @@
 	<!-- This target restarts a bundle -->
 	<target name="bundle_restart">
 		<exec executable="curl">
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-o '${logs}/${bundle.port}_bundles.json' http://${demo.host}:${bundle.port}/system/console/bundles.json"/>
 		</exec>
 		<loadfile property="bundle.list" srcFile="${logs}/${bundle.port}_bundles.json"/>
@@ -3023,14 +3102,14 @@
 		<echo message="Bundle ID to restart: ${bundle.id}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${bundle.port}_bundle_${bundle.id}_stop.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d action=stop"/>
 			<arg line="http://${demo.host}:${bundle.port}/system/console/bundles/${bundle.id}"/>
 		</exec>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${bundle.port}_bundle_${bundle.id}_start.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d action=start"/>
 			<arg line="http://${demo.host}:${bundle.port}/system/console/bundles/${bundle.id}"/>
@@ -3079,7 +3158,7 @@
 		<foreach list="${constituents}" target="cloudservices.process" param="myparam"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_cloudservices.html'"/>
-			<arg line="-u admin:admin"/>
+			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
 			<arg line="-d @cloudservices.txt"/>

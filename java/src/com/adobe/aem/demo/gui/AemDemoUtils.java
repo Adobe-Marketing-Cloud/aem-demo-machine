@@ -201,10 +201,7 @@ public class AemDemoUtils {
 			// Running the target name as a new Thread
 			System.out.println("Running ANT target: " + targetName);
 			Thread t = new Thread(new AemDemoRunnable(aemDemo, p, targetName));
-			t.start();
-			
-			// Running a download tracker thread to check on file size
-			
+			t.start();			
 
 		}
 
