@@ -620,11 +620,17 @@
 				</resourceexists>
 			</and>
 			<then>
-				<echo message="Stopping the MySQL server..."/>
-				<exec executable="./bin/mysqladmin" dir="${mysql}" failonerror="false" failifexecutionfails="false" spawn="true">
-					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --password=${demo.mysql.password} shutdown"/>
-				</exec>
-				<antcall target="mysql_stop_unix"/>
+				<if>
+					<!-- Only try to stop if really running -->
+					<socket server="${demo.host}" port="${demo.mysql.port}"/>
+					<then>
+						<echo message="Stopping the MySQL server..."/>
+						<exec executable="./bin/mysqladmin" dir="${mysql}" failonerror="false" failifexecutionfails="false" spawn="true">
+							<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --password=${demo.mysql.password} shutdown"/>
+						</exec>
+						<antcall target="mysql_stop_unix"/>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -675,13 +681,19 @@
 				</resourceexists>
 			</and>
 			<then>
-				<echo message="Stopping the Mongo DB server..."/>
-				<exec executable="${mongodb}/bin/mongo" dir="${mongodb}/bin" spawn="true">
-					<arg line="admin"/>
-					<arg line="--eval 'db.shutdownServer()'"/>
-				</exec>
-				<sleep seconds="4"/>
-				<antcall target="mongo_stop_unix"/>
+				<if>
+					<!-- Only try to stop if really running -->
+					<socket server="${demo.host}" port="${demo.mongo.port}"/>
+					<then>
+						<echo message="Stopping the Mongo DB server..."/>
+						<exec executable="${mongodb}/bin/mongo" dir="${mongodb}/bin" spawn="true">
+							<arg line="admin"/>
+							<arg line="--eval 'db.shutdownServer()'"/>
+						</exec>
+						<sleep seconds="4"/>
+						<antcall target="mongo_stop_unix"/>
+					</then>
+				</if>
 			</then>
 			<else>
 				<if>
@@ -1430,6 +1442,8 @@
 					<param name="bundle.port" value="${AdobeAEM.publishport}"/>
 					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
 				</antcall>
+				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 30 seconds -->
+				<sleep seconds="30"/>
 				<foreach target="package_publish" param="package">
 					<path id="publish.packages">
 						<fileset dir="${packages}" casesensitive="yes">
@@ -1454,6 +1468,8 @@
 					<param name="bundle.port" value="${AdobeAEM.farmport}"/>
 					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
 				</antcall>
+				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 30 seconds -->
+				<sleep seconds="30"/>
 				<foreach target="package_farm" param="package">
 					<path id="farm.packages">
 						<fileset dir="${packages}" casesensitive="yes">
