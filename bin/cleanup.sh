@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------------
 
 date
-cd /opt/demomachine
+cd /opt/aem-demo-machine
 rm -rf nohup.out
-nohup /opt/demomachine/ant/bin/ant uninstall &
+nohup /opt/aem-demo-machine/ant/bin/ant uninstall &
 date
