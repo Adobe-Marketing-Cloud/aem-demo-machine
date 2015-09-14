@@ -79,10 +79,10 @@
 	<target name="demo_kitchensink">
 		<antcall target="demo"/>
 		<antcall target="communities"/>
-		<antcall target="forms"/>
 		<antcall target="sites"/>
 		<antcall target="apps"/>
 		<antcall target="assets"/>
+		<antcall target="forms"/>
 	</target>
 	<!-- Target for loading the persisted demo machine configuration -->
 	<target name="configuration">
@@ -761,7 +761,6 @@
 				</fileset>
 			</path>
 		</foreach>
-		<sleep seconds="60"/>
 	</target>
 	<!-- Target for installing the Sites demo -->
 	<target name="sites" depends="version">
@@ -921,6 +920,37 @@
 		<delete file="${dist}/downloads/google.txt"/>
 		<delete file="${dist}/downloads/google.html"/>
 	</target>
+	<target name="download_packageshare">
+		<if>
+			<or>
+				<equals arg1="${AdobeID.user}" arg2="" casesensitive="false"/>
+				<equals arg1="${AdobeID.user}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+				<equals arg1="${AdobeID.password}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+				<equals arg1="${AdobeID.password}" arg2="" casesensitive="false"/>
+			</or>
+			<then>
+				<echo message="Please configure your Adobe ID and password to download from Package Share (AdobeID.user and AdobeID.password properties)"/>
+			</then>
+			<else>
+				<basename property="packageshare.filename" file="${packageshare.filepath}"/>
+				<echo message="Connecting to Adobe Package Share with ID: ${AdobeID.user}"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/download_packageshare.html'"/>
+					<arg line="--cookie-jar '${logs}/packageshare.txt'"/>
+					<arg line="-X POST"/>
+					<arg line="-d j_validate=true"/>
+					<arg line="-d j_username=${AdobeID.user}"/>
+					<arg line="-d j_password=${AdobeID.password}"/>
+					<arg line="https://www.adobeaemcloud.com/content/login/j_security_check"/>
+				</exec>
+				<echo message="Download in progress, please wait until it is complete"/>
+				<exec executable="curl">
+					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageshare.filename}' https://www.adobeaemcloud.com${packageshare.filepath}"/>
+				</exec>
+				<move file="${dist}/downloads/${packageshare.filename}" todir="${packageshare.target}"/>
+			</else>
+		</if>
+	</target>
 	<!-- Target for downloading the latest QuickStart snapshot -->
 	<target name="download_snapshot">
 		<echo message="Downloading a AEM QuickStart snapshot build ${demo.snapshot}"/>
@@ -1015,72 +1045,52 @@
 			<arg line="-s -o '${dist}/downloads/ffmpeg.zip' http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
 		</exec>
 	</target>
+	<!-- Target for initializing subdirs -->
+	<target name="download_dirs">
+		<mkdir dir="${download.dir}/aem61"/>
+		<mkdir dir="${download.dir}/aem60"/>
+		<mkdir dir="${download.dir}/aem62"/>
+		<mkdir dir="${download.dir}/all"/>
+	</target>
 	<!-- Target for downloading latest Forms uber -->
 	<target name="download_forms_fp">
-		<mkdir dir="${dist}/forms"/>
-		<mkdir dir="${dist}/forms/aem61"/>
-		<echo message="Downloading latest AEM Forms add-on"/>
+		<antcall target="download_dirs">
+			<param name="download.dir" value="${dist}/forms"/>
+		</antcall>
 		<antcall target="download_forms_win"/>
 		<antcall target="download_forms_macos"/>
 		<antcall target="download_forms_demo"/>
 	</target>
 	<target name="download_forms_demo">
 		<echo message="Downloading latest AEM Forms Finance demo"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/nexus-demo.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/maven-metadata.xml"/>
-		</exec>
-		<xmlproperty file="${dist}/forms/aem61/nexus-demo.xml"/>
-		<echo message="Downloading cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/formsdemo-finance.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-finance-pkg/${metadata.versioning.release}/cq-geometrixx-finance-pkg-${metadata.versioning.release}.zip"/>
-		</exec>
+		<mkdir dir="${dist}/forms/aem61"/>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.forms.demo.fsi}"/>
+			<param name="packageshare.target" value="${dist}/forms/aem61"/>
+		</antcall>
 		<echo message="Downloading latest AEM Forms Gov demo"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/nexus-demo.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-gov-pkg/maven-metadata.xml"/>
-		</exec>
-		<xmlproperty file="${dist}/forms/aem61/nexus-demo.xml"/>
-		<echo message="Downloading cq-geometrixx-gov-pkg-${metadata.versioning.release}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/formsdemo-gov.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemfd/cq-geometrixx-gov-pkg/${metadata.versioning.release}/cq-geometrixx-gov-pkg-${metadata.versioning.release}.zip"/>
-		</exec>
-		<delete>
-			<fileset dir="${dist}/forms/aem61" includes="*.xml"/>
-		</delete>
+		<mkdir dir="${dist}/forms/aem61"/>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.forms.demo.gov}"/>
+			<param name="packageshare.target" value="${dist}/forms/aem61"/>
+		</antcall>
 	</target>
 	<!-- Target for downloading the forms add-on, on MacOS then on Windows-->
 	<target name="download_forms_win" if="isWindows">
-		<antcall target="download_forms_os">
-			<param name="os.value" value="win"/>
+		<echo message="Downloading latest AEM Forms Add-on for Windows"/>
+		<mkdir dir="${dist}/forms/aem61"/>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.forms.addon.win}"/>
+			<param name="packageshare.target" value="${dist}/forms/aem61"/>
 		</antcall>
 	</target>
 	<target name="download_forms_macos" if="isUnix">
-		<antcall target="download_forms_os">
-			<param name="os.value" value="osx"/>
+		<echo message="Downloading latest AEM Forms Add-on for MacOS"/>
+		<mkdir dir="${dist}/forms/aem61"/>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.forms.addon.macos}"/>
+			<param name="packageshare.target" value="${dist}/forms/aem61"/>
 		</antcall>
-	</target>
-	<target name="download_forms_os">
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/forms/aem61/nexus-addon.xml' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/maven-metadata.xml"/>
-		</exec>
-		<xmlproperty file="${dist}/forms/aem61/nexus-addon.xml"/>
-		<if>
-			<equals arg1="${demo.forms.addon}" arg2="release" casesensitive="false"/>
-			<then>
-				<echo message="Downloading adobe-aemfd-${os.value}-pkg-${metadata.versioning.release}.zip"/>
-				<exec executable="curl">
-					<arg line="-s -o '${dist}/forms/aem61/formsaddon-${os.value}.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${metadata.versioning.release}/adobe-aemfd-${os.value}-pkg-${metadata.versioning.release}.zip"/>
-				</exec>
-			</then>
-			<else>
-				<echo message="Downloading adobe-aemfd-${os.value}-pkg-${demo.forms.addon}.zip"/>
-				<exec executable="curl">
-					<arg line="-s -o '${dist}/forms/aem61/formsaddon-${os.value}.zip' http://noinexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/aemds/adobe-aemfd-${os.value}-pkg/${demo.forms.addon}/adobe-aemfd-${os.value}-pkg-${demo.forms.addon}.zip"/>
-				</exec>
-			</else>
-		</if>
-		<delete>
-			<fileset dir="${dist}/forms/aem61" includes="*.xml"/>
-		</delete>
 	</target>
 	<!-- Target for downloading latest Communities uber -->
 	<target name="download_communities">
@@ -1386,7 +1396,7 @@
 					<param name="port" value="${AdobeAEM.farmport}"/>
 				</antcall>
 			</then>
-		</if>		
+		</if>
 		<antcall target="configure_replication"/>
 		<foreach target="package_author" param="package">
 			<path id="author.packages">
@@ -2058,7 +2068,7 @@
 		<copy file="${archives}/demomachine-${archive-file-name}-enablement.zip" tofile="${archives}/aem-demomachine-enablement.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Forms content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-forms.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**" excludes="dist/forms/**/forms*.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**" excludes="dist/forms/**/AEM-FORMS*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-forms.zip" tofile="${archives}/aem-demomachine-forms.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Assets content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-assets.zip"/>

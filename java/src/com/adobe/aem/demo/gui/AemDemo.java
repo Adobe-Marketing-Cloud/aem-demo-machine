@@ -289,16 +289,8 @@ public class AemDemo {
 		// Forms Add-on
 		JMenu mnForms = new JMenu("Forms");
 		mnUpdate.add(mnForms);
-		
-		JMenuItem mntmAemForms = new JMenuItem("Download Demo Add-on");
-		mntmAemForms.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_forms");
-			}
-		});
-		mnForms.add(mntmAemForms);
 
-		JMenuItem mntmAemFormsFP = new JMenuItem("Download Feature Pack (VPN)");
+		JMenuItem mntmAemFormsFP = new JMenuItem("Download Demo Add-on (PackageShare)");
 		mntmAemFormsFP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_forms_fp");
