@@ -1018,6 +1018,7 @@
 	<!-- Target for downloading latest Forms uber -->
 	<target name="download_forms_fp">
 		<mkdir dir="${dist}/forms"/>
+		<mkdir dir="${dist}/forms/aem61"/>
 		<echo message="Downloading latest AEM Forms add-on"/>
 		<antcall target="download_forms_win"/>
 		<antcall target="download_forms_macos"/>
