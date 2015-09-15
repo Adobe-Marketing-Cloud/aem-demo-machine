@@ -52,7 +52,7 @@ public class AemDemoUtils {
 	public static void main(String[] args) {
 
 	}
-	
+
 	public static DefaultListModel<String> listDemoMachines(String demoMachineRootFolder) {
 
 		DefaultListModel<String> demoMachines = new DefaultListModel<String>();
@@ -122,8 +122,13 @@ public class AemDemoUtils {
 	public static AemDemoProperty[] listOptions(File buildFile, String property) {
 
 		List<AemDemoProperty> aemMKs = new ArrayList<AemDemoProperty>();	
-		Properties prop = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "build.properties");
-		addPropertyFromString(aemMKs,prop.getProperty(property));
+		Properties defaultProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "build.properties");
+		Properties personalProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");
+		if (personalProps.containsKey(property)) {
+			addPropertyFromString(aemMKs,personalProps.getProperty(property));
+		} else {
+			addPropertyFromString(aemMKs,defaultProps.getProperty(property));
+		}
 		AemDemoProperty[] aemPropertyArray = new AemDemoProperty[ aemMKs.size() ];
 		aemMKs.toArray( aemPropertyArray );
 		return aemPropertyArray;
@@ -201,7 +206,7 @@ public class AemDemoUtils {
 			JOptionPane.showMessageDialog(null, "Please select a demo environment before running this command");
 
 		} else {
-			
+
 			// New ANT project
 			AemDemoProject p = new AemDemoProject(aemDemo);
 
@@ -271,13 +276,13 @@ public class AemDemoUtils {
 		root.getActionMap().put( dispatchWindowClosingActionMapKey, dispatchClosing 
 				); 
 	}
-	
+
 	public static String humanReadableByteCount(long bytes, boolean si) {
-	    int unit = si ? 1000 : 1024;
-	    if (bytes < unit) return bytes + " B";
-	    int exp = (int) (Math.log(bytes) / Math.log(unit));
-	    String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
-	    return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+		int unit = si ? 1000 : 1024;
+		if (bytes < unit) return bytes + " B";
+		int exp = (int) (Math.log(bytes) / Math.log(unit));
+		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
+		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
 	}
 
 }

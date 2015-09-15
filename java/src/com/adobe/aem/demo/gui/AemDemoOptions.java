@@ -19,8 +19,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Properties;
+import java.util.TreeSet;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -165,8 +167,18 @@ public class AemDemoOptions extends JDialog {
 				File newPersonalConf = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");				
 				try {
 					aemDemo.setPersonalProperties(savePersonalProperties());
-					aemDemo.getPersonalProperties().store(new FileOutputStream(newPersonalConf), null);
+
+					Properties tmpProperties = new Properties() {
+					    @Override
+					    public synchronized Enumeration<Object> keys() {
+					        return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+					    }
+					};
+					tmpProperties.putAll(aemDemo.getPersonalProperties());
+					tmpProperties.store(new FileOutputStream(newPersonalConf), null);
+
 					JOptionPane.showMessageDialog(null, "Personal properties saved as /conf/build-personal.properties");
+					
 				} catch (Exception ex) {
 					JOptionPane.showMessageDialog(null, "Error when saving personal properties");
 				}
