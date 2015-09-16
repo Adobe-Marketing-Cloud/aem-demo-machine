@@ -774,6 +774,8 @@
 				</fileset>
 			</path>
 		</foreach>
+		<echo message="Waiting for Forms bundle to be fully started"/>		
+		<sleep seconds="60"/>
 		<!-- then the reference sites -->
 		<foreach target="package_author" param="package">
 			<path id="forms.packages">
@@ -854,13 +856,6 @@
 		<move file="${dist}/downloads/cq56.jar" todir="${dist}/bin"/>
 	</target>
 	<!-- Download demo extensions -->
-	<target name="download_demomachine">
-		<echo message="Downloading Latest Demo Machine in /dist/downloads"/>
-		<antcall target="download_google">
-			<param name="google.file" value="aem-demomachine"/>
-			<param name="google.id" value="${demo.download.demomachine}"/>
-		</antcall>
-	</target>
 	<target name="download_all">
 		<antcall target="download_sites"/>
 		<antcall target="download_assets"/>

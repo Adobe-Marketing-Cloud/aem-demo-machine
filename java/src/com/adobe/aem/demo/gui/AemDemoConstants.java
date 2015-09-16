@@ -31,6 +31,7 @@ public class AemDemoConstants {
 
 	public static final String OPTIONS_DOWNLOAD = "demo.download";
 	public static final String OPTIONS_WEBDOWNLOAD = "demo.download.demomachine.all";
+	public static final String OPTIONS_DEMODOWNLOAD = "demo.download.demomachine";
 	public static final String OPTIONS_DOCUMENTATION = "demo.documentation";
 
 	public static final String[] INSTANCE_ACTIONS = new String[] {"start","restore","backup","uninstall"};

@@ -599,7 +599,7 @@ public class AemDemo {
 		mntmAemDemoMachine.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmAemDemoMachine.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_demomachine");
+				AemDemoUtils.openWebpage(AemDemoUtils.getActualPropertyValue(defaultProperties, personalProperties, AemDemoConstants.OPTIONS_DEMODOWNLOAD));
 			}
 		});
 		mnOther.add(mntmAemDemoMachine);
