@@ -17,32 +17,40 @@ package com.adobe.aem.demo.gui;
 
 import java.util.Arrays;
 
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 
 public class AemDemoRunnable implements Runnable {
 	private AemDemo aemDemo;
-    private Project p;
-    private String t;
+	private Project p;
+	private String t;
 
-    public AemDemoRunnable( AemDemo aemDemo, Project p, String t) {
-       this.p = p;
-       this.t = t;
-       this.aemDemo = aemDemo;
-    }
+	public AemDemoRunnable( AemDemo aemDemo, Project p, String t) {
+		this.p = p;
+		this.t = t;
+		this.aemDemo = aemDemo;
+	}
 
 	public void run() {
-    	
+
 		if (Arrays.asList(AemDemoConstants.BUILD_ACTIONS).contains(t)) {
 			aemDemo.setBuildInProgress(true);
 		}
-		
+
 		if (t.startsWith("download") || t.equals("infrastructure")) {
 			aemDemo.setDownloadInProgress(true);
 		}
 
-		p.executeTarget(t);
-		p.fireBuildFinished(null);
-		
+		try {
+			p.executeTarget(t);
+			p.fireBuildFinished(null);
+
+		} catch (BuildException ex) {
+			System.out.println("Sorry, this target couldn't be completed properly");
+			System.out.println("The error message is:");
+			System.out.println(ex.getMessage());
+		}
+
 		if (Arrays.asList(AemDemoConstants.BUILD_ACTIONS).contains(t) || Arrays.asList(AemDemoConstants.STOP_ACTIONS).contains(t)) {
 			aemDemo.setBuildInProgress(false);
 		}
@@ -57,4 +65,4 @@ public class AemDemoRunnable implements Runnable {
 		if (Arrays.asList(AemDemoConstants.BUILD_ACTIONS).contains(t) && !aemDemo.getListModelDemoMachines().contains(buildName)) aemDemo.getListModelDemoMachines().addElement(buildName);
 
 	}
- }
+}

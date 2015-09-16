@@ -765,11 +765,21 @@
 	<!-- Target for installing the Forms demo -->
 	<target name="forms" depends="version">
 		<antcall target="demomachine_analytics_forms"/>
+		<!-- make sure we install the add-on first -->
 		<foreach target="package_author" param="package">
 			<path id="forms.packages">
 				<fileset dir="${dist}/forms" casesensitive="yes">
-					<include name="all/*.zip"/>
-					<include name="${demo.packages}/*.zip"/>
+					<exclude name="all/*REF-SITE*.zip"/>
+					<exclude name="${demo.packages}/*REF-SITE*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<!-- then the reference sites -->
+		<foreach target="package_author" param="package">
+			<path id="forms.packages">
+				<fileset dir="${dist}/forms" casesensitive="yes">
+					<include name="all/*REF-SITE*.zip"/>
+					<include name="${demo.packages}/*REF-SITE*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
