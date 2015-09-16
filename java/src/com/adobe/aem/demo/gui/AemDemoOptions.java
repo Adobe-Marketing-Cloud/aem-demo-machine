@@ -261,8 +261,13 @@ public class AemDemoOptions extends JDialog {
 
 			if ( (Boolean) table.getModel().getValueAt(i, 0)) {
 				String customValue = (String) table.getModel().getValueAt(i, 3);
+				String propertyKey = (String) table.getModel().getValueAt(i, 1);
 				if (!customValue.equals(AemDemoConstants.PASSWORD)) {
-					newPersonalProperties.setProperty( (String) table.getModel().getValueAt(i, 1), customValue); 
+					// It is a password and its value was edited, hence we used the edited value
+					newPersonalProperties.setProperty( propertyKey, customValue); 
+				} else {
+					// It is a password, not displayed in the table and it wasn't changed, hence reuse the previously saved password
+					newPersonalProperties.setProperty( propertyKey, aemDemo.getPersonalProperties().getProperty(propertyKey));
 				}
 			}
 
