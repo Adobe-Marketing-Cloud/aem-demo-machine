@@ -115,6 +115,7 @@ public class AemDemoOptions extends JDialog {
 			}
 
 		};
+		table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 		table.setAutoCreateRowSorter(true);
 		table.getRowSorter().toggleSortOrder(1);
 		table.getColumnModel().getColumn(0).setPreferredWidth(10);
@@ -169,16 +170,16 @@ public class AemDemoOptions extends JDialog {
 					aemDemo.setPersonalProperties(savePersonalProperties());
 
 					Properties tmpProperties = new Properties() {
-					    @Override
-					    public synchronized Enumeration<Object> keys() {
-					        return Collections.enumeration(new TreeSet<Object>(super.keySet()));
-					    }
+						@Override
+						public synchronized Enumeration<Object> keys() {
+							return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+						}
 					};
 					tmpProperties.putAll(aemDemo.getPersonalProperties());
 					tmpProperties.store(new FileOutputStream(newPersonalConf), null);
 
 					JOptionPane.showMessageDialog(null, "Personal properties saved as /conf/build-personal.properties");
-					
+
 				} catch (Exception ex) {
 					JOptionPane.showMessageDialog(null, "Error when saving personal properties");
 				}
@@ -214,35 +215,35 @@ public class AemDemoOptions extends JDialog {
 			public void actionPerformed(ActionEvent e) {
 
 				JFileChooser chooser = new JFileChooser(aemDemo.getBuildFile());
-			    FileNameExtensionFilter filter = new FileNameExtensionFilter(
-			        "Properties", "props", "properties");
-			    chooser.setFileFilter(filter);
-			    int returnVal = chooser.showOpenDialog(AemDemoOptions.this);
-			    if(returnVal == JFileChooser.APPROVE_OPTION) {
+				FileNameExtensionFilter filter = new FileNameExtensionFilter(
+						"Properties", "props", "properties");
+				chooser.setFileFilter(filter);
+				int returnVal = chooser.showOpenDialog(AemDemoOptions.this);
+				if(returnVal == JFileChooser.APPROVE_OPTION) {
 
-			    	Properties mergeProps = AemDemoUtils.loadProperties(chooser.getSelectedFile().getAbsolutePath());
-			        @SuppressWarnings("rawtypes")
+					Properties mergeProps = AemDemoUtils.loadProperties(chooser.getSelectedFile().getAbsolutePath());
+					@SuppressWarnings("rawtypes")
 					Enumeration currentProp = mergeProps.propertyNames();
-			        while (currentProp.hasMoreElements()) {
-			          String key = (String) currentProp.nextElement();
-			          String value = (String) mergeProps.getProperty(key);
-			          
-			          // Lookup for the same key in the property table
-			          for (int i=0; i<table.getRowCount(); i++) {
-			        	  
-			        	  if ( table.getModel().getValueAt(i, 1).equals(key) ) {
-			        		  
-			        		  table.getModel().setValueAt(value, i, 3);
-			        		  table.getModel().setValueAt(true, i, 0);
-			        		  
-			        	  }
-			          }
+					while (currentProp.hasMoreElements()) {
+						String key = (String) currentProp.nextElement();
+						String value = (String) mergeProps.getProperty(key);
 
-			        }
-			        
+						// Lookup for the same key in the property table
+						for (int i=0; i<table.getRowCount(); i++) {
+
+							if ( table.getModel().getValueAt(i, 1).equals(key) ) {
+
+								table.getModel().setValueAt(value, i, 3);
+								table.getModel().setValueAt(true, i, 0);
+
+							}
+						}
+
+					}
+
 					aemDemo.setPersonalProperties(savePersonalProperties());
-					
-			    }
+
+				}
 			}
 		});
 		contentPanel.add(loadButton);
@@ -252,28 +253,31 @@ public class AemDemoOptions extends JDialog {
 
 
 	}
-	
+
 	private Properties savePersonalProperties() {
-		
+
 		// Saving in memory the new personal properties
 		Properties newPersonalProperties = new Properties();
 		for (int i=0;i<table.getRowCount();i++) {
 
 			if ( (Boolean) table.getModel().getValueAt(i, 0)) {
 				String customValue = (String) table.getModel().getValueAt(i, 3);
-				String propertyKey = (String) table.getModel().getValueAt(i, 1);
-				if (!customValue.equals(AemDemoConstants.PASSWORD)) {
-					// It is a password and its value was edited, hence we used the edited value
-					newPersonalProperties.setProperty( propertyKey, customValue); 
-				} else {
-					// It is a password, not displayed in the table and it wasn't changed, hence reuse the previously saved password
-					newPersonalProperties.setProperty( propertyKey, aemDemo.getPersonalProperties().getProperty(propertyKey));
+				if (customValue !=null && customValue.length()>0) {
+					String propertyKey = (String) table.getModel().getValueAt(i, 1);
+					if (!customValue.equals(AemDemoConstants.PASSWORD)) {
+						// It is a password and its value was edited, hence we used the edited value
+						newPersonalProperties.setProperty(propertyKey, customValue); 
+					} else {
+						// It is a password, not displayed in the table and it wasn't changed, hence reuse the previously saved password
+						newPersonalProperties.setProperty(propertyKey, aemDemo.getPersonalProperties().getProperty(propertyKey));
+					}
 				}
+
 			}
 
 		}
 		return newPersonalProperties;
-		
+
 	}
 
 }
