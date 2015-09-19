@@ -810,6 +810,26 @@
 				</fileset>
 			</path>
 		</foreach>
+		<!-- This is for WebSphere Commerce only -->
+		<exec executable="curl">
+			<arg line="--output '${logs}/${AdobeAEM.authorport}_commerce_websphere.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d wc.api.server.url=${demo.commerce.websphere.host}"/>
+			<arg line="-d wc.api.wcs.rest_endpoint=/wcs/resources/store"/>
+			<arg line="-d wc.api.search.rest_endpoint=/search/resources/store"/>
+			<arg line="-d wc.api.ping.rest_endpoint=/wcs/resources/api"/>
+			<arg line="-d wc.api.connections.max=20"/>
+			<arg line="-d wc.api.connections.max.host=10"/>
+			<arg line="-d wc.server.ssl.trust_all_certs=true"/>
+			<arg line="-d wc.server.ssl.trust_all_certs=false"/>
+			<arg line="-d propertylist=wc.api.server.url,wc.api.wcs.rest_endpoint,wc.api.search.rest_endpoint,wc.api.ping.rest_endpoint,wc.api.connections.max,wc.api.connections.max.host,wc.server.ssl.trust_all_certs"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/system/console/configMgr/com.adobe.cq.commerce.websphere.connection.impl.WCAPIClientImpl"/>
+		</exec>
 	</target>
 	<!-- Target for installing the Apps demo -->
 	<target name="apps" depends="version">
@@ -862,7 +882,6 @@
 		<antcall target="download_apps"/>
 		<antcall target="download_forms"/>
 		<antcall target="download_enablement"/>
-		<antcall target="download_commerce"/>
 	</target>
 	<target name="download_sites">
 		<echo message="Downloading Latest AEM Sites Demo Add-on in /dist/downloads"/>
@@ -903,16 +922,6 @@
 		<echo message="Extracting Latest AEM Forms Demo Add-on in /dist/forms"/>
 		<delete dir="${dist}/forms"/>
 		<unzip src="${dist}/downloads/aem-demomachine-forms.zip" dest="."/>
-	</target>
-	<target name="download_commerce">
-		<echo message="Downloading Latest AEM Commerce Demo Add-on in /dist/downloads"/>
-		<antcall target="download_google">
-			<param name="google.file" value="aem-demomachine-commerce"/>
-			<param name="google.id" value="${demo.download.demomachine.commerce}"/>
-		</antcall>
-		<echo message="Extracting Latest AEM Assets Demo Add-on in /dist/commerce"/>
-		<delete dir="${dist}/commerce"/>
-		<unzip src="${dist}/downloads/aem-demomachine-commerce.zip" dest="."/>
 	</target>
 	<target name="download_enablement">
 		<echo message="Downloading Latest AEM Communities Enablement Demo Add-on in /dist/downloads"/>
@@ -1068,6 +1077,40 @@
 		<mkdir dir="${download.dir}/aem60"/>
 		<mkdir dir="${download.dir}/aem62"/>
 		<mkdir dir="${download.dir}/all"/>
+	</target>
+	<!-- Target for downloading latest Commerce (EP) bundles -->
+	<target name="download_commerce_ep">
+		<delete dir="${dist}/commerce"/>
+		<antcall target="download_dirs">
+			<param name="download.dir" value="${dist}/commerce"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.commerce.ep.addon}"/>
+			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.commerce.ep.demo}"/>
+			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.commerce.ep.geo}"/>
+			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+		</antcall>
+	</target>
+	<!-- Target for downloading latest Commerce (WebSphere) bundles -->
+	<target name="download_commerce_websphere">
+		<delete dir="${dist}/commerce"/>
+		<antcall target="download_dirs">
+			<param name="download.dir" value="${dist}/commerce"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.commerce.websphere.addon}"/>
+			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.commerce.websphere.demo}"/>
+			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+		</antcall>
 	</target>
 	<!-- Target for downloading latest Forms uber -->
 	<target name="download_forms_fp">

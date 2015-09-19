@@ -334,13 +334,27 @@ public class AemDemo {
 		JMenu mnCommerce = new JMenu("Commerce");
 		mnUpdate.add(mnCommerce);
 
-		JMenuItem mntmAemCommerce = new JMenuItem("Download Add-on");
-		mntmAemCommerce.addActionListener(new ActionListener() {
+		JMenu mnCommerceDownload = new JMenu("Download Add-on");
+		mnCommerce.add(mnCommerceDownload);
+
+		// Commerce EP
+		JMenuItem mnCommerceDownloadEP = new JMenuItem("ElasticPath");
+		mnCommerceDownloadEP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_commerce");
+				AemDemoUtils.antTarget(AemDemo.this, "download_commerce_ep");
 			}
 		});
-		mnCommerce.add(mntmAemCommerce);
+		mnCommerceDownload.add(mnCommerceDownloadEP);
+
+		// Commerce WebSphere
+		JMenuItem mnCommerceDownloadWAS = new JMenuItem("WebSphere");
+		mnCommerceDownloadWAS.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_commerce_websphere");
+			}
+		});
+		mnCommerceDownload.add(mnCommerceDownloadWAS);
+
 		mnCommerce.addSeparator();
 
 		JMenuItem mntmAemCommerceAddOn = new JMenuItem("Install Add-on");
