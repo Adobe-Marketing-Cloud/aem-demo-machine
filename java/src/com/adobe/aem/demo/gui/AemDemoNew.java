@@ -70,14 +70,14 @@ public class AemDemoNew extends JDialog {
 		String licenseFileName = "license-" + aemDemo.getDefaultProperties().getProperty("demo.license") + ".properties";
 		File licenseFile = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "dist" + File.separator + "license" + File.separator + licenseFileName);
 		if (!licenseFile.exists()) {
-			validationErrors.add("Please add a valid AEM license file named " + licenseFileName + " in the /dist/license folder");
+			validationErrors.add("Please add a valid AEM license file named " + licenseFileName + " in the ${demohome}/dist/license folder");
 			validConfiguration = false;
 		}
 
 		// Let's make sure it's possible to create a demo machine with at least one .jar file
 		AemDemoProperty[] aemJars = AemDemoUtils.listAEMjars(aemDemo.getBuildFile());
 		if (aemJars.length==0) {
-			validationErrors.add("Please add a valid AEM/CQ .jar file in the /dist/bin folder");
+			validationErrors.add("Please add a valid AEM/CQ .jar file in the ${demohome}/dist/bin folder");
 			validConfiguration = false;
 		}	
 
@@ -246,9 +246,9 @@ public class AemDemoNew extends JDialog {
 
 		} else {
 
-			setBounds(150,150,660,340);
+			setBounds(150,150,760,340);
 			getContentPane().setLayout(null);
-			contentPanel.setBounds(0, 0, 660, 340);
+			contentPanel.setBounds(0, 0, 760, 340);
 			getContentPane().add(contentPanel);
 			contentPanel.setLayout(null);
 
@@ -259,13 +259,13 @@ public class AemDemoNew extends JDialog {
 			int pos=60;
 			for(String errorMsg : validationErrors) {
 				JLabel lblError = new JLabel(errorMsg);
-				lblError.setBounds(20, pos, 620, 16);
+				lblError.setBounds(20, pos, 720, 16);
 				contentPanel.add(lblError);
 				pos=pos+40;
 			}
 
 			JButton closeButton = new JButton("Close");
-			closeButton.setBounds(200, 160, 60, 30);
+			closeButton.setBounds(20, 260, 60, 30);
 			closeButton.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 
