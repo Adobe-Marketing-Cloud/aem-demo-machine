@@ -1096,6 +1096,10 @@
 			<param name="packageshare.filepath" value="${demo.download.commerce.ep.geo}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
 		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.commerce.ep.amc}"/>
+			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+		</antcall>
 	</target>
 	<!-- Target for downloading latest Commerce (WebSphere) bundles -->
 	<target name="download_commerce_websphere">
