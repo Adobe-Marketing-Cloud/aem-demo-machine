@@ -1071,7 +1071,7 @@ public class Loader {
 	// This method POSTs a file to be used as a thumbnail later on
 	private static String doThumbnail(String hostname, String port, String adminPassword, String csvfile, String filename) {
 
-		String pathToFile = "/content/tmp/thumbnails/" + filename;
+		String pathToFile = "/content/dam/communities/resource-thumbnails/" + filename;
 		File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + filename);
 
 		ContentType ct = ContentType.MULTIPART_FORM_DATA;

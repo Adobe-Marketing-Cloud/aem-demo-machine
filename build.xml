@@ -774,7 +774,7 @@
 				</fileset>
 			</path>
 		</foreach>
-		<echo message="Waiting for Forms bundle to be fully started"/>		
+		<echo message="Waiting for Forms bundle to be fully started"/>
 		<sleep seconds="60"/>
 		<!-- then the reference sites -->
 		<foreach target="package_author" param="package">
@@ -1797,6 +1797,8 @@
 					<arg line="-d ./secret@Encrypted="/>
 					<arg line="-d ./username=${AdobeAnalytics.username}"/>
 					<arg line="-d ./server=${AdobeAnalytics.server}"/>
+					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
+					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
 				</exec>
 			</then>
@@ -2662,9 +2664,8 @@
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
-				<antcall target="cloudservices">
-					<param name="port" value="${AdobeAEM.publishport}"/>
-					<param name="path" value="/content/sites/communities/en/jcr:content"/>
+				<antcall target="community_publish">
+					<param name="path" value="/content/sites/communities/en"/>
 				</antcall>
 			</then>
 		</if>
@@ -2677,12 +2678,24 @@
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
-				<antcall target="cloudservices">
-					<param name="port" value="${AdobeAEM.publishport}"/>
-					<param name="path" value="/content/sites/enablement/en/jcr:content"/>
+				<antcall target="community_publish">
+					<param name="path" value="/content/sites/communities/en"/>
 				</antcall>
 			</then>
 		</if>
+	</target>
+	<!-- Target for publishing a community site -->
+	<target name="community_publish">
+		<echo message="Publishing a Community site"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${AdobeAEM.authorport}_publish.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d path=${path}"/>
+			<arg line="-d id=nobot"/>
+			<arg line="-d :operation=social:publishSite"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/communities/sites.html"/>
+		</exec>
 	</target>
 	<!-- Target for configuring and preparing MySQL for reporting purposes, if a running MySQL server can be found -->
 	<target name="community_reporting_configure">
