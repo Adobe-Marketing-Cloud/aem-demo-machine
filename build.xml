@@ -133,12 +133,19 @@
 					<then>
 						<!-- Making sure we configure Solr with a new core for this demo build  -->
 						<antcall target="solr_stop"/>
-						<copy todir="${solr}/example/solr/${demo.build}" overwrite="true">
-							<fileset dir="${solr}/example/solr/collection1">
-								<include name="**/*"/>
-							</fileset>
-						</copy>
-						<replace file="${solr}/example/solr/${demo.build}/core.properties" token="collection1" value="${demo.build}"/>
+						<if>
+							<resourceexists>
+								<file file="${solr}/bin/solr"/>
+							</resourceexists>
+							<then>
+								<copy todir="${solr}/example/solr/${demo.build}" overwrite="true">
+									<fileset dir="${solr}/example/solr/collection1">
+										<include name="**/*"/>
+									</fileset>
+								</copy>
+								<replace file="${solr}/example/solr/${demo.build}/core.properties" token="collection1" value="${demo.build}"/>
+							</then>
+						</if>
 					</then>
 				</if>
 				<antcall target="install_instance">
@@ -245,9 +252,16 @@
 				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
 				<copy file="${dist}/rdb/mysql.sql" tofile="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" overwrite="true"/>
 				<replace file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" token="@schema@" value="${mysql.prefix}${demo.instance}"/>
-				<exec executable="${mysql.exec}" spawn="false">
-					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/mysql_${demo.instance}${demo.build}.sql'"/>
-				</exec>
+				<if>
+					<resourceexists>
+						<file file="${mysql.exec}"/>
+					</resourceexists>
+					<then>
+						<exec executable="${mysql.exec}" spawn="false" failonerror="false">
+							<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/mysql_${demo.instance}${demo.build}.sql'"/>
+						</exec>
+					</then>
+				</if>
 				<delete file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql"/>
 				<unzip src="${dist}/rdb/mysql.zip" dest="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@SCHEMA@@" value="${mysql.prefix}${demo.instance}"/>
@@ -263,6 +277,7 @@
 	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
 	<target name="start" depends="configuration,version">
 		<echo message="Starting the build for demo ${demo.build}..."/>
+		<antcall target="prerequisites"/>
 		<antcall target="javaversion"/>
 		<antcall target="demomachine_analytics_start"/>
 		<if>
@@ -2788,7 +2803,7 @@
 			<arg line="-d memberEntry=andrew.schaeffer@trashymail.com"/>
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/home/groups/c/content-authors.html"/>
 		</exec>
-		<echo message="Updating Members on the Author instance"/>
+		<echo message="Updating user profiles on the Author instance"/>
 		<java classname="com.adobe.aem.demo.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
@@ -2796,7 +2811,7 @@
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
-				<echo message="Updating Members on the Publish instance"/>
+				<echo message="Updating Community Members profiles on the Publish instance"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
@@ -3035,7 +3050,7 @@
 				<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			</and>
 			<then>
-				<echo message="Creating Enablement tags (on Author and Publish)"/>
+				<echo message="Creating tags for Enablement demo site (on Author and Publish)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
@@ -3044,30 +3059,30 @@
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
-				<echo message="Creating Enablement site (on Author)"/>
+				<echo message="Creating site for Enablement demo site (on Author)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
-				<echo message="Creating Enablement users (on Publish)"/>
+				<echo message="Creating members for Enablement demo site (on Publish)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<antcall target="community_enablement_loader_resources"/>
-				<echo message="Creating Enablement UGC (on Publish)"/>
+				<echo message="Creating UGC for Enablement demo site (on Publish)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-publish.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
-				<echo message="Conditions not met to configure the Enablement site"/>
+				<echo message="Conditions not met to configure the Enablement demo site"/>
 			</else>
 		</if>
 	</target>
 	<target name="community_enablement_loader_resources" depends="community_loader_flag,compile">
-		<echo message="Creating Enablement Resources (on Author - 20+ minutes)"/>
+		<echo message="Creating Resources for Enablement demo site (on Author - 20+ minutes)"/>
 		<java classname="com.adobe.aem.demo.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-resources.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
@@ -3082,7 +3097,7 @@
 				<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			</and>
 			<then>
-				<echo message="Creating Enablement Resources for Communities (on Author)"/>
+				<echo message="Creating Resources for Communities demo site (on Author)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-communities.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
@@ -3279,6 +3294,69 @@
 		<antcall target="cloudservices">
 			<param name="path" value="/content/community-components/en/jcr:content"/>
 		</antcall>
+	</target>
+	<!-- Verifies the Infrastructure prerequisites -->
+	<target name="prerequisites">
+		<!-- Scenarios for which Mongo is required -->
+		<if>
+			<or>
+				<equals arg1="${demomachine.store}" arg2="crx3,crx3mongo" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+			</or>
+			<then>
+				<if>
+					<and>
+						<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
+						<not>
+							<resourceexists>
+								<file file="${mongodb}/bin/mongod"/>
+							</resourceexists>
+						</not>
+					</and>
+					<then>
+						<fail message="Your demo configuration requires MongoDB and it doesn't seem to be installed. Please use the demo machine commands to download and to install MongoDB, or set the demo.mongo.external property to true for pointing at some other existing MongoDB instance"/>
+					</then>
+				</if>
+			</then>
+		</if>
+		<!-- Scenarios for which SOLR is required -->
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+			<then>
+				<if>
+					<not>
+						<resourceexists>
+							<file file="${solr}/bin/solr"/>
+						</resourceexists>
+					</not>
+					<then>
+						<fail message="Your demo configuration requires SOLR and it doesn't seem to be installed. Please use the demo machine commands to download and to install SOLR"/>
+					</then>
+				</if>
+			</then>
+		</if>
+		<!-- Scenarios for which MySQL is required -->
+		<if>
+			<or>
+				<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
+				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+			</or>
+			<then>
+				<if>
+					<and>
+						<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+						<not>
+							<resourceexists>
+								<file file="${mysql}/bin/mysql"/>
+							</resourceexists>
+						</not>
+					</and>
+					<then>
+						<fail message="Your demo configuration requires MySQL and it doesn't seem to be installed. Please use the demo machine commands to download and to install MySQL, or set the demo.mysql.external property to true for pointing at some other existing MySQL instance"/>
+					</then>
+				</if>
+			</then>
+		</if>
 	</target>
 	<!-- Verifies the Java version compatibility -->
 	<target name="javaversion" depends="version">
