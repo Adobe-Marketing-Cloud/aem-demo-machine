@@ -2328,6 +2328,10 @@
 		<if>
 			<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
 			<then>
+				<java classname="com.adobe.aem.demo.communities.Loader">
+					<classpath refid="demo.classpath"/>
+					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+				</java>
 				<antcall target="community_loader">
 					<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp2.csv"/>
 				</antcall>
