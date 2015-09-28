@@ -1171,6 +1171,17 @@
 			<param name="packageshare.target" value="${dist}/forms/aem61"/>
 		</antcall>
 	</target>
+	<!-- Target for downloading the Communities Feature Packs -->
+	<target name="download_communities_fp">
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.communities.bundle.fp1}"/>
+			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.communities.scorm.fp1}"/>
+			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
+		</antcall>
+	</target>
 	<!-- Target for downloading latest Communities uber -->
 	<target name="download_communities">
 		<echo message="Downloading latest Communities bundle"/>
@@ -1241,6 +1252,11 @@
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
+	</target>
+	<!-- Target for downloading latest Communities bundles -->
+	<target name="download_communities_bundles">
+		<antcall target="download_communities"/>
+		<antcall target="download_scorm"/>
 	</target>
 	<!-- Target for downloading latest Scorm bundle -->
 	<target name="download_scorm">

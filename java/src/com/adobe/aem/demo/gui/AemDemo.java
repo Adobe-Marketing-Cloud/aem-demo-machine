@@ -252,24 +252,24 @@ public class AemDemo {
 		JMenu mnCommunities = new JMenu("Communities");
 		mnUpdate.add(mnCommunities);
 				
-		JMenuItem mntmAemCommunitiesUber = new JMenuItem("Download Latest Bundle (VPN)");
+		JMenuItem mntmAemCommunitiesUber = new JMenuItem("Download Latest Bundles (VPN)");
 		mntmAemCommunitiesUber.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmAemCommunitiesUber.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_communities");
+				AemDemoUtils.antTarget(AemDemo.this, "download_communities_bundles");
 			}
 		});
 		mnCommunities.add(mntmAemCommunitiesUber);
 
-		JMenuItem mntmAemCommunitiesSCORM = new JMenuItem("Download Latest SCORM Engine (VPN)");
-		mntmAemCommunitiesSCORM.addActionListener(new ActionListener() {
+		JMenuItem mntmAemCommunitiesFeaturePacks = new JMenuItem("Download Latest Feature Packs (PackageShare)");
+		mntmAemCommunitiesFeaturePacks.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_scorm");
+				AemDemoUtils.antTarget(AemDemo.this, "download_communities_fp");
 			}
 		});
-		mnCommunities.add(mntmAemCommunitiesSCORM);
+		mnCommunities.add(mntmAemCommunitiesFeaturePacks);
 
-		JMenuItem mntmAemCommunitiesEnablement = new JMenuItem("Download Enablement Add-on");
+		JMenuItem mntmAemCommunitiesEnablement = new JMenuItem("Download Enablement Demo Site Add-on (4.5GB)");
 		mntmAemCommunitiesEnablement.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_enablement");
