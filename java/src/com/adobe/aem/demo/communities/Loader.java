@@ -706,13 +706,18 @@ public class Loader {
 					nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
 					StringBuffer message = new StringBuffer("<p>" + record.get(3) + "</p>");
 
-					//We might have more paragraphs to add to the blog article
-					for (int i=5; i < record.size();i++) {
+					//We might have more paragraphs to add to the blog or journal article
+					for (int i=6; i < record.size();i++) {
 						if (record.get(i).length()>0) {
 							message.append("<p>" + record.get(i) + "</p>");
 						}
 					}
-
+					
+					//We might have some tags to add to the blog or journal article
+					if (record.get(5).length()>0) {
+						nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
+					}
+					
 					nameValuePairs.add(new BasicNameValuePair("message", message.toString()));		         
 
 				}
