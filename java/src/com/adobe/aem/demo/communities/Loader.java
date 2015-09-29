@@ -1127,7 +1127,7 @@ public class Loader {
 			String resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint");
 			String resourceID = resourceJsonObject.getString("id");
 			String resourceType = resourceJsonObject.getJSONObject("assetProperties").getString("type");
-			String referer = "http://localhost:" + altport + "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + "/en.resource.html" + resourceID; 
+			String referer = "http://localhost:" + altport + "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + "/en" + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + ".resource.html" + resourceID; 
 
 			logger.debug("Resource Ratings Endpoint: " + resourceRatingsEndpoint);
 			logger.debug("Resource Comments Endpoint: " + resourceCommentsEndpoint);
@@ -1291,7 +1291,6 @@ public class Loader {
 			List<NameValuePair> ratingNameValuePairs = new ArrayList<NameValuePair>();
 			ratingNameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
 			ratingNameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
-			ratingNameValuePairs.add(new BasicNameValuePair("referer", referer));
 			int randomRating = (int) Math.ceil(Math.random()*5);
 			logger.debug("Randomly Generated Rating: " + randomRating);
 			logger.debug("Referer for Rating: " + referer);
@@ -1300,7 +1299,8 @@ public class Loader {
 					resourceRatingsEndpoint + ".social.json",
 					key, "password",
 					new UrlEncodedFormEntity(ratingNameValuePairs),
-					null);
+					null,
+					referer);
 
 			doAnalytics(analytics, "event4", referer, resourceID, resourceType);
 
@@ -1323,12 +1323,13 @@ public class Loader {
 			commentNameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
 			commentNameValuePairs.add(new BasicNameValuePair("message", comments[randomComment-1]));
 			commentNameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-			commentNameValuePairs.add(new BasicNameValuePair("referer", referer));
+			logger.debug("Referer for Commenting: " + referer);
 			doPost(hostname, altport,
 					resourceCommentsEndpoint,
 					key, "password",
 					new UrlEncodedFormEntity(commentNameValuePairs),
-					null);
+					null,
+					referer);
 
 			doAnalytics(analytics, "event3", referer, resourceID, resourceType);
 
@@ -1342,6 +1343,12 @@ public class Loader {
 
 	// This method POSTs a request to the server, returning the location JSON attribute, when available
 	private static String doPost(String hostname, String port, String url, String user, String password, HttpEntity entity, String lookup) {
+
+		return doPost(hostname, port, url, user, password, entity, lookup, null);
+		
+	}
+	
+	private static String doPost(String hostname, String port, String url, String user, String password, HttpEntity entity, String lookup, String referer) {
 
 		String jsonElement = null;
 
@@ -1376,6 +1383,10 @@ public class Loader {
 				}
 				request.addHeader("Accept", "application/json, text/javascript, */*; q=0.01");
 				request.addHeader("Origin", postUrl);
+				if (referer!=null) {
+					logger.debug("Referer header added to request: " + referer);
+					request.addHeader("Referer", referer);
+				}
 
 				// Sending the HTTP POST command
 				CloseableHttpResponse response = httpClient.execute(target, request, localContext);

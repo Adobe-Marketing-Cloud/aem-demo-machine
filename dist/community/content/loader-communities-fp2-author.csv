@@ -1,2 +1,2 @@
-#Setting a privileged member group for the Blog,,,
-SlingPost,/content/sites/communities/en/blog/jcr:content/content/primary/blog,cq:privilegedMembers@String[],/social/groups/aem-privileged-members
+#Setting a privileged member group for the Blog,,,,,
+SlingPost,/content/sites/communities/en/blog/jcr:content/content/primary/blog,cq:privilegedMembers@String[],/social/groups/aem-privileged-members,allowPrivilegedMembers@Boolean,TRUE

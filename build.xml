@@ -989,6 +989,14 @@
 					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageshare.filename}' https://www.adobeaemcloud.com${packageshare.filepath}"/>
 				</exec>
 				<move file="${dist}/downloads/${packageshare.filename}" todir="${packageshare.target}"/>
+				<if>
+					<not>
+						<equals arg1="${packageshare.targetfilename}" arg2="" casesensitive="false"/>
+					</not>
+					<then>
+						<move file="${packageshare.target}/${packageshare.filename}" tofile="${packageshare.target}/${packageshare.targetfilename}"/>
+					</then>
+				</if>
 			</else>
 		</if>
 	</target>
@@ -1224,17 +1232,11 @@
 	<target name="download_livefyre">
 		<echo message="Downloading latest Livefyre feature pack"/>
 		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/integrations/livefyre/community-integrations-livefyre-pkg/maven-metadata.xml"/>
-		</exec>
-		<xmlproperty file="${dist}/downloads/nexus.xml"/>
-		<echo message="Downloading community-integrations-livefyre-pkg-${metadata.versioning.release}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/livefyre-fp.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/integrations/livefyre/community-integrations-livefyre-pkg/${metadata.versioning.release}/community-integrations-livefyre-pkg-${metadata.versioning.release}.zip"/>
-		</exec>
-		<delete>
-			<fileset dir="${dist}/downloads" includes="*.xml"/>
-		</delete>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.livefyre}"/>
+			<param name="packageshare.target" value="${dist}/downloads"/>
+			<param name="packageshare.targetfilename" value="livefire-fp.zip"/>
+		</antcall>
 	</target>
 	<!-- Target for downloading latest Sites feature pack -->
 	<target name="download_sites_fp">
@@ -2673,19 +2675,27 @@
 		<antcall target="community_tunnel"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
+		<!-- First we create and publish the empty demo sites -->
 		<if>
 			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
 			<then>
 				<antcall target="community_loader_sites"/>
-				<antcall target="community_loader_content"/>
-				<antcall target="community_loader_cloudservices"/>
 			</then>
 		</if>
+		<!-- Then we create the enablement resources for all available sites -->
 		<if>
 			<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
 			<then>
 				<antcall target="community_enablement"/>
 				<antcall target="community_loader_cloudservices_enablement"/>
+			</then>
+		</if>
+		<!-- Then we create the demo content for the demo sites -->
+		<if>
+			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_content"/>
+				<antcall target="community_loader_cloudservices"/>
 			</then>
 		</if>
 		<antcall target="community_warmup"/>
@@ -3154,7 +3164,7 @@
 		</exec>
 	</target>
 	<target name="community_warmup">
-		<echo message="Preloading the main pages......"/>
+		<echo message="Preloading the main demo pages..."/>
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
