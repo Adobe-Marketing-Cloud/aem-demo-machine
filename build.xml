@@ -860,6 +860,7 @@
 	<!-- Targets for downloading release versions of QuickStart -->
 	<target name="download_aem61">
 		<echo message="Downloading AEM 6.1"/>
+		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/aem61.jar' ${demo.download.aem.61}"/>
 		</exec>
@@ -868,6 +869,7 @@
 	</target>
 	<target name="download_aem60">
 		<echo message="Downloading AEM 6.0"/>
+		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/aem60.jar' ${demo.download.aem.60}"/>
 		</exec>
@@ -876,6 +878,7 @@
 	</target>
 	<target name="download_cq561">
 		<echo message="Downloading CQ 5.6.1"/>
+		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/cq561.jar' ${demo.download.aem.561}"/>
 		</exec>
@@ -884,6 +887,7 @@
 	</target>
 	<target name="download_cq56">
 		<echo message="Downloading CQ 5.6"/>
+		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/cq56.jar' ${demo.download.aem.56}"/>
 		</exec>
@@ -894,12 +898,13 @@
 	<target name="download_all">
 		<antcall target="download_sites"/>
 		<antcall target="download_assets"/>
-		<antcall target="download_apps"/>
-		<antcall target="download_forms"/>
-		<antcall target="download_enablement"/>
+		<antcall target="download_communities_fp"/>
+		<antcall target="download_apps_fp"/>
+		<antcall target="download_forms_fp"/>
 	</target>
 	<target name="download_sites">
 		<echo message="Downloading Latest AEM Sites Demo Add-on in /dist/downloads"/>
+		<mkdir dir="${dist}/downloads"/>
 		<antcall target="download_google">
 			<param name="google.file" value="aem-demomachine-sites"/>
 			<param name="google.id" value="${demo.download.demomachine.sites}"/>
@@ -910,6 +915,7 @@
 	</target>
 	<target name="download_apps">
 		<echo message="Downloading Latest AEM Apps Demo Add-on in /dist/downloads"/>
+		<mkdir dir="${dist}/downloads"/>
 		<antcall target="download_google">
 			<param name="google.file" value="aem-demomachine-apps"/>
 			<param name="google.id" value="${demo.download.demomachine.apps}"/>
@@ -920,6 +926,7 @@
 	</target>
 	<target name="download_assets">
 		<echo message="Downloading Latest AEM Assets Demo Add-on in /dist/downloads"/>
+		<mkdir dir="${dist}/downloads"/>
 		<antcall target="download_google">
 			<param name="google.file" value="aem-demomachine-assets"/>
 			<param name="google.id" value="${demo.download.demomachine.assets}"/>
@@ -930,6 +937,7 @@
 	</target>
 	<target name="download_forms">
 		<echo message="Downloading Latest AEM Forms Demo Add-on in /dist/downloads"/>
+		<mkdir dir="${dist}/downloads"/>
 		<antcall target="download_google">
 			<param name="google.file" value="aem-demomachine-forms"/>
 			<param name="google.id" value="${demo.download.demomachine.forms}"/>
@@ -940,6 +948,7 @@
 	</target>
 	<target name="download_enablement">
 		<echo message="Downloading Latest AEM Communities Enablement Demo Add-on in /dist/downloads"/>
+		<mkdir dir="${dist}/downloads"/>
 		<antcall target="download_google">
 			<param name="google.file" value="aem-demomachine-enablement"/>
 			<param name="google.id" value="${demo.download.demomachine.enablement}"/>
@@ -989,14 +998,7 @@
 					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageshare.filename}' https://www.adobeaemcloud.com${packageshare.filepath}"/>
 				</exec>
 				<move file="${dist}/downloads/${packageshare.filename}" todir="${packageshare.target}"/>
-				<if>
-					<not>
-						<equals arg1="${packageshare.targetfilename}" arg2="" casesensitive="false"/>
-					</not>
-					<then>
-						<move file="${packageshare.target}/${packageshare.filename}" tofile="${packageshare.target}/${packageshare.targetfilename}"/>
-					</then>
-				</if>
+				<move file="${packageshare.target}/${packageshare.filename}" tofile="${packageshare.target}/${packageshare.targetfilename}"/>
 			</else>
 		</if>
 	</target>
@@ -1110,18 +1112,22 @@
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.commerce.ep.addon}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-commerce-ep-addon.zip"/>
 		</antcall>
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.commerce.ep.demo}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-commerce-ep-demo.zip"/>
 		</antcall>
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.commerce.ep.geo}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-commerce-ep-geo.zip"/>
 		</antcall>
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.commerce.ep.amc}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-commerce-ep-amc.zip"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading latest Commerce (WebSphere) bundles -->
@@ -1133,10 +1139,12 @@
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.commerce.websphere.addon}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-commerce-websphere-addon.zip"/>
 		</antcall>
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.commerce.websphere.demo}"/>
 			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-commerce-websphere-demo.zip"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading latest Forms uber -->
@@ -1154,12 +1162,14 @@
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.forms.demo.fsi}"/>
 			<param name="packageshare.target" value="${dist}/forms/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-forms-demo-fsi.zip"/>
 		</antcall>
 		<echo message="Downloading latest AEM Forms Gov demo"/>
 		<mkdir dir="${dist}/forms/aem61"/>
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.forms.demo.gov}"/>
 			<param name="packageshare.target" value="${dist}/forms/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-forms-demo-gov.zip"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the forms add-on, on MacOS then on Windows-->
@@ -1169,6 +1179,7 @@
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.forms.addon.win}"/>
 			<param name="packageshare.target" value="${dist}/forms/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-forms-addon-win.zip"/>
 		</antcall>
 	</target>
 	<target name="download_forms_macos" if="isUnix">
@@ -1177,6 +1188,20 @@
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.forms.addon.macos}"/>
 			<param name="packageshare.target" value="${dist}/forms/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-forms-addon-macos.zip"/>
+		</antcall>
+	</target>
+	<!-- Target for downloading the Apps Feature Packs -->
+	<target name="download_apps_fp">
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.apps.fp2.core}"/>
+			<param name="packageshare.target" value="${dist}/apps/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-fp2-core.zip"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.apps.fp2.samples}"/>
+			<param name="packageshare.target" value="${dist}/apps/aem61"/>
+			<param name="packageshare.targetfilename" value="aem61-fp2-samples.zip"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the Communities Feature Packs -->
@@ -1184,10 +1209,22 @@
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.communities.bundle.fp1}"/>
 			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
+			<param name="packageshare.targetfilename" value="aem61-fp1.zip"/>
 		</antcall>
 		<antcall target="download_packageshare">
 			<param name="packageshare.filepath" value="${demo.download.communities.scorm.fp1}"/>
 			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
+			<param name="packageshare.targetfilename" value="aem61-fp1-scorm.zip"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.communities.bundle.fp2}"/>
+			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
+			<param name="packageshare.targetfilename" value="aem61-fp2.zip"/>
+		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.communities.scorm.fp2}"/>
+			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
+			<param name="packageshare.targetfilename" value="aem61-fp2-scorm.zip"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading latest Communities uber -->
@@ -1243,17 +1280,11 @@
 		<echo message="Downloading latest AEM Sites feature pack"/>
 		<mkdir dir="${dist}/downloads"/>
 		<mkdir dir="${dist}/sites/aem61"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://nexus.bsl.eur.adobe.com/content/repositories/releases/com/adobe/cq/feature/cq-6.1.0-featurepack-5715/maven-metadata.xml"/>
-		</exec>
-		<xmlproperty file="${dist}/downloads/nexus.xml"/>
-		<echo message="Downloading cq-6.1.0-featurepack-5715-${metadata.versioning.release}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/sites/aem61/sites-fp.zip' http://nexus.bsl.eur.adobe.com/content/repositories/releases/com/adobe/cq/feature/cq-6.1.0-featurepack-5715/${metadata.versioning.release}/cq-6.1.0-featurepack-5715-${metadata.versioning.release}.zip"/>
-		</exec>
-		<delete>
-			<fileset dir="${dist}/downloads" includes="*.xml"/>
-		</delete>
+		<antcall target="download_packageshare">
+			<param name="packageshare.filepath" value="${demo.download.sites.fp1}"/>
+			<param name="packageshare.target" value="${dist}/sites/aem61"/>
+			<param name="packageshare.targetfilename" value="sites-fp1.zip"/>
+		</antcall>
 	</target>
 	<!-- Target for downloading latest Communities bundles -->
 	<target name="download_communities_bundles">
@@ -2171,7 +2202,7 @@
 		<copy file="${archives}/demomachine-${archive-file-name}-enablement.zip" tofile="${archives}/aem-demomachine-enablement.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Forms content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-forms.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**" excludes="dist/forms/**/AEM-FORMS*.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**" excludes="dist/forms/**/aem61-forms*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-forms.zip" tofile="${archives}/aem-demomachine-forms.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Assets content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-assets.zip"/>
@@ -2179,14 +2210,14 @@
 		<copy file="${archives}/demomachine-${archive-file-name}-assets.zip" tofile="${archives}/aem-demomachine-assets.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Sites content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-sites.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-sites.zip" basedir="." includes="dist/sites/**" excludes="dist/sites/**/*-fp.zip"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-sites.zip" basedir="." includes="dist/sites/**" excludes="dist/sites/**/*-fp*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-sites.zip" tofile="${archives}/aem-demomachine-sites.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Apps content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-apps.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-apps.zip" basedir="." includes="dist/apps/**"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-apps.zip" basedir="." includes="dist/apps/**" excludes="dist/apps/**/*-fp*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-apps.zip" tofile="${archives}/aem-demomachine-apps.zip" overwrite="true"/>
 		<delete file="${archives}/demomachine-${archive-file-name}-commerce.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-commerce.zip" basedir="." includes="dist/commerce/**"/>
+		<zip destfile="${archives}/demomachine-${archive-file-name}-commerce.zip" basedir="." includes="dist/commerce/**" excludes="dist/commerce/**/aem61-commerce*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-commerce.zip" tofile="${archives}/aem-demomachine-commerce.zip" overwrite="true"/>
 	</target>
 	<!-- Creates a backup file for a specific demo image using an external script -->
@@ -2344,8 +2375,17 @@
 			<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities.csv"/>
 		</antcall>
 		<if>
-			<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+			<not>
+				<and>
+					<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+					<or>
+						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
+					</or>
+				</and>
+			</not>
 			<then>
+				<!-- This content is for AEM 6.1 FP2 and beyond -->
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
@@ -2359,9 +2399,12 @@
 	<!-- Target for loading all available CSV files for new community site templates and new community sites into a demo instance -->
 	<target name="community_loader_sites" depends="community_loader_flag,compile">
 		<if>
-			<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
+			<and>
+				<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
+				<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+			</and>
 			<then>
-				<echo message="Loading Community Site Templates (for FP1)"/>
+				<echo message="Loading Community Site Templates (for AEM 6.1 FP1)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp1.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
@@ -2369,19 +2412,22 @@
 			</then>
 			<else>
 				<if>
-					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+					<and>
+						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+						<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+					</and>
 					<then>
-						<echo message="Loading Community Site Templates (for Latest)"/>
-						<java classname="com.adobe.aem.demo.communities.Loader">
-							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-						</java>
-					</then>
-					<else>
-						<echo message="Loading Community Site Templates (No feature pack)"/>
+						<echo message="Loading Community Site Templates (for AEM 6.1 GA)"/>
 						<java classname="com.adobe.aem.demo.communities.Loader">
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+						</java>
+					</then>
+					<else>
+						<echo message="Loading Community Site Templates (for AEM 6.1 FP2 and beyond)"/>
+						<java classname="com.adobe.aem.demo.communities.Loader">
+							<classpath refid="demo.classpath"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
 					</else>
 				</if>
@@ -2435,7 +2481,11 @@
 				<echo message="Upgrading the AEM instance on port ${port} with AEM Communities Scorm bundle"/>
 				<if>
 					<and>
-						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+						<or>
+							<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+							<equals arg1="${demo.version}" arg2="6.2" casesensitive="false"/>
+							<equals arg1="${demo.version}" arg2="6.3" casesensitive="false"/>
+						</or>
 						<resourceexists>
 							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
 						</resourceexists>
@@ -2505,7 +2555,7 @@
 		<if>
 			<and>
 				<equals arg1="${demo.external}" arg2="true" casesensitive="false"/>
-				<equals arg1="${demo.version}" arg2="aem61" casesensitive="false"/>
+				<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
 			</and>
 			<then>
 				<antcall target="community_hotfix_install">
@@ -2643,32 +2693,20 @@
 		<antcall target="demomachine_analytics_communities"/>
 		<antcall target="community_uber"/>
 		<if>
-			<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
-			<then>
-				<if>
+			<and>
+				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+				<not>
 					<and>
-						<resourceexists>
-							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
-						</resourceexists>
-						<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+						<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 					</and>
-					<then>
-						<antcall target="community_scorm_bundle"/>
-					</then>
-				</if>
+				</not>
+			</and>
+			<then>
+				<antcall target="community_scorm_bundle"/>
 				<antcall target="community_mysql_schema"/>
 				<antcall target="community_reporting_configure"/>
-				<if>
-					<and>
-						<resourceexists>
-							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
-						</resourceexists>
-						<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
-					</and>
-					<then>
-						<antcall target="community_scorm_configure"/>
-					</then>
-				</if>
+				<antcall target="community_scorm_configure"/>
 			</then>
 		</if>
 		<antcall target="community_upgrade"/>
@@ -2684,7 +2722,15 @@
 		</if>
 		<!-- Then we create the enablement resources for all available sites -->
 		<if>
-			<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+			<and>
+				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+				<not>
+					<and>
+						<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+					</and>
+				</not>
+			</and>
 			<then>
 				<antcall target="community_enablement"/>
 				<antcall target="community_loader_cloudservices_enablement"/>
@@ -3327,6 +3373,17 @@
 	</target>
 	<!-- Verifies the Infrastructure prerequisites -->
 	<target name="prerequisites">
+		<!-- Scenario for AEM Communities -->
+		<echo message="${ant.project.invoked-targets} - ${demomachine.type}"/>
+		<if>
+			<and>
+				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
+				<equals arg1="${demo.scenario}" arg2="demo_communities" casesensitive="false"/>
+			</and>
+			<then>
+				<fail message="Demonstrating AEM Communities requires a publish instance. Please select a demo topology with at least one Publish instance"/>
+			</then>
+		</if>
 		<!-- Scenarios for which Mongo is required -->
 		<if>
 			<or>

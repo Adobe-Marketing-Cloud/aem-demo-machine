@@ -208,6 +208,7 @@ public class AemDemoNew extends JDialog {
 					p.setUserProperty("demo.srp", selectedSRP.getValue());
 					p.setUserProperty("demo.store", selectedMK.getValue());
 					p.setUserProperty("demo.type", selectedTopology.getValue());
+					p.setUserProperty("demo.scenario", selectedConfig.getValue());
 					p.setUserProperty("demo.build", demoBuildName.getText());
 					p.init();
 

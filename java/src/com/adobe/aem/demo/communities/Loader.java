@@ -1494,7 +1494,12 @@ public class Loader {
 	// This method WAITs for a group to be present on a server
 	private static void doWait(String hostname, String port, String user, String password, String group) {
 
-		if (port!=null) {
+		if (group==null || group.length()==0) {
+			logger.error("Group name was not provided - not waiting for group to be available");
+			return;
+		}
+		
+		if (hostname!=null && port!=null && password!=null && user!=null && (group!=null && group.length()>0)) {
 
 			int retries = 0;
 
