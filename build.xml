@@ -1657,6 +1657,9 @@
 			<arg line="-X POST"/>
 			<arg line="-d rep:password=${demo.admin.password}"/>
 			<arg line="-d :currentPassword=admin"/>
+			<arg line="-d './profile/givenName=${demo.admin.firstname}'"/>
+			<arg line="-d './profile/familyName=${demo.admin.lastname}'"/>
+			<arg line="-d './profile/aboutMe=${demo.admin.aboutme}'"/>
 			<arg line="http://${demo.host}:${port}${admin.path}.rw.userprops.html"/>
 		</exec>
 	</target>
