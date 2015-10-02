@@ -987,6 +987,7 @@
 				<exec executable="curl">
 					<arg line="--output '${logs}/download_packageshare.html'"/>
 					<arg line="--cookie-jar '${logs}/packageshare.txt'"/>
+					<arg line="-k"/>
 					<arg line="-X POST"/>
 					<arg line="-d j_validate=true"/>
 					<arg line="-d j_username=${AdobeID.user}"/>
