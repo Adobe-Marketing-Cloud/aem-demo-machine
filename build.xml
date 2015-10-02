@@ -1315,9 +1315,17 @@
 		<mkdir dir="${ffmpeg}"/>
 		<unzip src="${dist}/downloads/ffmpeg.zip" dest="${ffmpeg}"/>
 		<chmod dir="${ffmpeg}" perm="ugo+rx" includes="*"/>
+		<echo message="IMPORTANT: FFMPEG was installed, please add the ${ffmpeg} folder to your PATH environment variable"/>
 	</target>
 	<!-- Target for installing the MongoDB software -->
 	<target name="install_mongo" if="isUnix">
+		<!-- Verifying that we don't have something running on the same port -->
+		<if>
+			<socket server="${demo.host}" port="${demo.mongo.port}"/>
+			<then>
+				<fail message="There seems to be another MongoDB instance already running on this host. Please stop the instance and retry. Alternatively, you can point the Demo Machine at this existing instance by setting demo.mongo.external=true and the associated credentials and paths"/>
+			</then>
+		</if>
 		<echo message="Installing Mongo DB"/>
 		<delete dir="${mongodb}"/>
 		<gunzip src="${dist}/downloads/mongodb.tgz" dest="${dist}/downloads/mongodb.tar"/>
@@ -1327,6 +1335,13 @@
 	</target>
 	<!-- Target for installing the MySQL software -->
 	<target name="install_mysql" if="isUnix">
+		<!-- Verifying that we don't have something running on the same port -->
+		<if>
+			<socket server="${demo.host}" port="${demo.mysql.port}"/>
+			<then>
+				<fail message="There seems to be another MySQL instance already running on this host. Please stop the instance and retry. Alternatively, you can point the Demo Machine at this existing instance by setting demo.mysql.external=true and the associated credentials and paths"/>
+			</then>
+		</if>
 		<echo message="Installing MySQL database"/>
 		<delete dir="${mysql}"/>
 		<gunzip src="${dist}/downloads/mysql.tgz" dest="${dist}/downloads/mysql.tar"/>
