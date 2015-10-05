@@ -1662,6 +1662,47 @@
 			<arg line="-d './profile/aboutMe=${demo.admin.aboutme}'"/>
 			<arg line="http://${demo.host}:${port}${admin.path}.rw.userprops.html"/>
 		</exec>
+		<if>
+			<and>
+				<resourceexists>
+					<file file="${demo.admin.photo}"/>
+				</resourceexists>
+				<not>
+					<equals arg1="${demo.admin.photo}" arg2=""/>
+				</not>
+			</and>
+			<then>
+				<echo message="Uploading admin profile picture with ${demo.admin.photo}"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_adminchangefolder1.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d 'jcr:primaryType=sling:Folder'"/>
+					<arg line="http://${demo.host}:${port}${admin.path}/profile/photos"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_adminchangefolder2.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d 'jcr:primaryType=sling:Folder'"/>
+					<arg line="http://${demo.host}:${port}${admin.path}/profile/photos/primary"/>
+				</exec>
+				<basename property="photofilename" file="${demo.admin.photo}"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_adminchangepicture.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-T '${demo.admin.photo}'"/>
+					<arg line="http://${demo.host}:${port}${admin.path}/profile/photos/primary/image"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_adminchangefolder3.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d 'jcr:mimeType=image/jpeg'"/>
+					<arg line="http://${demo.host}:${port}${admin.path}/profile/photos/primary/image/jcr:content"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the replication agents for the Farm instance -->
 	<target name="configure_farm">
