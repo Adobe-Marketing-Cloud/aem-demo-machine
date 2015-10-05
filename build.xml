@@ -856,6 +856,22 @@
 				</fileset>
 			</path>
 		</foreach>
+		<if>
+			<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+			<then>
+				<echo message="Waiting 1 min for the Apps packages to be fully deployed..."/>
+				<sleep seconds="60"/>
+			</then>
+		</if>
+		<antcall target="phonegap">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+		<antcall target="mobileservices">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
+		<antcall target="phonegapbuild">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
 	<target name="download_aem61">
@@ -1755,15 +1771,6 @@
 		<antcall target="community-moderators">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="phonegap">
-			<param name="port" value="${port}"/>
-		</antcall>
-		<antcall target="mobileservices">
-			<param name="port" value="${port}"/>
-		</antcall>
-		<antcall target="phonegapbuild">
-			<param name="port" value="${port}"/>
-		</antcall>
 		<if>
 			<equals arg1="${port}" arg2="${AdobeAEM.authorport}" casesensitive="false"/>
 			<then>
@@ -1933,6 +1940,7 @@
 		<if>
 			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
 			<then>
+				<echo message="Configuring Target cloud service"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_target.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -1951,6 +1959,7 @@
 		<if>
 			<equals arg1="${AdobeMobileServices.install}" arg2="true" casesensitive="false"/>
 			<then>
+				<echo message="Configuring Mobile Analytics cloud service"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_mobileservices.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -1964,6 +1973,7 @@
 					<arg line="-d ./company=${AdobeMobileServices.company}"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/mobileservices/amsconfig/jcr:content"/>
 				</exec>
+				<echo message="Associating Mobile Analytics cloud service to Geometrixx Outdoors app"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_mobileservices_shell.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -1981,6 +1991,7 @@
 		<if>
 			<equals arg1="${AdobePhoneGapBuild.install}" arg2="true" casesensitive="false"/>
 			<then>
+				<echo message="Configuring PhoneGap Build cloud service"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_phonegapbuild.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -1990,6 +2001,7 @@
 					<arg line="-d ./pgBuildUserId=${AdobePhoneGapBuild.user}"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/phonegap-build/phonegap-build/jcr:content"/>
 				</exec>
+				<echo message="Associating PhoneGap Build cloud service to Geometrixx Outdoors app"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_phonegapbuild_shell.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -2070,6 +2082,7 @@
 		<if>
 			<equals arg1="${demo.phonegap}" arg2="true" casesensitive="false"/>
 			<then>
+				<echo message="Setting Apache Sling Referrer filter"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_phonegap.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -2096,6 +2109,7 @@
 		<if>
 			<equals arg1="${BrightEdge.install}" arg2="true" casesensitive="false"/>
 			<then>
+				<echo message="Configuring BrightEdge cloud service"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_brightedge.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
