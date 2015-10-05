@@ -859,8 +859,8 @@
 		<if>
 			<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
 			<then>
-				<echo message="Waiting 1 min for the Apps packages to be fully deployed..."/>
-				<sleep seconds="60"/>
+				<echo message="Waiting 2 minutes for the Apps packages to be fully deployed..."/>
+				<sleep seconds="120"/>
 			</then>
 		</if>
 		<antcall target="phonegap">
@@ -3448,7 +3448,6 @@
 	<!-- Verifies the Infrastructure prerequisites -->
 	<target name="prerequisites">
 		<!-- Scenario for AEM Communities -->
-		<echo message="${ant.project.invoked-targets} - ${demomachine.type}"/>
 		<if>
 			<and>
 				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
