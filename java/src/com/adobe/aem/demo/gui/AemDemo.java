@@ -209,6 +209,14 @@ public class AemDemo {
 		JMenu mnSites = new JMenu("Sites");
 		mnUpdate.add(mnSites);
 
+		JMenuItem mntmSitesDownloadFP = new JMenuItem("Download Packages (PackageShare)");
+		mntmSitesDownloadFP.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_sites_packages");
+			}
+		});
+		mnSites.add(mntmSitesDownloadFP);
+
 		JMenuItem mntmSitesDownloadAddOn = new JMenuItem("Download Demo Add-on");
 		mntmSitesDownloadAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -217,17 +225,9 @@ public class AemDemo {
 		});
 		mnSites.add(mntmSitesDownloadAddOn);
 
-		JMenuItem mntmSitesDownloadFP = new JMenuItem("Download Latest Feature Packs (PackageShare)");
-		mntmSitesDownloadFP.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_sites_fp");
-			}
-		});
-		mnSites.add(mntmSitesDownloadFP);
-
 		mnSites.addSeparator();
 		
-		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install Add-on");
+		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install");
 		mntmSitesInstallAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "sites");
@@ -239,6 +239,14 @@ public class AemDemo {
 		JMenu mnAssets = new JMenu("Assets");
 		mnUpdate.add(mnAssets);
 
+		JMenuItem mntmAssetsDownloadFP = new JMenuItem("Download Packages (PackageShare)");
+		mntmAssetsDownloadFP.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_assets_packages");
+			}
+		});
+		mnAssets.add(mntmAssetsDownloadFP);
+		
 		JMenuItem mntmAssetsDownloadAddOn = new JMenuItem("Download Demo Add-on");
 		mntmAssetsDownloadAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -248,7 +256,7 @@ public class AemDemo {
 		mnAssets.add(mntmAssetsDownloadAddOn);
 		mnAssets.addSeparator();
 
-		JMenuItem mntmAssetsInstallAddOn = new JMenuItem("Install Add-on");
+		JMenuItem mntmAssetsInstallAddOn = new JMenuItem("Install");
 		mntmAssetsInstallAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "assets");
@@ -260,10 +268,10 @@ public class AemDemo {
 		JMenu mnCommunities = new JMenu("Communities");
 		mnUpdate.add(mnCommunities);
 				
-		JMenuItem mntmAemCommunitiesFeaturePacks = new JMenuItem("Download Latest Feature Packs (PackageShare)");
+		JMenuItem mntmAemCommunitiesFeaturePacks = new JMenuItem("Download Packages (PackageShare)");
 		mntmAemCommunitiesFeaturePacks.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_communities_fp");
+				AemDemoUtils.antTarget(AemDemo.this, "download_communities_packages");
 			}
 		});
 		mnCommunities.add(mntmAemCommunitiesFeaturePacks);
@@ -287,7 +295,7 @@ public class AemDemo {
 		
 		mnCommunities.addSeparator();
 
-		JMenuItem mntmAemCommunitiesAddOn = new JMenuItem("Install Add-on");
+		JMenuItem mntmAemCommunitiesAddOn = new JMenuItem("Install");
 		mntmAemCommunitiesAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "communities");
@@ -299,6 +307,14 @@ public class AemDemo {
 		JMenu mnForms = new JMenu("Forms");
 		mnUpdate.add(mnForms);
 
+		JMenuItem mntmAemFormsFP = new JMenuItem("Download Packages (PackageShare)");
+		mntmAemFormsFP.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_forms_packages");
+			}
+		});
+		mnForms.add(mntmAemFormsFP);
+
 		JMenuItem mntmAemFormsAddon = new JMenuItem("Download Demo Add-on");
 		mntmAemFormsAddon.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -307,17 +323,9 @@ public class AemDemo {
 		});
 		mnForms.add(mntmAemFormsAddon);
 
-		JMenuItem mntmAemFormsFP = new JMenuItem("Download Latest Feature Packs (PackageShare)");
-		mntmAemFormsFP.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_forms_fp");
-			}
-		});
-		mnForms.add(mntmAemFormsFP);
-
 		mnForms.addSeparator();
 
-		JMenuItem mntmAemFormsAddOn = new JMenuItem("Install Add-on");
+		JMenuItem mntmAemFormsAddOn = new JMenuItem("Install");
 		mntmAemFormsAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "forms");
@@ -329,6 +337,14 @@ public class AemDemo {
 		JMenu mnApps = new JMenu("Apps");
 		mnUpdate.add(mnApps);
 
+		JMenuItem mntmAemApps = new JMenuItem("Download Packages (PackageShare)");
+		mntmAemApps.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_apps_packages");
+			}
+		});
+		mnApps.add(mntmAemApps);
+
 		JMenuItem mntmAemAppsAddon = new JMenuItem("Download Demo Add-on");
 		mntmAemAppsAddon.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -337,17 +353,9 @@ public class AemDemo {
 		});
 		mnApps.add(mntmAemAppsAddon);
 		
-		JMenuItem mntmAemApps = new JMenuItem("Download Latest Feature Packs (PackageShare)");
-		mntmAemApps.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_apps_fp");
-			}
-		});
-		mnApps.add(mntmAemApps);
-
 		mnApps.addSeparator();
 
-		JMenuItem mntmAemAppsAddOn = new JMenuItem("Install Add-on");
+		JMenuItem mntmAemAppsAddOn = new JMenuItem("Install");
 		mntmAemAppsAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "apps");
@@ -359,7 +367,7 @@ public class AemDemo {
 		JMenu mnCommerce = new JMenu("Commerce");
 		mnUpdate.add(mnCommerce);
 
-		JMenu mnCommerceDownload = new JMenu("Download Latest Feature Packs");
+		JMenu mnCommerceDownload = new JMenu("Download Packages");
 		mnCommerce.add(mnCommerceDownload);
 
 		// Commerce EP
@@ -382,7 +390,7 @@ public class AemDemo {
 
 		mnCommerce.addSeparator();
 
-		JMenuItem mntmAemCommerceAddOn = new JMenuItem("Install Add-on");
+		JMenuItem mntmAemCommerceAddOn = new JMenuItem("Install");
 		mntmAemCommerceAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "commerce");
@@ -614,6 +622,15 @@ public class AemDemo {
 		mntmAemDownload.add(mntmAemDownloadOthers);
 
 		mnOther.add(mntmAemDownload);
+
+		JMenuItem mntmAemHotfix = new JMenuItem("Download Latest Hotfixes (PackageShare)");
+		mntmAemHotfix.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemHotfix.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_hotfixes_packages");
+			}
+		});
+		mnOther.add(mntmAemHotfix);
 
 		JMenuItem mntmAemSnapshot = new JMenuItem("Download Latest AEM Snapshot (VPN)");
 		mntmAemSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		

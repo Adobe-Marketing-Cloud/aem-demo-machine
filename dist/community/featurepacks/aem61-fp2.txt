@@ -1,1 +1,0 @@
-AEM Communities 6.1 Feature Pack 2 (set demo.communities.featurepack=aem61-fp2)

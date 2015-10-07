@@ -913,10 +913,12 @@
 	<!-- Download demo extensions -->
 	<target name="download_all">
 		<antcall target="download_sites"/>
+		<antcall target="download_sites_packages"/>
 		<antcall target="download_assets"/>
-		<antcall target="download_communities_fp"/>
-		<antcall target="download_apps_fp"/>
-		<antcall target="download_forms_fp"/>
+		<antcall target="download_assets_packages"/>
+		<antcall target="download_communities_packages"/>
+		<antcall target="download_apps_packages"/>
+		<antcall target="download_forms_packages"/>
 	</target>
 	<target name="download_sites">
 		<echo message="Downloading Latest AEM Sites Demo Add-on in /dist/downloads"/>
@@ -986,7 +988,33 @@
 		<delete file="${dist}/downloads/google.txt"/>
 		<delete file="${dist}/downloads/google.html"/>
 	</target>
+	<!-- Target for downloading all packages for a given area -->
 	<target name="download_packageshare">
+		<echo message="Downloading latest AEM ${packageshare.capability} packages from PackageShare"/>
+		<propertyselector property="constituents" match="demo.download.${packageshare.capability}.([^\.]*).core" select="\1" casesensitive="false"/>
+		<if>
+			<and>
+				<isset property="constituents"/>
+				<not>
+					<equals arg1="${constituents}" arg2=""/>
+				</not>
+			</and>
+			<then>
+				<foreach list="${constituents}" target="download_packageshare_item" param="packageshare.id"/>
+			</then>
+			<else>
+				<echo message="No matching packages for ${packageshare.capability}"/>
+			</else>
+		</if>
+	</target>
+	<target name="download_packageshare_item">
+		<antcall target="download_packageshare_file">
+			<param name="packageshare.filepath" value="demo.download.${packageshare.capability}.${packageshare.id}.core"/>
+			<param name="packageshare.version" value="demo.download.${packageshare.capability}.${packageshare.id}.version"/>
+			<param name="packageshare.filename" value="demo.download.${packageshare.capability}.${packageshare.id}.name"/>
+		</antcall>
+	</target>
+	<target name="download_packageshare_file">
 		<if>
 			<or>
 				<equals arg1="${AdobeID.user}" arg2="" casesensitive="false"/>
@@ -998,7 +1026,6 @@
 				<echo message="Please configure your Adobe ID and password to download from Package Share (AdobeID.user and AdobeID.password properties)"/>
 			</then>
 			<else>
-				<basename property="packageshare.filename" file="${packageshare.filepath}"/>
 				<echo message="Connecting to Adobe Package Share with ID: ${AdobeID.user}"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/download_packageshare.html'"/>
@@ -1010,12 +1037,35 @@
 					<arg line="-d j_password=${AdobeID.password}"/>
 					<arg line="https://www.adobeaemcloud.com/content/login/j_security_check"/>
 				</exec>
+				<propertycopy property="filepath" from="${packageshare.filepath}"/>
+				<propertycopy property="fileversion" from="${packageshare.version}"/>
+				<mkdir dir="${packageshare.target}/${fileversion}"/>
 				<echo message="Download in progress, please wait until it is complete"/>
 				<exec executable="curl">
-					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageshare.filename}' https://www.adobeaemcloud.com${packageshare.filepath}"/>
+					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${logs}/packageshare.html' https://www.adobeaemcloud.com/content/marketplace/marketplaceProxy.html?packagePath=${filepath}"/>
 				</exec>
-				<move file="${dist}/downloads/${packageshare.filename}" todir="${packageshare.target}"/>
-				<move file="${packageshare.target}/${packageshare.filename}" tofile="${packageshare.target}/${packageshare.targetfilename}"/>
+				<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
+				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="Download to disk:( *)([-a-zA-Z0-9_\\.]*)" select="\2"/>
+				<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
+				<if>
+					<and>
+						<isset property="${packageshare.filename}"/>
+						<not>
+							<equals arg1="${packageshare.filename}" arg2=""/>
+						</not>
+					</and>
+					<then>
+						<propertycopy property="filename" from="${packageshare.filename}"/>
+						<exec executable="curl">
+							<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${packageshare.target}/${fileversion}/${filename}' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
+						</exec>
+					</then>
+					<else>
+						<exec executable="curl">
+							<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${packageshare.target}/${fileversion}/${packageShareFileName}.zip' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
+						</exec>
+					</else>
+				</if>
 			</else>
 		</if>
 	</target>
@@ -1113,135 +1163,83 @@
 			<arg line="-s -o '${dist}/downloads/ffmpeg.zip' http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
 		</exec>
 	</target>
-	<!-- Target for initializing subdirs -->
-	<target name="download_dirs">
-		<mkdir dir="${download.dir}/aem61"/>
-		<mkdir dir="${download.dir}/aem60"/>
-		<mkdir dir="${download.dir}/aem62"/>
-		<mkdir dir="${download.dir}/all"/>
-	</target>
 	<!-- Target for downloading latest Commerce (EP) bundles -->
 	<target name="download_commerce_ep">
 		<delete dir="${dist}/commerce"/>
-		<antcall target="download_dirs">
-			<param name="download.dir" value="${dist}/commerce"/>
-		</antcall>
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.commerce.ep.addon}"/>
-			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-commerce-ep-addon.zip"/>
-		</antcall>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.commerce.ep.demo}"/>
-			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-commerce-ep-demo.zip"/>
-		</antcall>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.commerce.ep.geo}"/>
-			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-commerce-ep-geo.zip"/>
-		</antcall>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.commerce.ep.amc}"/>
-			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-commerce-ep-amc.zip"/>
+			<param name="packageshare.capability" value="commerce-ep"/>
+			<param name="packageshare.target" value="${dist}/commerce"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading latest Commerce (WebSphere) bundles -->
 	<target name="download_commerce_websphere">
 		<delete dir="${dist}/commerce"/>
-		<antcall target="download_dirs">
-			<param name="download.dir" value="${dist}/commerce"/>
-		</antcall>
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.commerce.websphere.addon}"/>
-			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-commerce-websphere-addon.zip"/>
-		</antcall>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.commerce.websphere.demo}"/>
-			<param name="packageshare.target" value="${dist}/commerce/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-commerce-websphere-demo.zip"/>
+			<param name="packageshare.capability" value="commerce-was"/>
+			<param name="packageshare.target" value="${dist}/commerce"/>
 		</antcall>
 	</target>
-	<!-- Target for downloading latest Forms uber -->
-	<target name="download_forms_fp">
-		<antcall target="download_dirs">
-			<param name="download.dir" value="${dist}/forms"/>
-		</antcall>
+	<!-- Target for downloading latest Forms packages -->
+	<target name="download_forms_packages">
 		<antcall target="download_forms_win"/>
 		<antcall target="download_forms_macos"/>
 		<antcall target="download_forms_demo"/>
 	</target>
+	<!-- Target for downloading the forms demo sites -->
 	<target name="download_forms_demo">
-		<echo message="Downloading latest AEM Forms Finance demo"/>
-		<mkdir dir="${dist}/forms/aem61"/>
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.forms.demo.fsi}"/>
-			<param name="packageshare.target" value="${dist}/forms/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-forms-demo-fsi.zip"/>
-		</antcall>
-		<echo message="Downloading latest AEM Forms Gov demo"/>
-		<mkdir dir="${dist}/forms/aem61"/>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.forms.demo.gov}"/>
-			<param name="packageshare.target" value="${dist}/forms/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-forms-demo-gov.zip"/>
+			<param name="packageshare.capability" value="formsdemo"/>
+			<param name="packageshare.target" value="${dist}/forms"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the forms add-on, on MacOS then on Windows-->
 	<target name="download_forms_win" if="isWindows">
 		<echo message="Downloading latest AEM Forms Add-on for Windows"/>
-		<mkdir dir="${dist}/forms/aem61"/>
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.forms.addon.win}"/>
-			<param name="packageshare.target" value="${dist}/forms/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-forms-addon-win.zip"/>
+			<param name="packageshare.capability" value="formswin"/>
+			<param name="packageshare.target" value="${dist}/forms"/>
 		</antcall>
 	</target>
 	<target name="download_forms_macos" if="isUnix">
 		<echo message="Downloading latest AEM Forms Add-on for MacOS"/>
-		<mkdir dir="${dist}/forms/aem61"/>
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.forms.addon.macos}"/>
-			<param name="packageshare.target" value="${dist}/forms/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-forms-addon-macos.zip"/>
+			<param name="packageshare.capability" value="formsmac"/>
+			<param name="packageshare.target" value="${dist}/forms"/>
 		</antcall>
 	</target>
-	<!-- Target for downloading the Apps Feature Packs -->
-	<target name="download_apps_fp">
+	<!-- Target for downloading the latest Sites packages -->
+	<target name="download_sites_packages">
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.apps.fp2.core}"/>
-			<param name="packageshare.target" value="${dist}/apps/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-fp2-core.zip"/>
+			<param name="packageshare.capability" value="sites"/>
+			<param name="packageshare.target" value="${dist}/sites"/>
 		</antcall>
+	</target>
+	<!-- Target for downloading the latest Apps packages -->
+	<target name="download_apps_packages">
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.apps.fp2.samples}"/>
-			<param name="packageshare.target" value="${dist}/apps/aem61"/>
-			<param name="packageshare.targetfilename" value="aem61-fp2-samples.zip"/>
+			<param name="packageshare.capability" value="apps"/>
+			<param name="packageshare.target" value="${dist}/apps"/>
+		</antcall>
+	</target>
+	<!-- Target for downloading the latest Assets packages -->
+	<target name="download_assets_packages">
+		<antcall target="download_packageshare">
+			<param name="packageshare.capability" value="assets"/>
+			<param name="packageshare.target" value="${dist}/assets"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the Communities Feature Packs -->
-	<target name="download_communities_fp">
+	<target name="download_communities_packages">
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.communities.bundle.fp1}"/>
+			<param name="packageshare.capability" value="communities"/>
 			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
-			<param name="packageshare.targetfilename" value="aem61-fp1.zip"/>
 		</antcall>
+	</target>
+	<!-- Target for downloading the Hotfixes -->
+	<target name="download_hotfixes_packages">
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.communities.scorm.fp1}"/>
-			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
-			<param name="packageshare.targetfilename" value="aem61-fp1-scorm.zip"/>
-		</antcall>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.communities.bundle.fp2}"/>
-			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
-			<param name="packageshare.targetfilename" value="aem61-fp2.zip"/>
-		</antcall>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.communities.scorm.fp2}"/>
-			<param name="packageshare.target" value="${dist}/community/featurepacks"/>
-			<param name="packageshare.targetfilename" value="aem61-fp2-scorm.zip"/>
+			<param name="packageshare.capability" value="hotfix"/>
+			<param name="packageshare.target" value="${dist}/hotfixes"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading latest Communities uber -->
@@ -1283,24 +1281,11 @@
 		</delete>
 	</target>
 	<!-- Target for downloading latest Livefyre feature pack -->
-	<target name="download_livefyre">
+	<target name="download_livefyre_packages">
 		<echo message="Downloading latest Livefyre feature pack"/>
-		<mkdir dir="${dist}/downloads"/>
 		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.livefyre}"/>
-			<param name="packageshare.target" value="${dist}/downloads"/>
-			<param name="packageshare.targetfilename" value="livefire-fp.zip"/>
-		</antcall>
-	</target>
-	<!-- Target for downloading latest Sites feature pack -->
-	<target name="download_sites_fp">
-		<echo message="Downloading latest AEM Sites feature pack"/>
-		<mkdir dir="${dist}/downloads"/>
-		<mkdir dir="${dist}/sites/aem61"/>
-		<antcall target="download_packageshare">
-			<param name="packageshare.filepath" value="${demo.download.sites.fp1}"/>
-			<param name="packageshare.target" value="${dist}/sites/aem61"/>
-			<param name="packageshare.targetfilename" value="sites-fp1.zip"/>
+			<param name="packageshare.capability" value="livefyre"/>
+			<param name="packageshare.target" value="${dist}/livefyre"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading latest Communities bundles -->
@@ -1418,7 +1403,7 @@
 			<and>
 				<socket server="${demo.host}" port="${port}"/>
 				<resourceexists>
-					<file file="${dist}/downloads/livefyre-fp.zip"/>
+					<file file="${dist}/livefyre/Livefyre.zip"/>
 				</resourceexists>
 				<resourceexists>
 					<file file="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
@@ -1427,7 +1412,7 @@
 			<then>
 				<echo message="Installing the livefyre FP on running instances"/>
 				<antcall target="package">
-					<param name="package" value="${dist}/downloads/livefyre-fp.zip"/>
+					<param name="package" value="${dist}/livefyre/Livefyre.zip"/>
 				</antcall>
 				<antcall target="package">
 					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
@@ -2612,11 +2597,11 @@
 									<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 								</not>
 								<resourceexists>
-									<file file="${dist}/community/featurepacks/${demo.communities.featurepack}.zip"/>
+									<file file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip"/>
 								</resourceexists>
 							</and>
 							<then>
-								<copy file="${dist}/community/featurepacks/${demo.communities.featurepack}.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+								<copy file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 							</then>
 						</if>
 					</else>
@@ -2687,12 +2672,12 @@
 									<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 								</not>
 								<resourceexists>
-									<file file="${dist}/community/featurepacks/${demo.communities.featurepack}.zip"/>
+									<file file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip"/>
 								</resourceexists>
 							</and>
 							<then>
 								<antcall target="package">
-									<param name="package" value="${dist}/community/featurepacks/${demo.communities.featurepack}.zip"/>
+									<param name="package" value="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip"/>
 								</antcall>
 								<antcall target="community_uber_wait"/>
 							</then>
@@ -3445,8 +3430,22 @@
 			<param name="path" value="/content/community-components/en/jcr:content"/>
 		</antcall>
 	</target>
-	<!-- Verifies the Infrastructure prerequisites -->
 	<target name="prerequisites">
+		<!-- Making sure the hotfixes have been downloaded -->
+		<resourcecount property="count.hotfixes">
+			<fileset dir="${dist}/hotfixes">
+				<include name="**/*.zip"/>
+			</fileset>
+		</resourcecount>
+		<if>
+			<equals arg1="${count.hotfixes}" arg2="0" casesensitive="false"/>
+			<then>
+				<echo message="WARNING: Hotfixes have not been downloaded yet - please do it!"/>
+			</then>
+			<else>
+				<echo message="${count.hotfixes} Hotfixes will be installed at startup time"/>
+			</else>
+		</if>
 		<!-- Scenario for AEM Communities -->
 		<if>
 			<and>
