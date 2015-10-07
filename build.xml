@@ -3447,7 +3447,17 @@
 				<echo message="${count.hotfixes} Hotfixes will be installed at startup time"/>
 			</else>
 		</if>
-		<!-- Scenario for AEM Communities -->
+		<!-- Scenarios for AEM Communities -->
+		<if>
+			<and>
+				<equals arg1="${count.hotfixes}" arg2="0" casesensitive="false"/>
+				<equals arg1="${demo.scenario}" arg2="demo_communities" casesensitive="false"/>
+				<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
+			</and>
+			<then>
+				<fail message="Demonstrating AEM Communities 6.1 requires a few hotfixes to be there. Please download the hotfixes from the GUI or with download_hotfixes_packages target"/>
+			</then>
+		</if>
 		<if>
 			<and>
 				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
