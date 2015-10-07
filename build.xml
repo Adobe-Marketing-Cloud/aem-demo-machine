@@ -1027,6 +1027,7 @@
 			</then>
 			<else>
 				<echo message="Connecting to Adobe Package Share with ID: ${AdobeID.user}"/>
+				<mkdir dir="${logs}"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/download_packageshare.html'"/>
 					<arg line="--cookie-jar '${logs}/packageshare.txt'"/>
