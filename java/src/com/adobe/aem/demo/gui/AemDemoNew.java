@@ -18,6 +18,8 @@ package com.adobe.aem.demo.gui;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -210,6 +212,14 @@ public class AemDemoNew extends JDialog {
 					p.setUserProperty("demo.type", selectedTopology.getValue());
 					p.setUserProperty("demo.scenario", selectedConfig.getValue());
 					p.setUserProperty("demo.build", demoBuildName.getText());
+
+					// Make sure host name is there
+					try {
+						p.setUserProperty("demo.hostname", InetAddress.getLocalHost().getHostName());
+					} catch (UnknownHostException ex) {
+						logger.error(ex.getMessage());
+					}
+					
 					p.init();
 
 					ProjectHelper helper = ProjectHelper.getProjectHelper();

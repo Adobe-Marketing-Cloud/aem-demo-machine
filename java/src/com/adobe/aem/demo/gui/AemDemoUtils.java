@@ -22,9 +22,11 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -212,6 +214,13 @@ public class AemDemoUtils {
 
 			if (selectedDemoMachine!=null && selectedDemoMachine.length()>0) p.setUserProperty("demo.build", selectedDemoMachine.toString());
 
+			// Make sure host name is there
+			try {
+				p.setUserProperty("demo.hostname", InetAddress.getLocalHost().getHostName());
+			} catch (UnknownHostException ex) {
+				logger.error(ex.getMessage());
+			}
+			
 			p.init();
 
 			ProjectHelper helper = ProjectHelper.getProjectHelper();
