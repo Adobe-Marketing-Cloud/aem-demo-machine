@@ -1026,7 +1026,7 @@
 				<equals arg1="${AdobeID.password}" arg2="" casesensitive="false"/>
 			</or>
 			<then>
-				<echo message="Please configure your Adobe ID and password to download from Package Share (AdobeID.user and AdobeID.password properties)"/>
+				<fail message="Please configure your Adobe ID and password to download from Package Share (AdobeID.user and AdobeID.password properties)"/>
 			</then>
 			<else>
 				<echo message="Connecting to Adobe Package Share with ID: ${AdobeID.user}"/>
