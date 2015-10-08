@@ -192,7 +192,10 @@
 	<!-- Target for deploying the hotfixes before the first startup -->
 	<target name="hotfix_instance" depends="version">
 		<if>
-			<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
+			<and>
+				<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
+				<available file="${demo.hotfixes}" type="dir"/>
+			</and>
 			<then>
 				<echo message="Configuring the ${demo.instance} instance"/>
 				<foreach target="hotfix_package" param="package">
