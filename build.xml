@@ -860,7 +860,7 @@
 			</path>
 		</foreach>
 		<if>
-			<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+			<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 			<then>
 				<echo message="Waiting 2 minutes for the Apps packages to be fully deployed..."/>
 				<sleep seconds="120"/>
@@ -2440,7 +2440,7 @@
 		<if>
 			<not>
 				<and>
-					<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+					<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 					<or>
 						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
@@ -2464,7 +2464,7 @@
 		<if>
 			<and>
 				<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
-				<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 			</and>
 			<then>
 				<echo message="Loading Community Site Templates (for AEM 6.1 FP1)"/>
@@ -2477,7 +2477,7 @@
 				<if>
 					<and>
 						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
-						<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 					</and>
 					<then>
 						<echo message="Loading Community Site Templates (for AEM 6.1 GA)"/>
@@ -2546,8 +2546,8 @@
 					<and>
 						<or>
 							<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
-							<equals arg1="${demo.version}" arg2="6.2" casesensitive="false"/>
-							<equals arg1="${demo.version}" arg2="6.3" casesensitive="false"/>
+							<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+							<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 						</or>
 						<resourceexists>
 							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
@@ -2618,7 +2618,7 @@
 		<if>
 			<and>
 				<equals arg1="${demo.external}" arg2="true" casesensitive="false"/>
-				<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 			</and>
 			<then>
 				<antcall target="community_hotfix_install">
@@ -2760,7 +2760,7 @@
 				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
 				<not>
 					<and>
-						<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 					</and>
 				</not>
@@ -2789,7 +2789,7 @@
 				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
 				<not>
 					<and>
-						<equals arg1="${demo.version}" arg2="6.1" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 					</and>
 				</not>
