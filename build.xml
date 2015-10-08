@@ -194,7 +194,7 @@
 		<if>
 			<and>
 				<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
-				<available file="${dist.hotfixes}" type="dir"/>
+				<available file="${dist}/hotfixes" type="dir"/>
 			</and>
 			<then>
 				<echo message="Configuring the ${demo.instance} instance"/>
@@ -3439,7 +3439,7 @@
 		<if>
 			<and>
 				<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
-				<available file="${dist.hotfixes}" type="dir"/>
+				<available file="${dist}/hotfixes" type="dir"/>
 			</and>
 			<then>
 				<resourcecount property="count.hotfixes">
