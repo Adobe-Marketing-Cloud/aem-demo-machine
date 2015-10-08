@@ -3436,11 +3436,22 @@
 	</target>
 	<target name="prerequisites">
 		<!-- Making sure the hotfixes have been downloaded -->
-		<resourcecount property="count.hotfixes">
-			<fileset dir="${dist}/hotfixes">
-				<include name="**/*.zip"/>
-			</fileset>
-		</resourcecount>
+		<if>
+			<and>
+				<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
+				<available file="${demo.hotfixes}" type="dir"/>
+			</and>
+			<then>
+				<resourcecount property="count.hotfixes">
+					<fileset dir="${dist}/hotfixes">
+						<include name="**/*.zip"/>
+					</fileset>
+				</resourcecount>
+			</then>
+			<else>
+				<property name="count.hotfixes" value="0"/>
+			</else>
+		</if>
 		<if>
 			<equals arg1="${count.hotfixes}" arg2="0" casesensitive="false"/>
 			<then>
