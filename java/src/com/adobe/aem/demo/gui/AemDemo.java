@@ -64,7 +64,7 @@ public class AemDemo {
 	private JList<String> listDemoMachines;
 	private boolean buildInProgress = false;
 	private boolean downloadInProgress = false;
-	
+
 	public static void main(String[] args) {
 
 		String demoMachineRootFolder = null;
@@ -90,7 +90,7 @@ public class AemDemo {
 		logger.debug("Trying to load build file from " + buildFilePath);
 		buildFile = new File( buildFilePath );
 		if(buildFile.exists() && !buildFile.isDirectory()) {
-			
+
 			// Launching the main window
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
@@ -226,7 +226,7 @@ public class AemDemo {
 		mnSites.add(mntmSitesDownloadAddOn);
 
 		mnSites.addSeparator();
-		
+
 		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install");
 		mntmSitesInstallAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -246,7 +246,7 @@ public class AemDemo {
 			}
 		});
 		mnAssets.add(mntmAssetsDownloadFP);
-		
+
 		JMenuItem mntmAssetsDownloadAddOn = new JMenuItem("Download Demo Add-on");
 		mntmAssetsDownloadAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -267,7 +267,7 @@ public class AemDemo {
 		// Communities Add-on
 		JMenu mnCommunities = new JMenu("Communities");
 		mnUpdate.add(mnCommunities);
-				
+
 		JMenuItem mntmAemCommunitiesFeaturePacks = new JMenuItem("Download Packages (PackageShare)");
 		mntmAemCommunitiesFeaturePacks.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -292,7 +292,7 @@ public class AemDemo {
 			}
 		});
 		mnCommunities.add(mntmAemCommunitiesEnablement);
-		
+
 		mnCommunities.addSeparator();
 
 		JMenuItem mntmAemCommunitiesAddOn = new JMenuItem("Install");
@@ -332,7 +332,7 @@ public class AemDemo {
 			}
 		});
 		mnForms.add(mntmAemFormsAddOn);
-		
+
 		// Apps Add-on
 		JMenu mnApps = new JMenu("Apps");
 		mnUpdate.add(mnApps);
@@ -352,7 +352,7 @@ public class AemDemo {
 			}
 		});
 		mnApps.add(mntmAemAppsAddon);
-		
+
 		mnApps.addSeparator();
 
 		JMenuItem mntmAemAppsAddOn = new JMenuItem("Install");
@@ -362,7 +362,7 @@ public class AemDemo {
 			}
 		});
 		mnApps.add(mntmAemAppsAddOn);
-		
+
 		// Commerce Add-on
 		JMenu mnCommerce = new JMenu("Commerce");
 		mnUpdate.add(mnCommerce);
@@ -446,10 +446,10 @@ public class AemDemo {
 		});
 		mnMongo.add(mntmInfraMongoDBStop);
 		mnInfrastructure.add(mnMongo);
-	
+
 		// SOLR options
 		JMenu mnSOLR = new JMenu("SOLR");
-		
+
 		JMenuItem mntmInfraSOLR = new JMenuItem("Download");
 		mntmInfraSOLR.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -482,7 +482,7 @@ public class AemDemo {
 			}
 		});
 		mnSOLR.add(mntmInfraSOLRStop);
-		
+
 		mnInfrastructure.add(mnSOLR);		
 
 		// MySQL options
@@ -524,6 +524,45 @@ public class AemDemo {
 
 		mnInfrastructure.add(mnMySQL);		
 
+		// James options
+		JMenu mnJames = new JMenu("James SMTP/POP");
+
+		JMenuItem mntmInfraJames = new JMenuItem("Download");
+		mntmInfraJames.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_james");
+			}
+		});
+		mnJames.add(mntmInfraJames);
+
+		JMenuItem mntmInfraJamesInstall = new JMenuItem("Install");
+		mntmInfraJamesInstall.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "install_james");
+			}
+		});
+		mnJames.add(mntmInfraJamesInstall);
+		mnJames.addSeparator();
+
+		JMenuItem mntmInfraJamesStart = new JMenuItem("Start");
+		mntmInfraJamesStart.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "james_start");
+			}
+		});
+		mnJames.add(mntmInfraJamesStart);
+
+		JMenuItem mntmInfraJamesStop = new JMenuItem("Stop");
+		mntmInfraJamesStop.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "james_stop");
+			}
+		});
+		mnJames.add(mntmInfraJamesStop);
+
+		mnInfrastructure.add(mnJames);		
+
+		
 		// FFMPEPG options
 		JMenu mnFFMPEG = new JMenu("FFMPEG");
 
@@ -534,7 +573,7 @@ public class AemDemo {
 			}
 		});
 		mnFFMPEG.add(mntmInfraFFMPEG);
-		
+
 		JMenuItem mntmInfraFFMPEGInstall = new JMenuItem("Install");
 		mntmInfraFFMPEGInstall.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -542,29 +581,8 @@ public class AemDemo {
 			}
 		});
 		mnFFMPEG.add(mntmInfraFFMPEGInstall);
-		
+
 		mnInfrastructure.add(mnFFMPEG);		
-
-		// Apache James options
-		JMenu mnJames = new JMenu("James SMTP");
-
-		JMenuItem mnJamesStart = new JMenuItem("Start");
-		mnJamesStart.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "james_start");
-			}
-		});
-		mnJames.add(mnJamesStart);
-		
-		JMenuItem mnJamesStop = new JMenuItem("Stop");
-		mnJamesStop.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "james_stop");
-			}
-		});
-		mnJames.add(mnJamesStop);
-		
-		mnInfrastructure.add(mnJames);		
 
 		mnInfrastructure.addSeparator();
 
@@ -673,7 +691,7 @@ public class AemDemo {
 		// Capturing the output stream of ANT commands
 		AemDemoOutputStream out = new AemDemoOutputStream (textArea);
 		System.setOut (new PrintStream (out));
-		
+
 		JButton btnStart = new JButton("Start");
 		btnStart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -705,6 +723,10 @@ public class AemDemo {
 		btnStop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
+				int dialogResult = JOptionPane.showConfirmDialog (null, "Are you sure you really want to stop the running instances?","Warning",JOptionPane.YES_NO_OPTION);
+				if(dialogResult == JOptionPane.NO_OPTION) {
+					return;
+				}
 				AemDemoUtils.antTarget(AemDemo.this, "stop");
 
 			}
@@ -751,6 +773,10 @@ public class AemDemo {
 		JButton btnDelete = new JButton("Delete");
 		btnDelete.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				int dialogResult = JOptionPane.showConfirmDialog (null, "Are you sure you really want to permanently delete the selected demo configuration?","Warning",JOptionPane.YES_NO_OPTION);
+				if(dialogResult == JOptionPane.NO_OPTION) {
+					return;
+				}
 				AemDemoUtils.antTarget(AemDemo.this, "uninstall");
 			}
 		});
@@ -815,7 +841,7 @@ public class AemDemo {
 	public DefaultListModel<String> getListModelDemoMachines() {
 		return this.listModelDemoMachines;
 	}	
-	
+
 	public JList<String> getListDemoMachines() {
 		return this.listDemoMachines;
 	}	

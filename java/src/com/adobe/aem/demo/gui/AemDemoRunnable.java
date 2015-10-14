@@ -42,9 +42,10 @@ public class AemDemoRunnable implements Runnable {
 		}
 
 		try {
+			
 			p.executeTarget(t);
 			p.fireBuildFinished(null);
-
+			
 		} catch (BuildException ex) {
 			System.out.println("Sorry, this target couldn't be completed properly");
 			System.out.println("The error message is:");
@@ -63,6 +64,6 @@ public class AemDemoRunnable implements Runnable {
 		String buildName = p.getProperty("demo.build");
 		if (Arrays.asList(AemDemoConstants.CLEANUP_ACTIONS).contains(t)) aemDemo.getListModelDemoMachines().removeElement(buildName);
 		if (Arrays.asList(AemDemoConstants.BUILD_ACTIONS).contains(t) && !aemDemo.getListModelDemoMachines().contains(buildName)) aemDemo.getListModelDemoMachines().addElement(buildName);
-
+		
 	}
 }

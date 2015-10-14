@@ -473,7 +473,14 @@
 	<target name="james_start">
 		<echo message="Starting the James SMTP/POP server..."/>
 		<chmod dir="${james}/bin" perm="ugo+rx" includes="*.sh"/>
-		<exec executable="${james}/bin/run.sh" dir="${james}/bin" spawn="true"/>
+		<if>
+			<resourceexists>
+				<file file="${james}/bin/run.sh"/>
+			</resourceexists>
+			<then>
+				<exec executable="${james}/bin/run.sh" dir="${james}/bin" spawn="true"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for stopping the JAMES smtp server -->
 	<target name="james_stop">
@@ -486,6 +493,99 @@
 				<antcall target="james_stop_unix"/>
 			</then>
 		</if>
+	</target>
+	<!-- Target for listing the JAMES smtp server configuration -->
+	<target name="james_config">
+		<if>
+			<resourceexists>
+				<file file="${james}/bin/james-cli.sh"/>
+			</resourceexists>
+			<then>
+				<echo message="Listing the registered domains..."/>
+				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+					<arg line="-h ${demo.emailserver.hostname} -p 9999 listdomains"/>
+				</exec>
+				<echo message="Listing the registered users..."/>
+				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+					<arg line="-h ${demo.emailserver.hostname} -p 9999 listusers"/>
+				</exec>
+				<echo message="Listing the registered mappings..."/>
+				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+					<arg line="-h ${demo.emailserver.hostname} -p 9999 listmappings"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for installing and configuring the JAMES smtp server  -->
+	<target name="install_james">
+		<antcall target="james_stop"/>
+		<delete dir="${james}"/>
+		<unzip src="${dist}/downloads/james.zip" dest="."/>
+		<move file="./apache-james-3.0-${demo.emailserver.version}" tofile="${james}"/>
+		<chmod dir="${james}/bin" perm="ugo+rx" includes="*"/>
+		<copy todir="${james}/conf" overwrite="true">
+			<fileset dir="${dist}/james/conf">
+				<include name="*.conf"/>
+			</fileset>
+		</copy>
+		<copy todir="${james}/conf/lib" overwrite="true">
+			<fileset dir="${dist}/james/conf">
+				<include name="*.jar"/>
+			</fileset>
+		</copy>
+		<replace file="${james}/conf/smtpserver.conf" token="@@PORT_SMTP@@" value="${demo.emailserver.smtp}"/>
+		<replace file="${james}/conf/pop3server.conf" token="@@PORT_POP@@" value="${demo.emailserver.pop}"/>
+		<antcall target="james_start"/>
+		<if>
+			<resourceexists>
+				<file file="${james}/bin/james-cli.sh"/>
+			</resourceexists>
+			<then>
+				<echo message="Loading up domains..."/>
+				<propertyselector property="constituents" match="demo.emailserver.domains.([^\.]*)" select="\1" casesensitive="false"/>
+				<if>
+					<and>
+						<isset property="constituents"/>
+						<not>
+							<equals arg1="${constituents}" arg2=""/>
+						</not>
+					</and>
+					<then>
+						<foreach list="${constituents}" target="james_install_domain" param="domain.id"/>
+					</then>
+				</if>
+				<echo message="Loading up users..."/>
+				<propertyselector property="users" match="demo.emailserver.users.([^\.]*)" select="\1" casesensitive="false"/>
+				<if>
+					<and>
+						<isset property="users"/>
+						<not>
+							<equals arg1="${users}" arg2=""/>
+						</not>
+					</and>
+					<then>
+						<foreach list="${users}" target="james_install_user" param="user.id"/>
+					</then>
+				</if>
+			</then>
+		</if>
+		<antcall target="james_stop"/>
+	</target>
+	<!-- Target for registering a new domain -->
+	<target name="james_install_domain">
+		<propertycopy property="domain.value" from="demo.emailserver.domains.${domain.id}"/>
+		<echo message="Loading up domain ${domain.id}/${domain.value}..."/>
+		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+			<arg line="-h ${demo.emailserver.hostname} -p 9999 adddomain ${domain.value}"/>
+		</exec>
+	</target>
+	<!-- Target for registering a new user -->
+	<target name="james_install_user">
+		<propertycopy property="user.value" from="demo.emailserver.users.${user.id}"/>
+		<echo message="Loading up user ${user.id}/${user.value}..."/>
+		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+			<arg line="-h ${demo.emailserver.hostname} -p 9999 adduser ${user.value} ${demo.emailserver.password}"/>
+		</exec>
 	</target>
 	<!-- Target for killing the JAMES smtp server, if needed -->
 	<target name="james_stop_unix" if="isUnix" depends="permissions">
@@ -1041,6 +1141,12 @@
 					<arg line="-d j_password=${AdobeID.password}"/>
 					<arg line="https://www.adobeaemcloud.com/content/login/j_security_check"/>
 				</exec>
+				<if>
+					<resourcecontains resource="${logs}/download_packageshare.html" substring="do not match"/>
+					<then>
+						<fail message="There was a problem connecting to PackageShare. Please verify AdobeID.user and AdobeID.password properties."/>
+					</then>
+				</if>
 				<propertycopy property="filepath" from="${packageshare.filepath}"/>
 				<propertycopy property="fileversion" from="${packageshare.version}"/>
 				<mkdir dir="${packageshare.target}/${fileversion}"/>
@@ -1127,17 +1233,20 @@
 		<antcall target="mongo_stop"/>
 		<antcall target="solr_stop"/>
 		<antcall target="mysql_stop"/>
+		<antcall target="james_stop"/>
 	</target>
 	<target name="infrastructure_download">
 		<antcall target="download_mongo"/>
 		<antcall target="download_solr"/>
 		<antcall target="download_mysql"/>
+		<antcall target="download_james"/>
 		<antcall target="download_ffmpeg"/>
 	</target>
 	<target name="infrastructure_install">
 		<antcall target="install_mongo"/>
 		<antcall target="install_solr"/>
 		<antcall target="install_mysql"/>
+		<antcall target="install_james"/>
 		<antcall target="install_ffmpeg"/>
 	</target>
 	<!-- Target for downloading the MongoDB software -->
@@ -1147,6 +1256,15 @@
 		<echo message="Downloading https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/mongodb.tgz' https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
+		</exec>
+	</target>
+	<!-- Target for downloading the James SMTP software -->
+	<target name="download_james">
+		<echo message="Downloading Apache James SMTP"/>
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading  http://archive.apache.org/dist/james/apache-james/3.0${demo.emailserver.version}/apache-james-3.0-${demo.emailserver.version}-app.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/james.zip' http://archive.apache.org/dist/james/apache-james/3.0${demo.emailserver.version}/apache-james-3.0-${demo.emailserver.version}-app.zip"/>
 		</exec>
 	</target>
 	<!-- Target for downloading the MySQL software -->
