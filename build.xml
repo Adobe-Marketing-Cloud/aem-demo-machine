@@ -524,12 +524,12 @@
 		<move file="./apache-james-3.0-${demo.emailserver.version}" tofile="${james}"/>
 		<chmod dir="${james}/bin" perm="ugo+rx" includes="*"/>
 		<copy todir="${james}/conf" overwrite="true">
-			<fileset dir="${dist}/james/conf">
+			<fileset dir="${dist}/james">
 				<include name="*.conf"/>
 			</fileset>
 		</copy>
 		<copy todir="${james}/conf/lib" overwrite="true">
-			<fileset dir="${dist}/james/conf">
+			<fileset dir="${dist}/james">
 				<include name="*.jar"/>
 			</fileset>
 		</copy>
@@ -590,7 +590,7 @@
 	<!-- Target for killing the JAMES smtp server, if needed -->
 	<target name="james_stop_unix" if="isUnix" depends="permissions">
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
-			<arg line="james"/>
+			<arg line="org.apache.james"/>
 		</exec>
 	</target>
 	<!-- Target for starting the SOLR server -->
