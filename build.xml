@@ -537,14 +537,17 @@
 		<replace file="${james}/conf/smtpserver.conf" token="@@PORT_SMTP@@" value="${demo.emailserver.smtp}"/>
 		<replace file="${james}/conf/pop3server.conf" token="@@PORT_POP@@" value="${demo.emailserver.pop}"/>
 		<replace file="${james}/conf/jmx.properties" token="@@PORT_JMX@@" value="${demo.emailserver.jmx}"/>
+		<antcall target="james_setup"/>
 	</target>
 	<target name="james_setup">
-		<antcall target="james_start"/>
 		<if>
 			<resourceexists>
 				<file file="${james}/bin/james-cli.sh"/>
 			</resourceexists>
 			<then>
+				<antcall target="james_start"/>
+				<echo message="Waiting 10 seconds for James to be available before mailbox creation"/>
+				<sleep seconds="10"/>
 				<echo message="Loading up domains..."/>
 				<propertyselector property="constituents" match="demo.emailserver.domains.([^\.]*)" select="\1" casesensitive="false"/>
 				<if>
@@ -578,7 +581,7 @@
 	<!-- Target for registering a new domain -->
 	<target name="james_install_domain">
 		<propertycopy property="domain.value" from="demo.emailserver.domains.${domain.id}"/>
-		<echo message="Loading up domain ${domain.id}/${domain.value}..."/>
+		<echo message="Loading up domain ${domain.value}..."/>
 		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
 			<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} adddomain ${domain.value}"/>
 		</exec>
@@ -586,7 +589,7 @@
 	<!-- Target for registering a new user -->
 	<target name="james_install_user">
 		<propertycopy property="user.value" from="demo.emailserver.users.${user.id}"/>
-		<echo message="Loading up user ${user.id}/${user.value}..."/>
+		<echo message="Loading up user ${user.value}..."/>
 		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
 			<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} adduser ${user.value} ${demo.emailserver.password}"/>
 		</exec>
