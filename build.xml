@@ -503,15 +503,15 @@
 			<then>
 				<echo message="Listing the registered domains..."/>
 				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
-					<arg line="-h ${demo.emailserver.hostname} -p 9999 listdomains"/>
+					<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} listdomains"/>
 				</exec>
 				<echo message="Listing the registered users..."/>
 				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
-					<arg line="-h ${demo.emailserver.hostname} -p 9999 listusers"/>
+					<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} listusers"/>
 				</exec>
 				<echo message="Listing the registered mappings..."/>
 				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
-					<arg line="-h ${demo.emailserver.hostname} -p 9999 listmappings"/>
+					<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} listmappings"/>
 				</exec>
 			</then>
 		</if>
@@ -526,6 +526,7 @@
 		<copy todir="${james}/conf" overwrite="true">
 			<fileset dir="${dist}/james">
 				<include name="*.conf"/>
+				<include name="*.properties"/>
 			</fileset>
 		</copy>
 		<copy todir="${james}/conf/lib" overwrite="true">
@@ -535,6 +536,9 @@
 		</copy>
 		<replace file="${james}/conf/smtpserver.conf" token="@@PORT_SMTP@@" value="${demo.emailserver.smtp}"/>
 		<replace file="${james}/conf/pop3server.conf" token="@@PORT_POP@@" value="${demo.emailserver.pop}"/>
+		<replace file="${james}/conf/jmx.properties" token="@@PORT_JMX@@" value="${demo.emailserver.jmx}"/>
+	</target>
+	<target name="james_setup">
 		<antcall target="james_start"/>
 		<if>
 			<resourceexists>
@@ -576,7 +580,7 @@
 		<propertycopy property="domain.value" from="demo.emailserver.domains.${domain.id}"/>
 		<echo message="Loading up domain ${domain.id}/${domain.value}..."/>
 		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
-			<arg line="-h ${demo.emailserver.hostname} -p 9999 adddomain ${domain.value}"/>
+			<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} adddomain ${domain.value}"/>
 		</exec>
 	</target>
 	<!-- Target for registering a new user -->
@@ -584,7 +588,7 @@
 		<propertycopy property="user.value" from="demo.emailserver.users.${user.id}"/>
 		<echo message="Loading up user ${user.id}/${user.value}..."/>
 		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
-			<arg line="-h ${demo.emailserver.hostname} -p 9999 adduser ${user.value} ${demo.emailserver.password}"/>
+			<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} adduser ${user.value} ${demo.emailserver.password}"/>
 		</exec>
 	</target>
 	<!-- Target for killing the JAMES smtp server, if needed -->
