@@ -622,29 +622,55 @@
 		<echo message="Stopping James on Windows is not implemented yet..."/>
 		<sleep seconds="1"/>
 	</target>
+	<!-- Target for downloading the SOLR software -->
+	<target name="download_solr">
+		<echo message="Downloading Apache SOLR"/>
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/solr.tgz' http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
+		</exec>
+	</target>
+	<!-- Target for installing the SOLR software -->
+	<target name="install_solr">
+		<echo message="Installing Apache SOLR"/>
+		<delete dir="${solr}"/>
+		<mkdir dir="${solr}"/>
+		<gunzip src="${dist}/downloads/solr.tgz" dest="${dist}/downloads/solr.tar"/>
+		<untar src="${dist}/downloads/solr.tar" dest="."/>
+		<move file="./solr-${demo.solr}" tofile="${solr}"/>
+		<copy file="${solr}/bin/solr" tofile="${solr}/bin/solr.sh" overwrite="true"/>
+		<copy file="${solr}/bin/solr.cmd" tofile="${solr}/bin/solr.bat" overwrite="true"/>
+		<chmod dir="${solr}/bin" perm="ugo+rx" includes="*"/>
+		<copy todir="${solr}/example/solr/collection1/conf" overwrite="true">
+			<fileset dir="${dist}/community/solr">
+				<include name="*"/>
+			</fileset>
+		</copy>
+	</target>
 	<!-- Target for starting the SOLR server -->
-	<target name="solr_start">
+	<target name="solr_start" depends="os_detect">
 		<if>
 			<resourceexists>
 				<file file="${solr}/bin/solr"/>
 			</resourceexists>
 			<then>
 				<echo message="Starting the SOLR server..."/>
-				<exec executable="./solr" dir="${solr}/bin" spawn="true">
+				<exec executable="${solr}/bin/solr.${os.cmd}" dir="${solr}/bin" spawn="true">
 					<arg line="start"/>
 				</exec>
 			</then>
 		</if>
 	</target>
 	<!-- Target for stopping the SOLR server -->
-	<target name="solr_stop">
+	<target name="solr_stop" depends="os_detect">
 		<if>
 			<resourceexists>
 				<file file="${solr}/bin/solr"/>
 			</resourceexists>
 			<then>
 				<echo message="Stopping the SOLR server..."/>
-				<exec executable="${solr}/bin/solr" dir="${solr}/bin" failonerror="false" failifexecutionfails="false" spawn="true">
+				<exec executable="${solr}/bin/solr.${os.cmd}" dir="${solr}/bin" failonerror="false" failifexecutionfails="false" spawn="true">
 					<arg line="stop -all"/>
 				</exec>
 				<sleep seconds="4"/>
@@ -1528,30 +1554,6 @@
 			<arg line="-u root password ${demo.mysql.password}"/>
 		</exec>
 		<antcall target="mysql_stop"/>
-	</target>
-	<!-- Target for downloading the SOLR software -->
-	<target name="download_solr">
-		<echo message="Downloading Apache SOLR"/>
-		<mkdir dir="${dist}/downloads"/>
-		<echo message="Downloading http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/solr.tgz' http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
-		</exec>
-	</target>
-	<!-- Target for installing the SOLR software -->
-	<target name="install_solr">
-		<echo message="Installing Apache SOLR"/>
-		<delete dir="${solr}"/>
-		<mkdir dir="${solr}"/>
-		<gunzip src="${dist}/downloads/solr.tgz" dest="${dist}/downloads/solr.tar"/>
-		<untar src="${dist}/downloads/solr.tar" dest="."/>
-		<move file="./solr-${demo.solr}" tofile="${solr}"/>
-		<chmod dir="${solr}/bin" perm="ugo+rx" includes="*"/>
-		<copy todir="${solr}/example/solr/collection1/conf" overwrite="true">
-			<fileset dir="${dist}/community/solr">
-				<include name="*"/>
-			</fileset>
-		</copy>
 	</target>
 	<!-- Target for installing and configuring the Livefyre feature pack -->
 	<target name="livefyre" if="aem61orlater" depends="version">
