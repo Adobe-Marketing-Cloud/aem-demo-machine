@@ -470,47 +470,40 @@
 		</if>
 	</target>
 	<!-- Target for starting the JAMES smtp server -->
-	<target name="james_start">
+	<target name="james_start" depends="os_detect">
 		<echo message="Starting the James SMTP/POP server..."/>
 		<chmod dir="${james}/bin" perm="ugo+rx" includes="*.sh"/>
 		<if>
-			<resourceexists>
-				<file file="${james}/bin/run.sh"/>
-			</resourceexists>
+			<and>
+				<resourceexists>
+					<file file="${james}/bin/run.${os.cmd}"/>
+				</resourceexists>
+				<not>
+					<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.smtp}"/>
+				</not>
+			</and>
 			<then>
-				<exec executable="${james}/bin/run.sh" dir="${james}/bin" spawn="true"/>
-			</then>
-		</if>
-	</target>
-	<!-- Target for stopping the JAMES smtp server -->
-	<target name="james_stop">
-		<if>
-			<resourceexists>
-				<file file="${james}/bin/run.sh"/>
-			</resourceexists>
-			<then>
-				<echo message="Stopping the James SMTP/POP server..."/>
-				<antcall target="james_stop_unix"/>
+				<exec executable="${james}/bin/run.${os.cmd}" dir="${james}/bin" spawn="true"/>
 			</then>
 		</if>
 	</target>
 	<!-- Target for listing the JAMES smtp server configuration -->
-	<target name="james_config">
+	<target name="james_config" depends="os_detect">
 		<if>
 			<resourceexists>
-				<file file="${james}/bin/james-cli.sh"/>
+				<file file="${james}/bin/james-cli.${os.cmd}"/>
 			</resourceexists>
 			<then>
 				<echo message="Listing the registered domains..."/>
-				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+				<exec executable="${james}/bin/james-cli.${os.cmd}" dir="${james}/bin" spawn="false">
 					<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} listdomains"/>
 				</exec>
 				<echo message="Listing the registered users..."/>
-				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+				<exec executable="${james}/bin/james-cli.${os.cmd}" dir="${james}/bin" spawn="false">
 					<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} listusers"/>
 				</exec>
 				<echo message="Listing the registered mappings..."/>
-				<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+				<exec executable="${james}/bin/james-cli.${os.cmd}" dir="${james}/bin" spawn="false">
 					<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} listmappings"/>
 				</exec>
 			</then>
@@ -519,30 +512,42 @@
 	<!-- Target for installing and configuring the JAMES smtp server  -->
 	<target name="install_james">
 		<antcall target="james_stop"/>
-		<delete dir="${james}"/>
-		<unzip src="${dist}/downloads/james.zip" dest="."/>
-		<move file="./apache-james-3.0-${demo.emailserver.version}" tofile="${james}"/>
-		<chmod dir="${james}/bin" perm="ugo+rx" includes="*"/>
-		<copy todir="${james}/conf" overwrite="true">
-			<fileset dir="${dist}/james">
-				<include name="*.conf"/>
-				<include name="*.properties"/>
-			</fileset>
-		</copy>
-		<copy todir="${james}/conf/lib" overwrite="true">
-			<fileset dir="${dist}/james">
-				<include name="*.jar"/>
-			</fileset>
-		</copy>
-		<replace file="${james}/conf/smtpserver.conf" token="@@PORT_SMTP@@" value="${demo.emailserver.smtp}"/>
-		<replace file="${james}/conf/pop3server.conf" token="@@PORT_POP@@" value="${demo.emailserver.pop}"/>
-		<replace file="${james}/conf/jmx.properties" token="@@PORT_JMX@@" value="${demo.emailserver.jmx}"/>
-		<antcall target="james_setup"/>
+		<if>
+			<and>
+				<not>
+					<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.smtp}"/>
+				</not>
+				<not>
+					<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.pop}"/>
+				</not>
+			</and>
+			<then>
+				<delete dir="${james}"/>
+				<unzip src="${dist}/downloads/james.zip" dest="."/>
+				<move file="./apache-james-3.0-${demo.emailserver.version}" tofile="${james}"/>
+				<chmod dir="${james}/bin" perm="ugo+rx" includes="*"/>
+				<copy todir="${james}/conf" overwrite="true">
+					<fileset dir="${dist}/james">
+						<include name="*.conf"/>
+						<include name="*.properties"/>
+					</fileset>
+				</copy>
+				<copy todir="${james}/conf/lib" overwrite="true">
+					<fileset dir="${dist}/james">
+						<include name="*.jar"/>
+					</fileset>
+				</copy>
+				<replace file="${james}/conf/smtpserver.conf" token="@@PORT_SMTP@@" value="${demo.emailserver.smtp}"/>
+				<replace file="${james}/conf/pop3server.conf" token="@@PORT_POP@@" value="${demo.emailserver.pop}"/>
+				<replace file="${james}/conf/jmx.properties" token="@@PORT_JMX@@" value="${demo.emailserver.jmx}"/>
+				<antcall target="james_setup"/>
+			</then>
+		</if>
 	</target>
-	<target name="james_setup">
+	<target name="james_setup" depends="os_detect">
 		<if>
 			<resourceexists>
-				<file file="${james}/bin/james-cli.sh"/>
+				<file file="${james}/bin/james-cli.${os.cmd}"/>
 			</resourceexists>
 			<then>
 				<antcall target="james_start"/>
@@ -578,19 +583,31 @@
 		</if>
 		<antcall target="james_stop"/>
 	</target>
+	<!-- Target for detecting OS extension -->
+	<target name="os_detect">
+		<if>
+			<os family="unix"/>
+			<then>
+				<property name="os.cmd" value="sh"/>
+			</then>
+			<else>
+				<property name="os.cmd" value="bat"/>
+			</else>
+		</if>
+	</target>
 	<!-- Target for registering a new domain -->
-	<target name="james_install_domain">
+	<target name="james_install_domain" depends="os_detect">
 		<propertycopy property="domain.value" from="demo.emailserver.domains.${domain.id}"/>
 		<echo message="Loading up domain ${domain.value}..."/>
-		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+		<exec executable="${james}/bin/james-cli.${os.cmd}" dir="${james}/bin" spawn="false">
 			<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} adddomain ${domain.value}"/>
 		</exec>
 	</target>
 	<!-- Target for registering a new user -->
-	<target name="james_install_user">
+	<target name="james_install_user" depends="os_detect">
 		<propertycopy property="user.value" from="demo.emailserver.users.${user.id}"/>
 		<echo message="Loading up user ${user.value}..."/>
-		<exec executable="${james}/bin/james-cli.sh" dir="${james}" spawn="false">
+		<exec executable="${james}/bin/james-cli.${os.cmd}" dir="${james}/bin" spawn="false">
 			<arg line="-h ${demo.emailserver.hostname} -p ${demo.emailserver.jmx} adduser ${user.value} ${demo.emailserver.password}"/>
 		</exec>
 	</target>
@@ -599,6 +616,11 @@
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
 			<arg line="org.apache.james"/>
 		</exec>
+		<sleep seconds="1"/>
+	</target>
+	<target name="james_stop_win" if="isWindows" depends="permissions">
+		<echo message="Stopping James on Windows is not implemented yet..."/>
+		<sleep seconds="1"/>
 	</target>
 	<!-- Target for starting the SOLR server -->
 	<target name="solr_start">
@@ -635,6 +657,22 @@
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
 			<arg line="solr"/>
 		</exec>
+	</target>
+	<!-- Target for stopping the JAMES smtp server -->
+	<target name="james_stop" depends="os_detect">
+		<if>
+			<and>
+				<resourceexists>
+					<file file="${james}/bin/run.${os.cmd}"/>
+				</resourceexists>
+				<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.smtp}"/>
+			</and>
+			<then>
+				<echo message="Stopping the James SMTP/POP server..."/>
+				<antcall target="james_stop_unix"/>
+				<antcall target="james_stop_win"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for starting the MYSQL server -->
 	<target name="mysql_start">
