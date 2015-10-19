@@ -617,7 +617,7 @@
 	<!-- Target for killing the JAMES smtp server, if needed -->
 	<target name="james_stop_unix" if="isUnix" depends="permissions">
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
-			<arg line="org.apache.james"/>
+			<arg line="james"/>
 		</exec>
 		<sleep seconds="1"/>
 	</target>
