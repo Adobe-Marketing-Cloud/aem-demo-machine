@@ -554,8 +554,8 @@
 			</resourceexists>
 			<then>
 				<antcall target="james_start"/>
-				<echo message="Waiting 10 seconds for James to be available before mailbox creation"/>
-				<sleep seconds="10"/>
+				<echo message="Waiting 20 seconds for James to be available before mailbox creation"/>
+				<sleep seconds="20"/>
 				<echo message="Loading up domains..."/>
 				<propertyselector property="constituents" match="demo.emailserver.domains.([^\.]*)" select="\1" casesensitive="false"/>
 				<if>
