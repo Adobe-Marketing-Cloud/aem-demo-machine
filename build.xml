@@ -1551,6 +1551,7 @@
 		<!-- Verifying that we don't have something running on the same port -->
 		<if>
 			<and>
+				<os family="mac"/>
 				<socket server="${demo.host}" port="${demo.mongo.port}"/>
 				<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
 			</and>
@@ -1578,6 +1579,7 @@
 		<!-- Verifying that we don't have something running on the same port -->
 		<if>
 			<and>
+				<os family="mac"/>
 				<socket server="${demo.host}" port="${demo.mysql.port}"/>
 				<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
 			</and>
