@@ -30,6 +30,9 @@
 	<condition property="isUnix">
 		<os family="unix"/>
 	</condition>
+	<condition property="isMac">
+		<os family="mac"/>
+	</condition>
 	<!-- build classpath for Java tools -->
 	<path id="demo.classpath">
 		<fileset dir="${java}/libs">
@@ -1321,13 +1324,21 @@
 		<antcall target="install_ffmpeg"/>
 	</target>
 	<!-- Target for downloading the MongoDB software -->
-	<target name="download_mongo" if="isUnix">
-		<echo message="Downloading Mongo DB"/>
+	<target name="download_mongo">
 		<mkdir dir="${dist}/downloads"/>
-		<echo message="Downloading https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/mongodb.tgz' https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
-		</exec>
+		<if>
+			<os family="mac"/>
+			<then>
+				<echo message="Downloading Mongo DB for MacOS"/>
+				<echo message="Downloading https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/mongodb.tgz' https://fastdl.mongodb.org/osx/${demo.mongo}.tgz"/>
+				</exec>
+			</then>
+			<else>
+				<echo message="IMPORTANT: On Windows and Unix, you need to setup MongoDB separately then set demo.mongo.external=true"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for downloading the James SMTP software -->
 	<target name="download_james">
@@ -1339,22 +1350,38 @@
 		</exec>
 	</target>
 	<!-- Target for downloading the MySQL software -->
-	<target name="download_mysql" if="isUnix">
-		<echo message="Downloading MySQL DB"/>
+	<target name="download_mysql">
 		<mkdir dir="${dist}/downloads"/>
-		<echo message="Downloading http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/mysql.tgz' http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
-		</exec>
+		<if>
+			<os family="mac"/>
+			<then>
+				<echo message="Downloading MySQL DB for MacOS"/>
+				<echo message="Downloading http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/mysql.tgz' http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
+				</exec>
+			</then>
+			<else>
+				<echo message="IMPORTANT: On Windows and Unix, you need to setup MySQL separately then set demo.mysql.external=true"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for downloading FFMPEG -->
-	<target name="download_ffmpeg" if="isUnix">
-		<echo message="Downloading FFMpeg"/>
+	<target name="download_ffmpeg">
 		<mkdir dir="${dist}/downloads"/>
-		<echo message="Downloading http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/ffmpeg.zip' http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
-		</exec>
+		<if>
+			<os family="mac"/>
+			<then>
+				<echo message="Downloading FFMpeg for MacOS"/>
+				<echo message="Downloading http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
+				<exec executable="curl">
+					<arg line="-s -o '${dist}/downloads/ffmpeg.zip' http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
+				</exec>
+			</then>
+			<else>
+				<echo message="IMPORTANT: On Windows and Unix, you need to setup FFPMEG separately"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for downloading latest Commerce (EP) bundles -->
 	<target name="download_commerce_ep">
@@ -1503,57 +1530,87 @@
 		</delete>
 	</target>
 	<!-- Target for installing the FFMPEG software -->
-	<target name="install_ffmpeg" if="isUnix">
-		<echo message="Installing FFMPEG"/>
-		<delete dir="${ffmpeg}"/>
-		<mkdir dir="${ffmpeg}"/>
-		<unzip src="${dist}/downloads/ffmpeg.zip" dest="${ffmpeg}"/>
-		<chmod dir="${ffmpeg}" perm="ugo+rx" includes="*"/>
-		<echo message="IMPORTANT: FFMPEG was installed, please add the ${ffmpeg} folder to your PATH environment variable"/>
+	<target name="install_ffmpeg" if="isMac">
+		<if>
+			<os family="mac"/>
+			<then>
+				<echo message="Installing FFMPEG for MacOS"/>
+				<delete dir="${ffmpeg}"/>
+				<mkdir dir="${ffmpeg}"/>
+				<unzip src="${dist}/downloads/ffmpeg.zip" dest="${ffmpeg}"/>
+				<chmod dir="${ffmpeg}" perm="ugo+rx" includes="*"/>
+				<echo message="IMPORTANT: FFMPEG was installed, please add the ${ffmpeg} folder to your PATH environment variable"/>
+			</then>
+			<else>
+				<echo message="IMPORTANT: FFMPEG is not installed by the AEM Demo Machine on Windows and Unix"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for installing the MongoDB software -->
-	<target name="install_mongo" if="isUnix">
+	<target name="install_mongo">
 		<!-- Verifying that we don't have something running on the same port -->
 		<if>
-			<socket server="${demo.host}" port="${demo.mongo.port}"/>
+			<and>
+				<socket server="${demo.host}" port="${demo.mongo.port}"/>
+				<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
+			</and>
 			<then>
 				<fail message="There seems to be another MongoDB instance already running on this host. Please stop the instance and retry. Alternatively, you can point the Demo Machine at this existing instance by setting demo.mongo.external=true and the associated credentials and paths"/>
 			</then>
 		</if>
-		<echo message="Installing Mongo DB"/>
-		<delete dir="${mongodb}"/>
-		<gunzip src="${dist}/downloads/mongodb.tgz" dest="${dist}/downloads/mongodb.tar"/>
-		<untar src="${dist}/downloads/mongodb.tar" dest="."/>
-		<move file="./${demo.mongo}" tofile="${mongodb}"/>
-		<chmod dir="${mongodb}/bin" perm="ugo+rx" includes="*"/>
+		<if>
+			<os family="mac"/>
+			<then>
+				<echo message="Installing Mongo DB on MacOS"/>
+				<delete dir="${mongodb}"/>
+				<gunzip src="${dist}/downloads/mongodb.tgz" dest="${dist}/downloads/mongodb.tar"/>
+				<untar src="${dist}/downloads/mongodb.tar" dest="."/>
+				<move file="./${demo.mongo}" tofile="${mongodb}"/>
+				<chmod dir="${mongodb}/bin" perm="ugo+rx" includes="*"/>
+			</then>
+			<else>
+				<echo message="IMPORTANT: MongoDB is not installed by the AEM Demo Machine on Windows"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for installing the MySQL software -->
-	<target name="install_mysql" if="isUnix">
+	<target name="install_mysql">
 		<!-- Verifying that we don't have something running on the same port -->
 		<if>
-			<socket server="${demo.host}" port="${demo.mysql.port}"/>
+			<and>
+				<socket server="${demo.host}" port="${demo.mysql.port}"/>
+				<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+			</and>
 			<then>
 				<fail message="There seems to be another MySQL instance already running on this host. Please stop the instance and retry. Alternatively, you can point the Demo Machine at this existing instance by setting demo.mysql.external=true and the associated credentials and paths"/>
 			</then>
 		</if>
-		<echo message="Installing MySQL database"/>
-		<delete dir="${mysql}"/>
-		<gunzip src="${dist}/downloads/mysql.tgz" dest="${dist}/downloads/mysql.tar"/>
-		<untar src="${dist}/downloads/mysql.tar" dest="."/>
-		<move file="./mysql-${demo.mysql}" tofile="${mysql}"/>
-		<chmod dir="${mysql}/bin" perm="ugo+rx" includes="*"/>
-		<chmod dir="${mysql}/scripts" perm="ugo+rx" includes="*"/>
-		<chmod dir="${mysql}/data" perm="ugo+rx" includes="*"/>
-		<echo message="Initializing schema for ${mysql}"/>
-		<exec executable="./scripts/mysql_install_db" dir="${mysql}">
-			<arg line="--basedir='${mysql}' --datadir='${mysql}/data/'"/>
-		</exec>
-		<antcall target="mysql_start"/>
-		<echo message="Changing root user password to: ${demo.mysql.password}"/>
-		<exec executable="./bin/mysqladmin" dir="${mysql}">
-			<arg line="-u root password ${demo.mysql.password}"/>
-		</exec>
-		<antcall target="mysql_stop"/>
+		<if>
+			<os family="mac"/>
+			<then>
+				<echo message="Installing MySQL database on MacOS"/>
+				<delete dir="${mysql}"/>
+				<gunzip src="${dist}/downloads/mysql.tgz" dest="${dist}/downloads/mysql.tar"/>
+				<untar src="${dist}/downloads/mysql.tar" dest="."/>
+				<move file="./mysql-${demo.mysql}" tofile="${mysql}"/>
+				<chmod dir="${mysql}/bin" perm="ugo+rx" includes="*"/>
+				<chmod dir="${mysql}/scripts" perm="ugo+rx" includes="*"/>
+				<chmod dir="${mysql}/data" perm="ugo+rx" includes="*"/>
+				<echo message="Initializing schema for ${mysql}"/>
+				<exec executable="./scripts/mysql_install_db" dir="${mysql}">
+					<arg line="--basedir='${mysql}' --datadir='${mysql}/data/'"/>
+				</exec>
+				<antcall target="mysql_start"/>
+				<echo message="Changing root user password to: ${demo.mysql.password}"/>
+				<exec executable="./bin/mysqladmin" dir="${mysql}">
+					<arg line="-u root password ${demo.mysql.password}"/>
+				</exec>
+				<antcall target="mysql_stop"/>
+			</then>
+			<else>
+				<echo message="IMPORTANT: MySQL is not installed by the AEM Demo Machine on Windows and Unix"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for installing and configuring the Livefyre feature pack -->
 	<target name="livefyre" if="aem61orlater" depends="version">
