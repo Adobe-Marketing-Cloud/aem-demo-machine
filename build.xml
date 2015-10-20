@@ -2789,14 +2789,17 @@
 									<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
 								</not>
 								<resourceexists>
-									<file file="${dist}/community/featurepacks/${demo.communities.featurepack}-scorm.zip"/>
+									<file file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}-scorm.zip"/>
 								</resourceexists>
 							</and>
 							<then>
 								<antcall target="package">
-									<param name="package" value="${dist}/community/featurepacks/${demo.communities.featurepack}-scorm.zip"/>
+									<param name="package" value="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}-scorm.zip"/>
 								</antcall>
 							</then>
+							<else>
+								<echo message="WARNING: Scorm Bundle has not been installed"/>
+							</else>
 						</if>
 					</else>
 				</if>
