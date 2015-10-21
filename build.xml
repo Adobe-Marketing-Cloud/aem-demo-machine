@@ -685,6 +685,7 @@
 						</exec>
 					</then>
 				</if>
+				<sleep seconds="4"/>
 			</else>
 		</if>
 	</target>
@@ -715,7 +716,7 @@
 						</exec>
 					</then>
 				</if>
-				<sleep seconds="4"/>
+				<sleep seconds="5"/>
 				<antcall target="solr_stop_unix"/>
 			</then>
 		</if>
