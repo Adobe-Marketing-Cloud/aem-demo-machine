@@ -642,8 +642,6 @@
 		<gunzip src="${dist}/downloads/solr.tgz" dest="${dist}/downloads/solr.tar"/>
 		<untar src="${dist}/downloads/solr.tar" dest="."/>
 		<move file="./solr-${demo.solr}" tofile="${solr}"/>
-		<copy file="${solr}/bin/solr" tofile="${solr}/bin/solr.sh" overwrite="true"/>
-		<copy file="${solr}/bin/solr.cmd" tofile="${solr}/bin/solr.bat" overwrite="true"/>
 		<chmod dir="${solr}/bin" perm="ugo+rx" includes="*"/>
 		<copy todir="${solr}/example/solr/collection1/conf" overwrite="true">
 			<fileset dir="${dist}/community/solr">
@@ -652,30 +650,71 @@
 		</copy>
 	</target>
 	<!-- Target for starting the SOLR server -->
-	<target name="solr_start" depends="os_detect">
+	<target name="solr_start">
 		<if>
-			<resourceexists>
-				<file file="${solr}/bin/solr.${os.cmd}"/>
-			</resourceexists>
+			<socket server="${demo.solr.hostname}" port="${demo.solr.port}"/>
 			<then>
-				<echo message="Starting the SOLR server..."/>
-				<exec executable="${solr}/bin/solr.${os.cmd}" dir="${solr}/bin" spawn="true">
-					<arg line="start"/>
-				</exec>
+				<echo message="The SOLR server is already started..."/>
 			</then>
+			<else>
+				<if>
+					<and>
+						<resourceexists>
+							<file file="${solr}/bin/solr"/>
+						</resourceexists>
+						<os family="unix"/>
+					</and>
+					<then>
+						<echo message="Starting the SOLR server (Unix)..."/>
+						<exec executable="${solr}/bin/solr" dir="${solr}/bin" spawn="true">
+							<arg line="start"/>
+						</exec>
+					</then>
+				</if>
+				<if>
+					<and>
+						<resourceexists>
+							<file file="${solr}/bin/solr.cmd"/>
+						</resourceexists>
+						<os family="windows"/>
+					</and>
+					<then>
+						<echo message="Starting the SOLR server (Windows)..."/>
+						<exec executable="${solr}/bin/solr.cmd" dir="${solr}/bin" spawn="true">
+							<arg line="start"/>
+						</exec>
+					</then>
+				</if>
+			</else>
 		</if>
 	</target>
 	<!-- Target for stopping the SOLR server -->
-	<target name="solr_stop" depends="os_detect">
+	<target name="solr_stop">
 		<if>
-			<resourceexists>
-				<file file="${solr}/bin/solr.${os.cmd}"/>
-			</resourceexists>
+			<and>
+				<socket server="${demo.solr.hostname}" port="${demo.solr.port}"/>
+				<resourceexists>
+					<file file="${solr}/bin/solr"/>
+				</resourceexists>
+			</and>
 			<then>
 				<echo message="Stopping the SOLR server..."/>
-				<exec executable="${solr}/bin/solr.${os.cmd}" dir="${solr}/bin" failonerror="false" failifexecutionfails="false" spawn="true">
-					<arg line="stop -all"/>
-				</exec>
+				<if>
+					<os family="unix"/>
+					<then>
+						<exec executable="${solr}/bin/solr" dir="${solr}/bin" failonerror="false" failifexecutionfails="false" spawn="true">
+							<arg line="stop -all"/>
+						</exec>
+					</then>
+				</if>
+				<if>
+					<os family="windows"/>
+					<then>
+						<exec executable="${solr}/bin/solr.cmd" dir="${solr}/bin" failonerror="false" failifexecutionfails="false" spawn="true">
+							<arg line="stop -all"/>
+						</exec>
+					</then>
+				</if>
 				<sleep seconds="4"/>
 				<antcall target="solr_stop_unix"/>
 			</then>
