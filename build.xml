@@ -655,7 +655,7 @@
 	<target name="solr_start" depends="os_detect">
 		<if>
 			<resourceexists>
-				<file file="${solr}/bin/solr"/>
+				<file file="${solr}/bin/solr.${os.cmd}"/>
 			</resourceexists>
 			<then>
 				<echo message="Starting the SOLR server..."/>
