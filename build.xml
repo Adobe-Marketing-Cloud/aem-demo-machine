@@ -16,6 +16,7 @@
 	<property name="hotfixes" location="./dist/hotfixes"/>
 	<property name="demos" location="./demos"/>
 	<property name="logs" location="./logs/${demo.build}"/>
+	<property name="infralogs" location="./logs"/>
 	<property name="mongodb" location="./mongodb"/>
 	<property name="mysql" location="./mysql"/>
 	<property name="ffmpeg" location="./ffmpeg"/>
@@ -116,7 +117,7 @@
 		<antcall target="demomachine_analytics_install"/>
 		<mkdir dir="${demos}/${demo.build}"/>
 		<mkdir dir="${logs}"/>
-		<echo message="Persisting runtime options in to demomachine.properties"/>
+		<echo message="Persisting runtime options in demomachine.properties"/>
 		<propertyfile file="${demos}/${demo.build}/demomachine.properties" comment="Demo Machine Instance">
 			<entry key="demomachine.srp" value="${demo.srp}"/>
 			<entry key="demomachine.type" value="${demo.type}"/>
@@ -487,6 +488,14 @@
 			</and>
 			<then>
 				<exec executable="${james}/bin/run.${os.cmd}" dir="${james}/bin" spawn="true"/>
+				<sleep seconds="2"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+					<and>
+						<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.smtp}"/>
+						<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.jmx}"/>
+						<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.pop}"/>
+					</and>
+				</waitfor>
 			</then>
 		</if>
 	</target>
@@ -513,8 +522,7 @@
 		</if>
 	</target>
 	<!-- Target for installing and configuring the JAMES smtp server  -->
-	<target name="install_james">
-		<antcall target="james_stop"/>
+	<target name="install_james" depends="james_stop">
 		<if>
 			<and>
 				<not>
@@ -522,6 +530,9 @@
 				</not>
 				<not>
 					<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.pop}"/>
+				</not>
+				<not>
+					<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.jmx}"/>
 				</not>
 			</and>
 			<then>
@@ -554,8 +565,6 @@
 			</resourceexists>
 			<then>
 				<antcall target="james_start"/>
-				<echo message="Waiting 20 seconds for James to be available before mailbox creation"/>
-				<sleep seconds="20"/>
 				<echo message="Loading up domains..."/>
 				<propertyselector property="constituents" match="demo.emailserver.domains.([^\.]*)" select="\1" casesensitive="false"/>
 				<if>
@@ -619,11 +628,9 @@
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
 			<arg line="james"/>
 		</exec>
-		<sleep seconds="1"/>
 	</target>
 	<target name="james_stop_win" if="isWindows" depends="permissions">
 		<echo message="Stopping James on Windows is not implemented yet..."/>
-		<sleep seconds="1"/>
 	</target>
 	<!-- Target for downloading the SOLR software -->
 	<target name="download_solr">
@@ -635,7 +642,7 @@
 		</exec>
 	</target>
 	<!-- Target for installing the SOLR software -->
-	<target name="install_solr">
+	<target name="install_solr" depends="solr_stop">
 		<echo message="Installing Apache SOLR"/>
 		<delete dir="${solr}"/>
 		<mkdir dir="${solr}"/>
@@ -685,7 +692,10 @@
 						</exec>
 					</then>
 				</if>
-				<sleep seconds="4"/>
+				<sleep seconds="2"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+					<socket server="${demo.solr.hostname}" port="${demo.solr.port}"/>
+				</waitfor>
 			</else>
 		</if>
 	</target>
@@ -716,7 +726,12 @@
 						</exec>
 					</then>
 				</if>
-				<sleep seconds="5"/>
+				<sleep seconds="2"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+					<not>
+						<socket server="${demo.solr.hostname}" port="${demo.solr.port}"/>
+					</not>
+				</waitfor>
 				<antcall target="solr_stop_unix"/>
 			</then>
 		</if>
@@ -753,16 +768,60 @@
 				</resourceexists>
 			</and>
 			<then>
-				<echo message="Starting the MySQL server..."/>
-				<exec executable="./bin/mysqld" dir="${mysql}" spawn="true">
-					<arg line="--basedir='${mysql}' --datadir='${mysql}/data/'"/>
-				</exec>
-				<sleep seconds="5"/>
-				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+				<if>
 					<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
-				</waitfor>
+					<then>
+						<echo message="The MySQL server is already started..."/>
+					</then>
+					<else>
+						<echo message="Starting the MySQL server..."/>
+						<exec executable="./bin/mysqld" dir="${mysql}" spawn="true">
+							<arg line="--basedir='${mysql}' --datadir='${mysql}/data/'"/>
+						</exec>
+						<sleep seconds="2"/>
+						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+							<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
+						</waitfor>
+					</else>
+				</if>
 			</then>
 		</if>
+	</target>
+	<!-- Target for stopping the MySQL server -->
+	<target name="mysql_stop">
+		<if>
+			<and>
+				<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+				<resourceexists>
+					<file file="${mysql}/bin/mysql"/>
+				</resourceexists>
+			</and>
+			<then>
+				<if>
+					<!-- Only try to stop if really running -->
+					<socket server="${demo.host}" port="${demo.mysql.port}"/>
+					<then>
+						<echo message="Stopping the MySQL server..."/>
+						<exec executable="./bin/mysqladmin" dir="${mysql}" failonerror="false" failifexecutionfails="false" spawn="true">
+							<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --password=${demo.mysql.password} shutdown"/>
+						</exec>
+						<sleep seconds="2"/>
+						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+							<not>
+								<socket server="${demo.mysql.host}" port="${demo.mysql.port}"/>
+							</not>
+						</waitfor>
+						<antcall target="mysql_stop_unix"/>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for killing the MySQL server, if needed for some reason -->
+	<target name="mysql_stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="mysql"/>
+		</exec>
 	</target>
 	<!-- Target for configuring the MYSQL server -->
 	<target name="community_mysql_schema">
@@ -842,36 +901,6 @@
 		</exec>
 		<delete file="${mysql.path}/${mysql.file}.sql"/>
 	</target>
-	<!-- Target for stopping the MySQL server -->
-	<target name="mysql_stop">
-		<if>
-			<and>
-				<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
-				<resourceexists>
-					<file file="${mysql}/bin/mysql"/>
-				</resourceexists>
-			</and>
-			<then>
-				<if>
-					<!-- Only try to stop if really running -->
-					<socket server="${demo.host}" port="${demo.mysql.port}"/>
-					<then>
-						<echo message="Stopping the MySQL server..."/>
-						<exec executable="./bin/mysqladmin" dir="${mysql}" failonerror="false" failifexecutionfails="false" spawn="true">
-							<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --password=${demo.mysql.password} shutdown"/>
-						</exec>
-						<antcall target="mysql_stop_unix"/>
-					</then>
-				</if>
-			</then>
-		</if>
-	</target>
-	<!-- Target for killing the MySQL server, if needed -->
-	<target name="mysql_stop_unix" if="isUnix" depends="permissions">
-		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
-			<arg line="mysql"/>
-		</exec>
-	</target>
 	<!-- Target for starting the MONGO server -->
 	<target name="mongo_start">
 		<if>
@@ -882,14 +911,26 @@
 				</resourceexists>
 			</and>
 			<then>
-				<mkdir dir="${mongodb}/data/${demo.build}"/>
-				<echo message="Starting the Mongo DB server..."/>
-				<exec executable="${mongodb}/bin/mongod" dir="${mongodb}/bin" spawn="true">
-					<arg line="--dbpath ${mongodb}/data/${demo.build}"/>
-					<arg line="--port ${demo.mongo.port}"/>
-					<arg line="--fork"/>
-					<arg line="--logpath ${logs}/mongo.log"/>
-				</exec>
+				<if>
+					<socket server="${demo.host}" port="${demo.mongo.port}"/>
+					<then>
+						<echo message="The Mongo DB server is already started..."/>
+					</then>
+					<else>
+						<mkdir dir="${mongodb}/data/${demo.build}"/>
+						<echo message="Starting the Mongo DB server..."/>
+						<exec executable="${mongodb}/bin/mongod" dir="${mongodb}/bin" spawn="true">
+							<arg line="--dbpath ${mongodb}/data/${demo.build}"/>
+							<arg line="--port ${demo.mongo.port}"/>
+							<arg line="--fork"/>
+							<arg line="--logpath ${infralogs}/mongo.log"/>
+						</exec>
+						<sleep seconds="2"/>
+						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+								<socket server="${demo.host}" port="${demo.mongo.port}"/>
+						</waitfor>
+					</else>
+				</if>
 			</then>
 			<else>
 				<if>
@@ -922,7 +963,12 @@
 							<arg line="admin"/>
 							<arg line="--eval 'db.shutdownServer()'"/>
 						</exec>
-						<sleep seconds="4"/>
+						<sleep seconds="2"/>
+						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+							<not>
+								<socket server="${demo.host}" port="${demo.mongo.port}"/>
+							</not>
+						</waitfor>
 						<antcall target="mongo_stop_unix"/>
 					</then>
 				</if>
@@ -1587,7 +1633,7 @@
 		</if>
 	</target>
 	<!-- Target for installing the MongoDB software -->
-	<target name="install_mongo">
+	<target name="install_mongo" depends="mongo_stop">
 		<!-- Verifying that we don't have something running on the same port -->
 		<if>
 			<and>
@@ -1615,7 +1661,7 @@
 		</if>
 	</target>
 	<!-- Target for installing the MySQL software -->
-	<target name="install_mysql">
+	<target name="install_mysql" depends="mysql_stop">
 		<!-- Verifying that we don't have something running on the same port -->
 		<if>
 			<and>

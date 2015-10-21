@@ -209,14 +209,6 @@ public class AemDemo {
 		JMenu mnSites = new JMenu("Sites");
 		mnUpdate.add(mnSites);
 
-		JMenuItem mntmSitesDownloadFP = new JMenuItem("Download Packages (PackageShare)");
-		mntmSitesDownloadFP.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_sites_packages");
-			}
-		});
-		mnSites.add(mntmSitesDownloadFP);
-
 		JMenuItem mntmSitesDownloadAddOn = new JMenuItem("Download Demo Add-on");
 		mntmSitesDownloadAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -225,9 +217,17 @@ public class AemDemo {
 		});
 		mnSites.add(mntmSitesDownloadAddOn);
 
+		JMenuItem mntmSitesDownloadFP = new JMenuItem("Download Packages (PackageShare)");
+		mntmSitesDownloadFP.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_sites_packages");
+			}
+		});
+		mnSites.add(mntmSitesDownloadFP);
+
 		mnSites.addSeparator();
 
-		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install");
+		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install on running AEM instance(s)");
 		mntmSitesInstallAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "sites");
@@ -239,6 +239,14 @@ public class AemDemo {
 		JMenu mnAssets = new JMenu("Assets");
 		mnUpdate.add(mnAssets);
 
+		JMenuItem mntmAssetsDownloadAddOn = new JMenuItem("Download Demo Add-on");
+		mntmAssetsDownloadAddOn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_assets");
+			}
+		});
+		mnAssets.add(mntmAssetsDownloadAddOn);
+
 		JMenuItem mntmAssetsDownloadFP = new JMenuItem("Download Packages (PackageShare)");
 		mntmAssetsDownloadFP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -247,16 +255,9 @@ public class AemDemo {
 		});
 		mnAssets.add(mntmAssetsDownloadFP);
 
-		JMenuItem mntmAssetsDownloadAddOn = new JMenuItem("Download Demo Add-on");
-		mntmAssetsDownloadAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_assets");
-			}
-		});
-		mnAssets.add(mntmAssetsDownloadAddOn);
 		mnAssets.addSeparator();
 
-		JMenuItem mntmAssetsInstallAddOn = new JMenuItem("Install");
+		JMenuItem mntmAssetsInstallAddOn = new JMenuItem("Install on running AEM instance(s)");
 		mntmAssetsInstallAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "assets");
@@ -295,7 +296,7 @@ public class AemDemo {
 
 		mnCommunities.addSeparator();
 
-		JMenuItem mntmAemCommunitiesAddOn = new JMenuItem("Install");
+		JMenuItem mntmAemCommunitiesAddOn = new JMenuItem("Install on running AEM instance(s)");
 		mntmAemCommunitiesAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "communities");
@@ -307,6 +308,14 @@ public class AemDemo {
 		JMenu mnForms = new JMenu("Forms");
 		mnUpdate.add(mnForms);
 
+		JMenuItem mntmAemFormsAddon = new JMenuItem("Download Demo Add-on");
+		mntmAemFormsAddon.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_forms");
+			}
+		});
+		mnForms.add(mntmAemFormsAddon);
+		
 		JMenuItem mntmAemFormsFP = new JMenuItem("Download Packages (PackageShare)");
 		mntmAemFormsFP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -315,17 +324,9 @@ public class AemDemo {
 		});
 		mnForms.add(mntmAemFormsFP);
 
-		JMenuItem mntmAemFormsAddon = new JMenuItem("Download Demo Add-on");
-		mntmAemFormsAddon.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_forms");
-			}
-		});
-		mnForms.add(mntmAemFormsAddon);
-
 		mnForms.addSeparator();
 
-		JMenuItem mntmAemFormsAddOn = new JMenuItem("Install");
+		JMenuItem mntmAemFormsAddOn = new JMenuItem("Install on running AEM instance(s)");
 		mntmAemFormsAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "forms");
@@ -337,14 +338,6 @@ public class AemDemo {
 		JMenu mnApps = new JMenu("Apps");
 		mnUpdate.add(mnApps);
 
-		JMenuItem mntmAemApps = new JMenuItem("Download Packages (PackageShare)");
-		mntmAemApps.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_apps_packages");
-			}
-		});
-		mnApps.add(mntmAemApps);
-
 		JMenuItem mntmAemAppsAddon = new JMenuItem("Download Demo Add-on");
 		mntmAemAppsAddon.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -353,9 +346,17 @@ public class AemDemo {
 		});
 		mnApps.add(mntmAemAppsAddon);
 
+		JMenuItem mntmAemApps = new JMenuItem("Download Packages (PackageShare)");
+		mntmAemApps.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_apps_packages");
+			}
+		});
+		mnApps.add(mntmAemApps);
+
 		mnApps.addSeparator();
 
-		JMenuItem mntmAemAppsAddOn = new JMenuItem("Install");
+		JMenuItem mntmAemAppsAddOn = new JMenuItem("Install on running AEM instance(s)");
 		mntmAemAppsAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "apps");
@@ -390,7 +391,7 @@ public class AemDemo {
 
 		mnCommerce.addSeparator();
 
-		JMenuItem mntmAemCommerceAddOn = new JMenuItem("Install");
+		JMenuItem mntmAemCommerceAddOn = new JMenuItem("Install on running AEM instance(s)");
 		mntmAemCommerceAddOn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "commerce");
