@@ -26,7 +26,7 @@ then
 	echo "No process to kill";
 else
 	printf "Now killing these processes:\n$ids";
-	kill -9 $(ps -ef | grep "$param" | grep -v grep | grep -v kill | awk '{print $2}');
+	kill -9 $(ps -ef | grep "$param" | grep -v ant | grep -v grep | grep -v kill | awk '{print $2}');
 fi
 else
 echo "No parameter"
