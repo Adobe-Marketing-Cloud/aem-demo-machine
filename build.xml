@@ -669,7 +669,7 @@
 	<target name="solr_stop" depends="os_detect">
 		<if>
 			<resourceexists>
-				<file file="${solr}/bin/solr"/>
+				<file file="${solr}/bin/solr.${os.cmd}"/>
 			</resourceexists>
 			<then>
 				<echo message="Stopping the SOLR server..."/>
