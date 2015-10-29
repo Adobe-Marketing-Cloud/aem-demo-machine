@@ -88,6 +88,11 @@
 		<antcall target="assets"/>
 		<antcall target="forms"/>
 	</target>
+	<!-- Target for getting some information about a particular demo environment -->
+	<target name="details">
+		<antcall target="configuration"/>
+		<antcall target="version"/>
+	</target>
 	<!-- Target for loading the persisted demo machine configuration -->
 	<target name="configuration">
 		<if>
@@ -1126,9 +1131,6 @@
 				<sleep seconds="120"/>
 			</then>
 		</if>
-		<antcall target="phonegap">
-			<param name="port" value="${AdobeAEM.authorport}"/>
-		</antcall>
 		<antcall target="mobileservices">
 			<param name="port" value="${AdobeAEM.authorport}"/>
 		</antcall>
@@ -1717,7 +1719,7 @@
 			<and>
 				<socket server="${demo.host}" port="${port}"/>
 				<resourceexists>
-					<file file="${dist}/livefyre/Livefyre.zip"/>
+					<file file="${dist}/livefyre/all/Livefyre.zip"/>
 				</resourceexists>
 				<resourceexists>
 					<file file="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
@@ -1726,7 +1728,7 @@
 			<then>
 				<echo message="Installing the livefyre FP on running instances"/>
 				<antcall target="package">
-					<param name="package" value="${dist}/livefyre/Livefyre.zip"/>
+					<param name="package" value="${dist}/livefyre/all/Livefyre.zip"/>
 				</antcall>
 				<antcall target="package">
 					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
@@ -2065,6 +2067,9 @@
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="notifications">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="phonegap">
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="community-moderators">

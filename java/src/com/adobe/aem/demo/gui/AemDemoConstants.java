@@ -35,7 +35,7 @@ public class AemDemoConstants {
 	public static final String OPTIONS_DOCUMENTATION = "demo.documentation";
 	public static final String OPTIONS_SCRIPTS = "demo.scripts";
 
-	public static final String[] INSTANCE_ACTIONS = new String[] {"start","restore","backup","uninstall"};
+	public static final String[] INSTANCE_ACTIONS = new String[] {"start","restore","backup","uninstall", "details"};
 	public static final String[] BUILD_ACTIONS = new String[] {"install","demo", "demo_communities", "demo_apps", "demo_assets", "demo_commerce", "demo_sites", "demo_forms", "demo_kitchensink"};
 	public static final String[] CLEANUP_ACTIONS = new String[] {"uninstall"};
 	public static final String[] STOP_ACTIONS = new String[] {"uninstall","stop"};

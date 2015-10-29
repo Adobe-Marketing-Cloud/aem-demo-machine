@@ -163,7 +163,6 @@ public class AemDemo {
 		mnAbout.add(mntmQuit);
 
 		JMenu mnNew = new JMenu("New");
-		mnNew.setMnemonic(KeyEvent.VK_N);
 		menuBar.add(mnNew);
 
 		// New Demo Machine
@@ -276,6 +275,14 @@ public class AemDemo {
 			}
 		});
 		mnCommunities.add(mntmAemCommunitiesFeaturePacks);
+
+		JMenuItem mntmAemCommunitiesLivefyre = new JMenuItem("Download Livefyre Integration (PackageShare)");
+		mntmAemCommunitiesLivefyre.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_livefyre_packages");
+			}
+		});
+		mnCommunities.add(mntmAemCommunitiesLivefyre);
 
 		JMenuItem mntmAemCommunitiesUber = new JMenuItem("Download Latest Bundles (VPN)");
 		mntmAemCommunitiesUber.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
@@ -687,6 +694,7 @@ public class AemDemo {
 		frameMain.getContentPane().add(scrollDemoList);	
 		listModelDemoMachines = AemDemoUtils.listDemoMachines(buildFile.getParentFile().getAbsolutePath());
 		listDemoMachines = new JList(listModelDemoMachines);
+		listDemoMachines.setSelectedIndex(AemDemoUtils.getSelectedIndex(listDemoMachines,this.getDefaultProperties(), this.getPersonalProperties(),AemDemoConstants.OPTIONS_BUILD_DEFAULT));
 		scrollDemoList.setViewportView(listDemoMachines);
 
 		// Capturing the output stream of ANT commands
@@ -701,6 +709,7 @@ public class AemDemo {
 
 			}
 		});
+
 		btnStart.setBounds(250, 50, 117, 29);
 		frameMain.getContentPane().add(btnStart);
 
@@ -712,8 +721,7 @@ public class AemDemo {
 		btnInfo.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				AemDemoUtils.antTarget(AemDemo.this, "version");
-				AemDemoUtils.antTarget(AemDemo.this, "configuration");
+				AemDemoUtils.antTarget(AemDemo.this, "details");
 
 			}
 		});
