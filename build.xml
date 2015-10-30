@@ -1317,7 +1317,7 @@
 					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${logs}/packageshare.html' https://www.adobeaemcloud.com/content/marketplace/marketplaceProxy.html?packagePath=${filepath}"/>
 				</exec>
 				<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
-				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp='/file.res/([-a-zA-Z0-9_\\.]*).zip\";' select="\1"/>
+				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
 				<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
 				<if>
 					<and>
@@ -1763,6 +1763,23 @@
 					<arg line="-d ./sling:resourceType=/libs/social/integrations/livefyre/cloudconfig/livefyre-config"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
 				</exec>
+				<echo message="Configuring the Externalizer for Livefyre to work"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_livefyre_externalizer.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d externalizer.domains='local http://communities.geometrixx.com:${AdobeAEM.publishport}'"/>
+					<arg line="-d externalizer.domains='author http://aem.geometrixx.com:${AdobeAEM.authorport}'"/>
+					<arg line="-d externalizer.domains='publish http://communities.geometrixx.com:${AdobeAEM.publishport}'"/>
+					<arg line="-d externalizer.host="/>
+					<arg line="-d externalizer.contextpath="/>
+					<arg line="-d propertylist=externalizer.domains,externalizer.host,externalizer.contextpath"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
+				</exec>
 				<antcall target="livefyre_components"/>
 			</then>
 		</if>
@@ -1949,6 +1966,12 @@
 				<antcall target="configure_post">
 					<param name="port" value="${AdobeAEM.publishport}"/>
 				</antcall>
+				<if>
+					<equals arg1="${demo.dispatcher}" arg2="true" casesensitive="false"/>
+					<then>
+						<antcall target="dispatcher"/>
+					</then>
+				</if>
 			</then>
 		</if>
 		<if>
@@ -2211,12 +2234,12 @@
 	<!-- Configure the dispatcher flush on Publish -->
 	<target name="dispatcher">
 		<exec executable="curl">
-			<arg line="--output '${logs}/dispatcher_keys.html'"/>
+			<arg line="--output '${logs}/dispatcher_flush.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./enabled=true"/>
 			<arg line="-d ./enabled@Delete="/>
-			<arg line="-d ./transportUri=http://${demo.host}/dispatcher/invalidate.cache"/>
+			<arg line="-d ./transportUri=http://${demo.dispatcher.host}:${demo.dispatcher.port}/dispatcher/invalidate.cache"/>
 			<arg line="-d ./sling:resourceType=cq/replication/components/agent"/>
 			<arg line="http://${demo.host}:${AdobeAEM.publishport}/etc/replication/agents.publish/flush/jcr:content"/>
 		</exec>
@@ -3941,10 +3964,5 @@
 	</target>
 	<target name="default">
 		<echo message="Welcome to the AEM Demo Machine! Please use the install target to setup your first environment"/>
-	</target>
-	<target name="test">
-		<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
-		<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp='/file.res/([-a-zA-Z0-9_\\.]*).zip\";' select="\1"/>
-		<echo message="Download ${packageShareFileName}.zip"/>
 	</target>
 </project>
