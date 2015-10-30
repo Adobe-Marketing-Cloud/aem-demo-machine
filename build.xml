@@ -1317,7 +1317,7 @@
 					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${logs}/packageshare.html' https://www.adobeaemcloud.com/content/marketplace/marketplaceProxy.html?packagePath=${filepath}"/>
 				</exec>
 				<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
-				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="Download to disk:( *)([-a-zA-Z0-9_\\.]*)" select="\2"/>
+				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp='/file.res/([-a-zA-Z0-9_\\.]*).zip\";' select="\1"/>
 				<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
 				<if>
 					<and>
@@ -1733,9 +1733,25 @@
 				<antcall target="package">
 					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
 				</antcall>
+				<echo message="Creating Livefyre Cloud service for domain ${Livefyre.networkdomain} and site ${Livefyre.siteid}"/>
 				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_livefyre.html'"/>
+					<arg line="--output '${logs}/${port}_livefyre_cloudservice.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
+					<arg line="-X POST"/>
+					<arg line="-d cmd=createPage"/>
+					<arg line="-d _charset_=utf-8"/>
+					<arg line="-d parentPath=/etc/cloudservices/livefyre"/>
+					<arg line="-d title=DemoMachine"/>
+					<arg line="-d label=DemoMachine"/>
+					<arg line="-d template=/libs/social/integrations/livefyre/cloudconfig/pagetemplate"/>
+					<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
+				</exec>
+				<echo message="Configuring Livefyre Cloud service for domain ${Livefyre.networkdomain} and site ${Livefyre.siteid}"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_livefyre_settings.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./communities.integration.livefyre.networkkey=${Livefyre.networkkey}"/>
 					<arg line="-d ./communities.integration.livefyre.networkkey@Encrypted="/>
@@ -1743,6 +1759,8 @@
 					<arg line="-d ./communities.integration.livefyre.sitekey=${Livefyre.sitekey}"/>
 					<arg line="-d ./communities.integration.livefyre.sitekey@Encrypted="/>
 					<arg line="-d ./communities.integration.livefyre.siteid=${Livefyre.siteid}"/>
+					<arg line="-d ./userDataFieldMapping@Delete="/>
+					<arg line="-d ./sling:resourceType=/libs/social/integrations/livefyre/cloudconfig/livefyre-config"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
 				</exec>
 				<antcall target="livefyre_components"/>
@@ -3923,5 +3941,10 @@
 	</target>
 	<target name="default">
 		<echo message="Welcome to the AEM Demo Machine! Please use the install target to setup your first environment"/>
+	</target>
+	<target name="test">
+		<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
+		<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp='/file.res/([-a-zA-Z0-9_\\.]*).zip\";' select="\1"/>
+		<echo message="Download ${packageShareFileName}.zip"/>
 	</target>
 </project>
