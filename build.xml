@@ -932,7 +932,7 @@
 						</exec>
 						<sleep seconds="2"/>
 						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
-								<socket server="${demo.host}" port="${demo.mongo.port}"/>
+							<socket server="${demo.host}" port="${demo.mongo.port}"/>
 						</waitfor>
 					</else>
 				</if>
@@ -1745,8 +1745,33 @@
 					<arg line="-d ./communities.integration.livefyre.siteid=${Livefyre.siteid}"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
 				</exec>
+				<antcall target="livefyre_components"/>
 			</then>
 		</if>
+	</target>
+	<target name="livefyre_components">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_livefyre_components.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/comments"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/chat"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/carousel"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/liveblog"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/map"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/mediawall"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/mosaic"/>
+			<arg line="-d ./components=/libs/social/integrations/livefyre/components/card"/>
+			<arg line="-d ./components=/libs/wcm/foundation/components/responsivegrid"/>
+			<arg line="-d ./components=/libs/foundation/components/adaptiveimage"/>
+			<arg line="-d ./components=/libs/foundation/components/image"/>
+			<arg line="-d ./components=/libs/foundation/components/list"/>
+			<arg line="-d ./components=/libs/foundation/components/text"/>
+			<arg line="-d ./components=/libs/foundation/components/textimage"/>
+			<arg line="-d ./components=/libs/foundation/components/title"/>
+			<arg line="-d ./components=/libs/social/commons/components/hbs/comments"/>
+			<arg line="http://${demo.host}:${port}/etc/designs/social/console/jcr:content/basepage/content"/>
+		</exec>
 	</target>
 	<!-- Target for getting version number -->
 	<target name="version">
