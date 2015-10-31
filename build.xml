@@ -1748,17 +1748,16 @@
 					<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
 				</exec>
 				<echo message="Configuring Livefyre Cloud service for domain ${Livefyre.networkdomain} and site ${Livefyre.siteid}"/>
-				<exec executable="curl">
+				<exec executable="curl" output="${logs}/${port}_livefyre_settingscurl.html">
 					<arg line="--output '${logs}/${port}_livefyre_settings.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="--globoff"/>
 					<arg line="-X POST"/>
-					<arg line="-d ./communities.integration.livefyre.networkkey=${Livefyre.networkkey}"/>
-					<arg line="-d ./communities.integration.livefyre.networkkey@Encrypted="/>
-					<arg line="-d ./communities.integration.livefyre.networkdomain=${Livefyre.networkdomain}"/>
-					<arg line="-d ./communities.integration.livefyre.sitekey=${Livefyre.sitekey}"/>
-					<arg line="-d ./communities.integration.livefyre.sitekey@Encrypted="/>
-					<arg line="-d ./communities.integration.livefyre.siteid=${Livefyre.siteid}"/>
+					<arg line="--data-urlencode './communities.integration.livefyre.networkkey=${Livefyre.networkkey}'"/>
+					<arg line="--data-urlencode './communities.integration.livefyre.networkdomain=${Livefyre.networkdomain}'"/>
+					<arg line="--data-urlencode './communities.integration.livefyre.sitekey=${Livefyre.sitekey}'"/>
+					<arg line="--data-urlencode './communities.integration.livefyre.siteid=${Livefyre.siteid}'"/>
+					<arg line="-d './communities.integration.livefyre.sitekey@Encrypted='"/>
+					<arg line="-d './communities.integration.livefyre.networkkey@Encrypted='"/>
 					<arg line="-d ./userDataFieldMapping@Delete="/>
 					<arg line="-d ./sling:resourceType=/libs/social/integrations/livefyre/cloudconfig/livefyre-config"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
