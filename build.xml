@@ -1038,9 +1038,11 @@
 		<antcall target="demomachine_analytics_assets"/>
 		<foreach target="package_author" param="package">
 			<path id="assets.packages">
-				<fileset dir="${dist}/assets" casesensitive="yes">
-					<include name="all/*.zip"/>
-					<include name="${demo.packages}/*.zip"/>
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="assets-packages/all/*.zip"/>
+					<include name="assets-packages/${demo.packages}/*.zip"/>
+					<include name="assets/all/*.zip"/>
+					<include name="assets/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -1051,20 +1053,21 @@
 		<!-- make sure we install the add-on first -->
 		<foreach target="package_author" param="package">
 			<path id="forms.packages">
-				<fileset dir="${dist}/forms" casesensitive="yes">
-					<exclude name="all/*REF-SITE*.zip"/>
-					<exclude name="${demo.packages}/*REF-SITE*.zip"/>
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="forms-packages/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
-		<echo message="Waiting for Forms bundle to be fully started"/>
+		<echo message="Waiting 1 minute for Forms bundles to be fully started"/>
 		<sleep seconds="60"/>
-		<!-- then the reference sites -->
+		<!-- then the reference sites and the demo packages -->
 		<foreach target="package_author" param="package">
 			<path id="forms.packages">
-				<fileset dir="${dist}/forms" casesensitive="yes">
-					<include name="all/*REF-SITE*.zip"/>
-					<include name="${demo.packages}/*REF-SITE*.zip"/>
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="forms/all/*.zip"/>
+					<include name="forms/${demo.packages}/*.zip"/>
+					<include name="forms-demo/all/*.zip"/>
+					<include name="forms-demo/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -1073,9 +1076,11 @@
 	<target name="sites" depends="version">
 		<foreach target="package_author" param="package">
 			<path id="sites.packages">
-				<fileset dir="${dist}/sites" casesensitive="yes">
-					<include name="all/*.zip"/>
-					<include name="${demo.packages}/*.zip"/>
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="sites-packages/all/*.zip"/>
+					<include name="sites-packages/${demo.packages}/*.zip"/>
+					<include name="sites/all/*.zip"/>
+					<include name="sites/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -1118,9 +1123,11 @@
 	<target name="apps" depends="version">
 		<foreach target="package_author" param="package">
 			<path id="apps.packages">
-				<fileset dir="${dist}/apps" casesensitive="yes">
-					<include name="all/*.zip"/>
-					<include name="${demo.packages}/*.zip"/>
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="apps-packages/all/*.zip"/>
+					<include name="apps-packages/${demo.packages}/*.zip"/>
+					<include name="apps/all/*.zip"/>
+					<include name="apps/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -1181,9 +1188,11 @@
 		<antcall target="download_sites_packages"/>
 		<antcall target="download_assets"/>
 		<antcall target="download_assets_packages"/>
-		<antcall target="download_communities_packages"/>
+		<antcall target="download_apps"/>
 		<antcall target="download_apps_packages"/>
+		<antcall target="download_forms"/>
 		<antcall target="download_forms_packages"/>
+		<antcall target="download_communities_packages"/>
 	</target>
 	<target name="download_sites">
 		<echo message="Downloading Latest AEM Sites Demo Add-on in /dist/downloads"/>
@@ -1256,6 +1265,7 @@
 	<!-- Target for downloading all packages for a given area -->
 	<target name="download_packageshare">
 		<echo message="Downloading latest AEM ${packageshare.capability} packages from PackageShare"/>
+		<delete dir="${packageshare.target}"/>
 		<propertyselector property="constituents" match="demo.download.${packageshare.capability}.([^\.]*).core" select="\1" casesensitive="false"/>
 		<if>
 			<and>
@@ -1497,7 +1507,7 @@
 	<target name="download_forms_demo">
 		<antcall target="download_packageshare">
 			<param name="packageshare.capability" value="formsdemo"/>
-			<param name="packageshare.target" value="${dist}/forms"/>
+			<param name="packageshare.target" value="${dist}/forms-demo"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the forms add-on, on MacOS then on Windows-->
@@ -1505,35 +1515,35 @@
 		<echo message="Downloading latest AEM Forms Add-on for Windows"/>
 		<antcall target="download_packageshare">
 			<param name="packageshare.capability" value="formswin"/>
-			<param name="packageshare.target" value="${dist}/forms"/>
+			<param name="packageshare.target" value="${dist}/forms-packages"/>
 		</antcall>
 	</target>
 	<target name="download_forms_macos" if="isUnix">
 		<echo message="Downloading latest AEM Forms Add-on for MacOS"/>
 		<antcall target="download_packageshare">
 			<param name="packageshare.capability" value="formsmac"/>
-			<param name="packageshare.target" value="${dist}/forms"/>
+			<param name="packageshare.target" value="${dist}/forms-packages"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the latest Sites packages -->
 	<target name="download_sites_packages">
 		<antcall target="download_packageshare">
 			<param name="packageshare.capability" value="sites"/>
-			<param name="packageshare.target" value="${dist}/sites"/>
+			<param name="packageshare.target" value="${dist}/sites-packages"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the latest Apps packages -->
 	<target name="download_apps_packages">
 		<antcall target="download_packageshare">
 			<param name="packageshare.capability" value="apps"/>
-			<param name="packageshare.target" value="${dist}/apps"/>
+			<param name="packageshare.target" value="${dist}/apps-packages"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the latest Assets packages -->
 	<target name="download_assets_packages">
 		<antcall target="download_packageshare">
 			<param name="packageshare.capability" value="assets"/>
-			<param name="packageshare.target" value="${dist}/assets"/>
+			<param name="packageshare.target" value="${dist}/assets-packages"/>
 		</antcall>
 	</target>
 	<!-- Target for downloading the Communities Feature Packs -->
