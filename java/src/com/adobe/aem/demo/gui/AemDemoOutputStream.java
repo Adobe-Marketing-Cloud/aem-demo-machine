@@ -47,7 +47,7 @@ public class AemDemoOutputStream extends OutputStream
                 @Override
                 public void run() 
                 {
-                    destination.append (text);
+                    destination.append (text.replaceAll("\\[echo\\]", ""));
                 }
             });
     }

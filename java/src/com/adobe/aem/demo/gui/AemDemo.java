@@ -650,7 +650,7 @@ public class AemDemo {
 		mnOther.add(mntmAemDownload);
 
 		JMenuItem mntmAemHotfix = new JMenuItem("Download Latest Hotfixes (PackageShare)");
-		mntmAemHotfix.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemHotfix.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmAemHotfix.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_hotfixes_packages");

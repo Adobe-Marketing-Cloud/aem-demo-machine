@@ -109,10 +109,10 @@
 				<property name="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
 			</else>
 		</if>
-		<echo message="Folder: ${demos}/${demo.build}"/>
-		<echo message="SRP: ${demomachine.srp}"/>
-		<echo message="Type: ${demomachine.type}"/>
-		<echo message="Store: ${demomachine.store}"/>
+		<echo message="Demo Folder: ${demos}/${demo.build}"/>
+		<echo message="Demo SRP: ${demomachine.srp}"/>
+		<echo message="Demo Type: ${demomachine.type}"/>
+		<echo message="Demo Store: ${demomachine.store}"/>
 		<echo message="Enablement Add-on: ${demomachine.communities.enablement}"/>
 	</target>
 	<!-- Target for installing and starting the default AUTHOR and PUBLISH servers -->
@@ -2816,9 +2816,11 @@
 			<then>
 				<echo message="Updating the Geometrixx Sites with Community content for ${demomachine.srp}"/>
 				<foreach target="community_loader" param="demo.loader.currentfile">
-					<fileset dir="${dist}/community/samples" casesensitive="yes">
-						<include name="**/*.csv"/>
-					</fileset>
+					<path id="communities.loader">
+						<fileset dir="${dist}/community/samples" casesensitive="yes">
+							<include name="**/*.csv"/>
+						</fileset>
+					</path>
 				</foreach>
 			</then>
 		</if>
@@ -3204,30 +3206,40 @@
 	</target>
 	<!-- Targets for setting the Cloud Services on the Community Sites -->
 	<target name="community_loader_cloudservices">
-		<antcall target="cloudservices">
-			<param name="port" value="${AdobeAEM.authorport}"/>
-			<param name="path" value="/content/sites/communities/en/jcr:content"/>
-		</antcall>
 		<if>
-			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			<then>
-				<antcall target="community_publish">
-					<param name="path" value="/content/sites/communities/en"/>
+				<antcall target="cloudservices">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+					<param name="path" value="/content/sites/communities/en/jcr:content"/>
 				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+					<then>
+						<antcall target="community_publish">
+							<param name="path" value="/content/sites/communities/en"/>
+						</antcall>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
 	<target name="community_loader_cloudservices_enablement">
-		<antcall target="cloudservices">
-			<param name="port" value="${AdobeAEM.authorport}"/>
-			<param name="path" value="/content/sites/enablement/en/jcr:content"/>
-		</antcall>
 		<if>
-			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			<then>
-				<antcall target="community_publish">
-					<param name="path" value="/content/sites/communities/en"/>
+				<antcall target="cloudservices">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+					<param name="path" value="/content/sites/enablement/en/jcr:content"/>
 				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+					<then>
+						<antcall target="community_publish">
+							<param name="path" value="/content/sites/communities/en"/>
+						</antcall>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
