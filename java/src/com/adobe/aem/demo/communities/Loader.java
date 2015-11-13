@@ -118,7 +118,7 @@ public class Loader {
 	private static final int MAXRETRIES=30;
 	private static final int REPORTINGDAYS=-21;
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
-	
+
 	public static void main(String[] args) {
 
 		String hostname = null;
@@ -200,7 +200,17 @@ public class Loader {
 		String componentType = null;
 
 		try {
-			
+
+			logger.debug("AEM Demo Loader: Loading bundles versions");
+			String bundlesList = doGet(hostname, port,
+					"/system/console/bundles.json",
+					"admin",adminPassword,
+					null);
+
+			// Some steps are specific to the version number of the Enablement add-on
+			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
+			logger.debug("AEM Demo Loader: Enablement Impl is " + vBundleCommunitiesEnablement.get());
+
 			logger.debug("AEM Demo Loader: Processing file " + csvfile);
 
 			// Reading the CSV file, line by line
@@ -395,8 +405,8 @@ public class Loader {
 					// Wait for group to be available on Publish, if available
 					logger.debug("Waiting for completion of Community Group creation");
 					doWait(hostname, port,
-								"admin", adminPassword,
-								memberGroupId);
+							"admin", adminPassword,
+							memberGroupId);
 
 					continue;
 
@@ -427,17 +437,17 @@ public class Loader {
 								null);
 
 						try {
-							
+
 							String siteId = new JSONObject(siteConfig).getString("siteId");
 							if (siteId!=null) groupName = "community-" + siteId + "-members";
 							logger.debug("Member group name is " + groupName);
-							
+
 						} catch (Exception e) {
-							
+
 							logger.error(e.getMessage());
-							
+
 						}
-												
+
 					}
 
 					// Pause until the group can found
@@ -712,12 +722,12 @@ public class Loader {
 							message.append("<p>" + record.get(i) + "</p>");
 						}
 					}
-					
+
 					//We might have some tags to add to the blog or journal article
 					if (record.get(5).length()>0) {
 						nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
 					}
-					
+
 					nameValuePairs.add(new BasicNameValuePair("message", message.toString()));		         
 
 				}
@@ -759,10 +769,10 @@ public class Loader {
 
 				}
 
-				// Creates an enablement resource
+				// Creates an Enablement resource
 				if (componentType.equals(RESOURCE)) {
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", "se:createResource"));
+					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0?"social:createResource":"se:createResource"));
 
 					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
@@ -1031,18 +1041,18 @@ public class Loader {
 	private static String getPassword(String record, String adminPassword) {
 
 		String defaultPassword = PASSWORD;
-		
+
 		// If this is the AEM admin user, always return the configured admin password
 		if (getUserName(record).equals("admin")) {
 			return adminPassword;
 		}
-		
+
 		// If not and if a password is provided in the CSV record, return this password
 		int pass = record.indexOf("/");
 		if (pass>0) {
 			return record.substring(pass+1);
 		}	
-		
+
 		// If not, return the defaut password 
 		return defaultPassword;
 
@@ -1170,7 +1180,7 @@ public class Loader {
 
 								// Sometimes generating a video view event
 								if (Math.random() < 0.75 && resourceType.equals("video/mp4")) doAnalytics(analytics, "event2", referer, resourceID, resourceType);
-									
+
 								// Posting ratings and comments
 								if (Math.random() < 0.50) doRatings(hostname, altport, key, resourceRatingsEndpoint, referer, resourceID, resourceType, analytics);
 								if (Math.random() < 0.35) doComments(hostname, altport, key, resourceCommentsEndpoint, referer, resourceID, resourceType, analytics);
@@ -1198,7 +1208,7 @@ public class Loader {
 
 										// Sometimes generating a video view event
 										if (Math.random() < 0.75 && resourceType.equals("video/mp4")) doAnalytics(analytics, "event2", referer, resourceID, resourceType);
-										
+
 										if (Math.random() < 0.50) doRatings(hostname, altport, email, resourceRatingsEndpoint, referer, resourceID, resourceType, analytics);
 										if (Math.random() < 0.35) doComments(hostname, altport, email, resourceCommentsEndpoint, referer, resourceID, resourceType, analytics);
 									}
@@ -1229,7 +1239,7 @@ public class Loader {
 	private static void doAnalytics(String analytics, String event, String pageURL, String resourcePath, String resourceType) {
 
 		if (analytics!=null && pageURL!=null && resourcePath!=null && resourceType!=null && event!=null) {
-			
+
 			URLConnection urlConn = null;
 			DataOutputStream printout = null;
 			BufferedReader input = null;
@@ -1271,7 +1281,7 @@ public class Loader {
 				}
 				printout.close();
 				input.close();
-				
+
 			} catch (Exception ex) {
 
 				logger.error(ex.getMessage());
@@ -1279,7 +1289,7 @@ public class Loader {
 			}		
 
 		}
-		
+
 	}
 
 	// This methods POSTS a rating and comments
@@ -1345,9 +1355,9 @@ public class Loader {
 	private static String doPost(String hostname, String port, String url, String user, String password, HttpEntity entity, String lookup) {
 
 		return doPost(hostname, port, url, user, password, entity, lookup, null);
-		
+
 	}
-	
+
 	private static String doPost(String hostname, String port, String url, String user, String password, HttpEntity entity, String lookup, String referer) {
 
 		String jsonElement = null;
@@ -1397,13 +1407,13 @@ public class Loader {
 						logger.debug("JSON lookup value: " + lookup); 
 						int separatorIndex = lookup.indexOf("/");
 						if (separatorIndex>0) {
-						
+
 							// Grabbing element in a nested element
 							Object object = new JSONObject(responseString).get(lookup.substring(0,separatorIndex));
 							if (object!=null) {
 
 								if (object instanceof JSONArray) {
-									
+
 									logger.debug("JSON object is a JSONArray");
 									JSONArray jsonArray = (JSONArray) object;
 									if (jsonArray.length()==1) {
@@ -1418,7 +1428,7 @@ public class Loader {
 									JSONObject jsonobject = (JSONObject) object; 
 									jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));	
 									logger.debug("JSON value (jsonObject) returned is " + jsonElement);
-									
+
 								}
 							}
 
@@ -1498,7 +1508,7 @@ public class Loader {
 			logger.error("Group name was not provided - not waiting for group to be available");
 			return;
 		}
-		
+
 		if (hostname!=null && port!=null && password!=null && user!=null && (group!=null && group.length()>0)) {
 
 			int retries = 0;
@@ -1528,11 +1538,11 @@ public class Loader {
 				}
 
 			}
-			
+
 			if (retries==MAXRETRIES) {
 				logger.error("Group " + group +" was never found as expected");
 			}
-			
+
 		}
 
 
@@ -1696,6 +1706,42 @@ public class Loader {
 		}	
 
 		return nameValuePairs;
+
+	}
+
+	// This class extracts the version of an AEM bundle from the JSON list of bundles
+	public static Version getVersion(String jsonList, String symbolicName) {
+
+		if (jsonList==null || symbolicName==null) return null;
+
+		try {
+
+			JSONObject bundleJson = new JSONObject(jsonList.trim());
+
+			Iterator<?> keys = bundleJson.keys();
+
+			while( keys.hasNext() ) {
+				String key = (String)keys.next();
+				if (key.equals("data")) {
+
+					JSONArray bundleList = (JSONArray) bundleJson.get(key);
+					for (int i=0;i<bundleList.length();i++) {
+						JSONObject bundle = (JSONObject) bundleList.get(i);
+						if (bundle.get("symbolicName").equals(symbolicName)) {
+
+							return new Version( (String) bundle.get("version") );
+							
+						}
+					}
+
+				}
+			}	
+			
+		} catch (Exception e) {
+			logger.error(e.getMessage());
+		}
+
+		return null;
 
 	}
 
