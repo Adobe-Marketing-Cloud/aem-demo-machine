@@ -1310,7 +1310,7 @@
 					<arg line="-X POST"/>
 					<arg line="-d j_validate=true"/>
 					<arg line="-d j_username=${AdobeID.user}"/>
-					<arg line="--data-urlencode j_password=${AdobeID.password}"/>
+					<arg line="--data-urlencode j_password='${AdobeID.password}'"/>
 					<arg line="https://www.adobeaemcloud.com/content/login/j_security_check"/>
 				</exec>
 				<if>
