@@ -68,6 +68,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class Loader {
@@ -777,6 +778,16 @@ public class Loader {
 					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
 
+					// Special processing of lists with multiple users, need to split a String into multiple entries
+					if (vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0) {
+
+						nameValuePairs = convertArrays(nameValuePairs,"add-learners");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-author");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
+
+					}
+
 					// Adding the site
 					nameValuePairs.add(new BasicNameValuePair("site", "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
 
@@ -801,7 +812,7 @@ public class Loader {
 				if (componentType.equals(LEARNING)) {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "se:editLearningPath"));
-
+					
 					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
 
@@ -900,7 +911,7 @@ public class Loader {
 
 				// If it's a resource or a learning path, we need the path to the resource for subsequent publishing
 				String jsonElement = "location";
-				if (componentType.equals(RESOURCE)) {
+				if (componentType.equals(RESOURCE) && vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))<0) {
 					jsonElement = "changes/argument";
 				}
 				if (componentType.equals(LEARNING)) {
@@ -1662,6 +1673,31 @@ public class Loader {
 
 	}
 
+	// This method creates a list of name value pairs from an existing one, converting a JSON array into multiple individual entries
+	private static List<NameValuePair> convertArrays(List<NameValuePair> nameValuePairs, String key) {
+
+		List<NameValuePair> newNameValuePairs = new ArrayList<NameValuePair>();		
+		for (NameValuePair nvp : nameValuePairs) {
+			if (nvp.getName().equals(key)) {
+				// Let's see if we can split this JSON date
+				try {
+					JSONArray jsonArray = new JSONArray(nvp.getValue());
+					for (int i=0;i<jsonArray.length();i++) {
+						newNameValuePairs.add(new BasicNameValuePair(key, (String) jsonArray.get(i))); 
+						logger.debug("Setting property " + key + " with value " + (String) jsonArray.getString(i));
+					}					
+				} catch (JSONException e) {
+					logger.error("Can't process JSON array for key: " + key);
+				}
+
+			} else {
+				newNameValuePairs.add(nvp);
+			}
+		}
+
+		return newNameValuePairs;
+	}
+
 	// This method builds a list of NVP for a subsequent Sling post
 	private static List<NameValuePair> buildNVP(CSVRecord record, int start) {
 
@@ -1730,13 +1766,13 @@ public class Loader {
 						if (bundle.get("symbolicName").equals(symbolicName)) {
 
 							return new Version( (String) bundle.get("version") );
-							
+
 						}
 					}
 
 				}
 			}	
-			
+
 		} catch (Exception e) {
 			logger.error(e.getMessage());
 		}

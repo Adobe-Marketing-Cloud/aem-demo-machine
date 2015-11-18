@@ -1,2 +1,4 @@
 #Setting a privileged member group for the Blog,,,,,
 SlingPost,/content/sites/communities/en/blog/jcr:content/content/primary/blog,cq:privilegedMembers@String[],/social/groups/aem-privileged-members,allowPrivilegedMembers@Boolean,TRUE
+#Setting a privileged member group for the Calendar,,,,,
+SlingPost,/content/sites/communities/en/calendar/jcr:content/content/primary/calendar,cq:privilegedMembers@String[],/social/groups/aem-privileged-members,allowPrivilegedMembers@Boolean,TRUE

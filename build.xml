@@ -2928,6 +2928,7 @@
 		<antcall target="community_scorm_bundle_instance">
 			<param name="port" value="${AdobeAEM.farmport}"/>
 		</antcall>
+		<sleep seconds="5"/>
 	</target>
 	<target name="community_scorm_bundle_instance">
 		<if>
@@ -3117,9 +3118,13 @@
 			<path id="communities.packages">
 				<fileset dir="${dist}" casesensitive="yes">
 					<include name="community/packages/*.zip"/>
+					<include name="community/packages/${demo.communities.featurepack}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
+		<antcall target="analytics">
+			<param name="port" value="${AdobeAEM.authorport}"/>
+		</antcall>
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
@@ -3127,9 +3132,13 @@
 					<path id="communities.packages">
 						<fileset dir="${dist}" casesensitive="yes">
 							<include name="community/packages/*.zip"/>
+							<include name="community/packages/${demo.communities.featurepack}/*.zip"/>
 						</fileset>
 					</path>
 				</foreach>
+				<antcall target="analytics">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+				</antcall>
 			</then>
 		</if>
 		<if>
@@ -3139,9 +3148,13 @@
 					<path id="communities.packages">
 						<fileset dir="${dist}" casesensitive="yes">
 							<include name="community/packages/*.zip"/>
+							<include name="community/packages/${demo.communities.featurepack}/*.zip"/>
 						</fileset>
 					</path>
 				</foreach>
+				<antcall target="analytics">
+					<param name="port" value="${AdobeAEM.farmport}"/>
+				</antcall>
 			</then>
 		</if>
 	</target>
