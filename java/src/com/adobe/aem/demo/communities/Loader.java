@@ -210,7 +210,6 @@ public class Loader {
 
 			// Some steps are specific to the version number of the Enablement add-on
 			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
-			logger.debug("AEM Demo Loader: Enablement Impl is " + vBundleCommunitiesEnablement.get());
 
 			logger.debug("AEM Demo Loader: Processing file " + csvfile);
 
