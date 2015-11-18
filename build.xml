@@ -2200,8 +2200,12 @@
 	</target>
 	<!-- Target for uploading and installing a package on a server instance  -->
 	<target name="package">
-		<echo message="Uploading ${package} on port ${port}"/>
+		<!-- Making sure the instance is available for uploads -->
+		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		</waitfor>
 		<basename property="packagefilename" file="${package}"/>
+		<echo message="Uploading ${packagefilename} on port ${port}"/>
 		<condition property="isHotFix">
 			<or>
 				<matches pattern="hotfix" string="${package}"/>
