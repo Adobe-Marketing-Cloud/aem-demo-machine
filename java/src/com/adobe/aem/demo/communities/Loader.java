@@ -210,6 +210,7 @@ public class Loader {
 
 			// Some steps are specific to the version number of the Enablement add-on
 			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
+			Version vBundleCommunitiesCalendar = getVersion(bundlesList, "com.adobe.cq.social.cq-social-calendar");
 
 			logger.debug("AEM Demo Loader: Processing file " + csvfile);
 
@@ -811,7 +812,7 @@ public class Loader {
 				if (componentType.equals(LEARNING)) {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "se:editLearningPath"));
-					
+
 					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
 
@@ -848,31 +849,50 @@ public class Loader {
 				// Creates a calendar event
 				if (componentType.equals(CALENDAR)) {
 
+					String startDate = record.get(5);
+					startDate = startDate.replaceAll("YYYY", Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));
+					startDate = startDate.replaceAll("MM", Integer.toString(1+Calendar.getInstance().get(Calendar.MONTH)));
+
+					String endDate = record.get(6);
+					endDate = endDate.replaceAll("YYYY", Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));
+					endDate = endDate.replaceAll("MM", Integer.toString(1+Calendar.getInstance().get(Calendar.MONTH)));
+
 					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createEvent"));
-					try {
-						JSONObject event = new JSONObject();
+					if (vBundleCommunitiesCalendar!=null && vBundleCommunitiesCalendar.compareTo(new Version("1.2.29"))>0) {
 
-						// Building the JSON fragment for a new calendar event
-						event.accumulate("subject", record.get(2));
-						event.accumulate("message", record.get(3));
-						event.accumulate("location", record.get(4));
-						event.accumulate("tags", "");
-						event.accumulate("undefined", "update");
+						// Post AEM Communities 6.1 FP3
+						nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+						nameValuePairs.add(new BasicNameValuePair("location", record.get(4)));		         
+						nameValuePairs.add(new BasicNameValuePair("tags", ""));		         
+						nameValuePairs.add(new BasicNameValuePair("address", ""));		         
+						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
+						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
+						nameValuePairs.add(new BasicNameValuePair("end", endDate));		         
+						
+					} else {
+						
+						// Pre AEM Communities 6.1 FP3
+						try {
+							
+							JSONObject event = new JSONObject();
 
-						String startDate = record.get(5);
-						startDate = startDate.replaceAll("YYYY", Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));
-						startDate = startDate.replaceAll("MM", Integer.toString(1+Calendar.getInstance().get(Calendar.MONTH)));
-						event.accumulate("start", startDate);
+							// Building the JSON fragment for a new calendar event
+							event.accumulate("subject", record.get(2));
+							event.accumulate("message", record.get(3));
+							event.accumulate("location", record.get(4));
+							event.accumulate("tags", "");
+							event.accumulate("undefined", "update");
+							event.accumulate("start", startDate);
+							event.accumulate("end",endDate);
+							
+							nameValuePairs.add(new BasicNameValuePair("event",event.toString()));
 
-						String endDate = record.get(6);
-						endDate = endDate.replaceAll("YYYY", Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));
-						endDate = endDate.replaceAll("MM", Integer.toString(1+Calendar.getInstance().get(Calendar.MONTH)));
-						event.accumulate("end",endDate);
-						nameValuePairs.add(new BasicNameValuePair("event",event.toString()));
+						} catch(Exception ex) {
 
-					} catch(Exception ex) {
+							logger.error(ex.getMessage());
 
-						logger.error(ex.getMessage());
+						}
 
 					}
 
@@ -1143,8 +1163,8 @@ public class Loader {
 
 			JSONObject resourceJsonObject = new JSONObject(resourceJson);
 
-			String resourceRatingsEndpoint = resourceJsonObject.getString("ratingsEndPoint");
-			String resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint");
+			String resourceRatingsEndpoint = resourceJsonObject.getString("ratingsEndPoint") + ".social.json";
+			String resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint")  + ".social.json";
 			String resourceID = resourceJsonObject.getString("id");
 			String resourceType = resourceJsonObject.getJSONObject("assetProperties").getString("type");
 			String referer = "http://localhost:" + altport + "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + "/en" + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + ".resource.html" + resourceID; 

@@ -407,6 +407,7 @@
 	</target>
 	<!-- Target for restarting the default AUTHOR and PUBLISH servers -->
 	<target name="restart">
+		<echo message="Restarting all running instances"/>
 		<antcall target="stop"/>
 		<antcall target="start"/>
 	</target>
@@ -1060,6 +1061,8 @@
 		</foreach>
 		<echo message="Waiting 1 minute for Forms bundles to be fully started"/>
 		<sleep seconds="60"/>
+		<!-- restarting the AEM instances -->
+		<antcall target="restart"/>
 		<!-- then the reference sites and the demo packages -->
 		<foreach target="package_author" param="package">
 			<path id="forms.packages">
@@ -1723,6 +1726,7 @@
 		<antcall target="livefyre_instance">
 			<param name="port" value="${AdobeAEM.farmport}"/>
 		</antcall>
+		<sleep seconds="10"/>
 	</target>
 	<target name="livefyre_instance">
 		<if>
