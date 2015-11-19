@@ -2311,6 +2311,7 @@
 					<arg line="-d ./secret@Encrypted="/>
 					<arg line="-d ./username=${AdobeAnalytics.username}"/>
 					<arg line="-d ./server=${AdobeAnalytics.server}"/>
+					<arg line="-d ./company=${AdobeAnalytics.company}"/>
 					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
 					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
