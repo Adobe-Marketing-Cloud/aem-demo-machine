@@ -1776,23 +1776,6 @@
 					<arg line="-d ./sling:resourceType=/libs/social/integrations/livefyre/cloudconfig/livefyre-config"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
 				</exec>
-				<echo message="Configuring the Externalizer for Livefyre to work"/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_livefyre_externalizer.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="--globoff"/>
-					<arg line="-X POST"/>
-					<arg line="-d apply=true"/>
-					<arg line="-d action=ajaxConfigManager"/>
-					<arg line="-d $location="/>
-					<arg line="-d externalizer.domains='local http://communities.geometrixx.com:${AdobeAEM.publishport}'"/>
-					<arg line="-d externalizer.domains='author http://aem.geometrixx.com:${AdobeAEM.authorport}'"/>
-					<arg line="-d externalizer.domains='publish http://communities.geometrixx.com:${AdobeAEM.publishport}'"/>
-					<arg line="-d externalizer.host="/>
-					<arg line="-d externalizer.contextpath="/>
-					<arg line="-d propertylist=externalizer.domains,externalizer.host,externalizer.contextpath"/>
-					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
-				</exec>
 				<antcall target="livefyre_components"/>
 			</then>
 		</if>
@@ -1820,6 +1803,30 @@
 			<arg line="-d ./components=/libs/social/commons/components/hbs/comments"/>
 			<arg line="http://${demo.host}:${port}/etc/designs/social/console/jcr:content/basepage/content"/>
 		</exec>
+	</target>
+	<target name="externalizer">
+		<if>
+			<equals arg1="${demo.externalizer}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring the Externalizer"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_livefyre_externalizer.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d externalizer.domains='local http://${demo.externalizer.local}:${AdobeAEM.publishport}'"/>
+					<arg line="-d externalizer.domains='author http://${demo.externalizer.author}:${AdobeAEM.authorport}'"/>
+					<arg line="-d externalizer.domains='publish http://${demo.externalizer.publish}:${AdobeAEM.publishport}'"/>
+					<arg line="-d externalizer.host="/>
+					<arg line="-d externalizer.contextpath="/>
+					<arg line="-d propertylist=externalizer.domains,externalizer.host,externalizer.contextpath"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Target for getting version number -->
 	<target name="version">
@@ -2175,6 +2182,9 @@
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="ffmpeg">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="externalizer">
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="translations_geomedia">
