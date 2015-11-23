@@ -2795,6 +2795,13 @@
 			</then>
 		</if>
 	</target>
+	<!-- Target for loading a CSV file with UGC into the author instance -->
+	<target name="community_loader_author" depends="community_loader_flag,compile">
+		<java classname="com.adobe.aem.demo.communities.Loader">
+			<classpath refid="demo.classpath"/>
+			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${AdobeAEM.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+		</java>
+	</target>
 	<!-- Target for loading a CSV file with UGC into a demo instance which might happen just on author (if MSRP or ASRP), or on multiple instances -->
 	<target name="community_loader" depends="community_loader_flag,compile">
 		<if>
@@ -2806,13 +2813,6 @@
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
-			<else>
-				<echo message="Loading Community content on Author ${demo.loader.currentfile}..."/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${AdobeAEM.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-			</else>
 		</if>
 	</target>
 	<!-- Target for loading all available CSV files for community content into a demo instance -->
@@ -2850,6 +2850,7 @@
 			</not>
 			<then>
 				<!-- This content is for AEM 6.1 FP2 and beyond -->
+				<echo message="Loading Community Site Content (for AEM 6.1 FP2 and beyond)"/>
 				<java classname="com.adobe.aem.demo.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
@@ -3486,7 +3487,7 @@
 			<arg line="-d jdbc.connection.uri=jdbc:mysql://${demo.mysql.host}:${demo.mysql.port}/${mysql.prefix}scorm"/>
 			<arg line="-d jdbc.username=${demo.mysql.user}"/>
 			<arg line="-d jdbc.password=${demo.mysql.password}"/>
-			<arg line="-d scorm.password=${demo.mysql.password}"/>
+			<arg line="-d scorm.password=Sc0rm12"/>
 			<arg line="-d propertylist=jdbc.connection.uri,jdbc.username,jdbc.password,scorm.password"/>
 			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.social.scorm.impl.ScormEngineServiceImpl"/>
 		</exec>

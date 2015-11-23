@@ -95,6 +95,7 @@ public class Loader {
 	private static final String SLINGDELETE = "SlingDelete";
 	private static final String PASSWORD = "password";
 	private static final String SITE = "Site";
+	private static final String SITEUPDATE = "SiteUpdate";
 	private static final String SITETEMPLATE = "SiteTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
 	private static final String SITEMEMBERS = "SiteMembers";
@@ -306,6 +307,73 @@ public class Loader {
 
 					continue;
 				}
+
+				// Let's see if we need to update an existing Community site
+				if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
+
+					logger.debug("Updating a Community Site " + record.get(1));
+
+					// Let's fetch the theme for this Community Site Url
+					String siteConfig = doGet(hostname, port,
+							"/content/sites/" + record.get(1) + "/" + record.get(2) + "/configuration.social.json",
+							"admin",adminPassword,
+							null);
+
+					logger.debug("Community Site configuration " + siteConfig);
+
+					// Building the form entity to be posted
+					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+					builder.setCharset(MIME.UTF8_CHARSET);
+					builder.addTextBody(":operation", "social:updateSite", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+					// Adding the mandatory values for being able to save a site via the JSON endpoint
+					List<String> props = Arrays.asList("urlName", "theme", "moderators", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid");
+					try {
+						JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
+						for (String prop : props) {
+							if (siteprops.has(prop)) {
+								Object propValue = siteprops.get(prop); 
+								if (propValue instanceof JSONArray) {
+									JSONArray propArray = (JSONArray) propValue;
+									for (int i=0;i<propArray.length();i++) {
+										logger.debug("Updating + " + prop + " with value " + propArray.get(i).toString() );
+										builder.addTextBody(prop, propArray.get(i).toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));																	
+									}
+								} else {
+									logger.debug("Updating + " + prop + " with value " + propValue.toString() );
+									builder.addTextBody(prop, propValue.toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));								
+								}
+							}
+						}
+
+					} catch (Exception e) {
+						logger.error(e.getMessage());
+					}
+
+					// Adding the override values from the CSV record
+					for (int i=3;i<record.size()-1;i=i+2) {
+
+						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+
+							String name = record.get(i).trim();
+							String value = record.get(i+1).trim();
+							logger.debug("Updating + " + name + " with value " + value );
+							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+						}
+
+					}
+
+					doPost(hostname, port,
+							"/content/sites/" + record.get(1) + "/" + record.get(2) + ".social.json",
+							"admin", adminPassword,
+							builder.build(),
+							null);
+
+					continue;
+				}
+
 
 				// Let's see if we need to create a new Tag
 				if (record.get(0).equals(TAG)) {
@@ -868,13 +936,13 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("address", ""));		         
 						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
 						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
-						nameValuePairs.add(new BasicNameValuePair("end", endDate));		         
-						
+						nameValuePairs.add(new BasicNameValuePair("end", endDate));		         					
+
 					} else {
-						
+
 						// Pre AEM Communities 6.1 FP3
 						try {
-							
+
 							JSONObject event = new JSONObject();
 
 							// Building the JSON fragment for a new calendar event
@@ -885,7 +953,7 @@ public class Loader {
 							event.accumulate("undefined", "update");
 							event.accumulate("start", startDate);
 							event.accumulate("end",endDate);
-							
+
 							nameValuePairs.add(new BasicNameValuePair("event",event.toString()));
 
 						} catch(Exception ex) {
@@ -1690,6 +1758,12 @@ public class Loader {
 
 		return rawResponse;
 
+	}
+
+	// This method logs the list of value/pairs
+	@SuppressWarnings("unused")
+	private static void dumpNVP(List<NameValuePair> nameValuePairs) {
+		for (NameValuePair nvp : nameValuePairs) logger.debug(nvp.getName() + ":" + nvp.getValue());
 	}
 
 	// This method creates a list of name value pairs from an existing one, converting a JSON array into multiple individual entries
