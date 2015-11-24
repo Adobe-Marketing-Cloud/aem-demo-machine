@@ -1817,7 +1817,7 @@
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
-					<arg line="-d externalizer.domains='local http://${demo.externalizer.local}:${AdobeAEM.publishport}'"/>
+					<arg line="-d externalizer.domains='local http://${demo.externalizer.publish}:${port}'"/>
 					<arg line="-d externalizer.domains='author http://${demo.externalizer.author}:${AdobeAEM.authorport}'"/>
 					<arg line="-d externalizer.domains='publish http://${demo.externalizer.publish}:${AdobeAEM.publishport}'"/>
 					<arg line="-d externalizer.host="/>
