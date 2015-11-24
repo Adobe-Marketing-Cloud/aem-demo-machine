@@ -79,6 +79,11 @@
 		<antcall target="demo"/>
 		<antcall target="apps"/>
 	</target>
+	<!-- Target for installing then configuring a new baseline demo for AEM with no samples at all -->
+	<target name="demo_nosamples">
+		<property name="demo.nosamples" value=",nosamplecontent"/>
+		<antcall target="install"/>
+	</target>
 	<!-- Target for installing then configuring EVERYTHING -->
 	<target name="demo_kitchensink">
 		<antcall target="demo"/>
@@ -228,7 +233,7 @@
 		<copy file="${dist}/license/license-${demo.license}.properties" tofile="${demos}/${demo.build}/${demo.instance}/license.properties"/>
 		<copy file="${dist}/bin/${demo.jar}.jar" tofile="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar"/>
 		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" output="${logs}/${demo.port}_${demo.instance}_unpack.txt" fork="true" spawn="false">
-			<arg line="-unpack -r ${demo.mode},${demomachine.store}"/>
+			<arg line="-unpack"/>
 			<jvmarg value="-Djava.awt.headless=true"/>
 		</java>
 		<if>
@@ -434,7 +439,7 @@
 	<target name="aem_start">
 		<if>
 			<equals arg1="${demomachine.store}" arg2="crx3,crx3mongo" casesensitive="false"/>
-			<!-- Mongo use case -->
+			<!-- AEM6.x MongoMK use case -->
 			<then>
 				<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using Mongo DB..."/>
 				<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
@@ -444,7 +449,7 @@
 					<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
 					<jvmarg value="-Doak.mongo.db=${demo.mode}"/>
 					<jvmarg value="-Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port}"/>
-					<arg value="-r ${demo.mode},${demomachine.store}"/>
+					<arg value="-r ${demo.mode},${demomachine.store}${demo.nosamples}"/>
 					<arg value="-gui"/>
 				</java>
 			</then>
@@ -452,19 +457,19 @@
 				<if>
 					<equals arg1="${demo.license}" arg2="aem6" casesensitive="false"/>
 					<then>
-						<!-- AEM6 use case -->
+						<!-- AEM6.x use case -->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
 						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
 							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
 							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
 							<jvmarg value="-XX:MaxPermSize=256m"/>
 							<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
-							<arg value="-r ${demo.mode},${demomachine.store}"/>
+							<arg value="-r ${demo.mode},${demomachine.store}${demo.nosamples}"/>
 							<arg value="-gui"/>
 						</java>
 					</then>
 					<else>
-						<!-- CQ5 use case-->
+						<!-- CQ5.x or AEM6.0 use case-->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using CRX2..."/>
 						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
 							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
@@ -1717,16 +1722,21 @@
 	</target>
 	<!-- Target for installing and configuring the Livefyre feature pack -->
 	<target name="livefyre" if="aem61orlater" depends="version">
-		<antcall target="livefyre_instance">
-			<param name="port" value="${AdobeAEM.authorport}"/>
-		</antcall>
-		<antcall target="livefyre_instance">
-			<param name="port" value="${AdobeAEM.publishport}"/>
-		</antcall>
-		<antcall target="livefyre_instance">
-			<param name="port" value="${AdobeAEM.farmport}"/>
-		</antcall>
-		<sleep seconds="10"/>
+		<if>
+			<equals arg1="${Livefyre.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="livefyre_instance">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+				</antcall>
+				<antcall target="livefyre_instance">
+					<param name="port" value="${AdobeAEM.publishport}"/>
+				</antcall>
+				<antcall target="livefyre_instance">
+					<param name="port" value="${AdobeAEM.farmport}"/>
+				</antcall>
+				<sleep seconds="10"/>
+			</then>
+		</if>
 	</target>
 	<target name="livefyre_instance">
 		<if>
@@ -1809,6 +1819,15 @@
 			<equals arg1="${demo.externalizer}" arg2="true" casesensitive="false"/>
 			<then>
 				<echo message="Configuring the Externalizer"/>
+				<if>
+					<equals arg1="${port}" arg2="${AdobeAEM.authorport}" casesensitive="false"/>
+					<then>
+						<property name="externalizer.local" value="${demo.externalizer.author}"/>
+					</then>
+					<else>
+						<property name="externalizer.local" value="${demo.externalizer.publish}"/>
+					</else>
+				</if>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_livefyre_externalizer.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -1817,7 +1836,7 @@
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
-					<arg line="-d externalizer.domains='local http://${demo.externalizer.publish}:${port}'"/>
+					<arg line="-d externalizer.domains='local http://${externalizer.local}:${port}'"/>
 					<arg line="-d externalizer.domains='author http://${demo.externalizer.author}:${AdobeAEM.authorport}'"/>
 					<arg line="-d externalizer.domains='publish http://${demo.externalizer.publish}:${AdobeAEM.publishport}'"/>
 					<arg line="-d externalizer.host="/>
@@ -1848,7 +1867,6 @@
 				<property name="cq.version" value="${demo.version}"/>
 			</else>
 		</if>
-		<echo message="cq.version: ${cq.version}"/>
 		<!-- These conditions are used to run specitic targets only on certain releases -->
 		<condition property="aem62">
 			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
@@ -2020,12 +2038,8 @@
 				</antcall>
 			</then>
 		</if>
-		<if>
-			<equals arg1="${Livefyre.install}" arg2="true" casesensitive="false"/>
-			<then>
-				<antcall target="livefyre"/>
-			</then>
-		</if>
+		<antcall target="github"/>
+		<antcall target="livefyre"/>
 	</target>
 	<!-- Target for configuring the Replication agents -->
 	<target name="configure_replication" if="aem60orlater">
@@ -4003,6 +4017,53 @@
 			</then>
 		</if>
 		<echo message="Java version ${ant.java.version} is compatible with AEM version: ${demo.packages}"/>
+	</target>
+	<!-- Target for building and installing GitHub projects -->
+	<target name="github">
+		<echo message="Building and installing GitHub projects"/>
+		<propertyselector property="gitprojects" match="demo.github.([^\.]*).install" select="\1" casesensitive="false"/>
+		<if>
+			<and>
+				<isset property="gitprojects"/>
+				<not>
+					<equals arg1="${gitprojects}" arg2=""/>
+				</not>
+			</and>
+			<then>
+				<foreach list="${gitprojects}" target="github_install" param="gitproject.id"/>
+			</then>
+			<else>
+				<echo message="No GitHub project to install"/>
+			</else>
+		</if>
+	</target>
+	<target name="github_install" depends="version">
+		<propertycopy property="git.install" from="demo.github.${gitproject.id}.install"/>
+		<propertycopy property="git.path" from="demo.github.${gitproject.id}.path"/>
+		<propertycopy property="git.pull" from="demo.github.${gitproject.id}.pull"/>
+		<propertycopy property="git.version" from="demo.github.${gitproject.id}.version"/>
+		<if>
+			<and>
+				<equals arg1="${git.install}" arg2="true" casesensitive="false"/>
+				<equals arg1="${git.version}" arg2="${demo.packages}" casesensitive="false"/>
+			</and>
+			<then>
+				<echo message="Installing GitHub project ${gitproject.id} for version ${git.version}"/>
+				<if>
+					<equals arg1="${git.pull}" arg2="true" casesensitive="false"/>
+					<then>
+						<echo message="Pulling from GitHub for project ${gitproject.id}"/>
+						<exec dir="${git.path}" executable="git" spawn="false" failonerror="false">
+							<arg line="pull"/>
+						</exec>
+					</then>
+				</if>
+				<echo message="Building GitHub project ${gitproject.id}"/>
+				<exec dir="${git.path}" executable="mvn" spawn="false" failonerror="false">
+					<arg line="clean install -PautoInstallPackage"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<target name="gui_build" depends="compile">
 		<delete file="demomachine.jar"/>

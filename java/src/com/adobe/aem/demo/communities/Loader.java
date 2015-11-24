@@ -917,13 +917,8 @@ public class Loader {
 				// Creates a calendar event
 				if (componentType.equals(CALENDAR)) {
 
-					String startDate = record.get(5);
-					startDate = startDate.replaceAll("YYYY", Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));
-					startDate = startDate.replaceAll("MM", Integer.toString(1+Calendar.getInstance().get(Calendar.MONTH)));
-
-					String endDate = record.get(6);
-					endDate = endDate.replaceAll("YYYY", Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));
-					endDate = endDate.replaceAll("MM", Integer.toString(1+Calendar.getInstance().get(Calendar.MONTH)));
+					String startDate = computeDate(record.get(5), record.get(7));
+					String endDate = computeDate(record.get(6), record.get(7));
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createEvent"));
 					if (vBundleCommunitiesCalendar!=null && vBundleCommunitiesCalendar.compareTo(new Version("1.2.29"))>0) {
@@ -1216,6 +1211,26 @@ public class Loader {
 
 	}
 
+	// This method computes a date with a relative number of padding days
+	private static String computeDate(String date, String padding) {
+
+		Calendar calendar = Calendar.getInstance();
+		calendar.add(Calendar.DAY_OF_YEAR, Integer.parseInt(padding));
+
+		date = date.replaceAll("YYYY", Integer.toString(calendar.get(Calendar.YEAR)));
+		date = date.replaceAll("MM", Integer.toString(1 + calendar.get(Calendar.MONTH)));
+
+		if (date.indexOf("DD")>0 && padding != null ){
+			
+			date = date.replaceAll("DD", Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)));			
+			
+		}
+
+		logger.debug("Date and time is " + date);
+		return date;
+
+	}
+
 	// This method POSTs a set of comments and ratings for a resource for a particular location
 	private static void doDecorate(String hostname, String altport, String location, CSVRecord record, String analytics) {
 
@@ -1274,7 +1289,7 @@ public class Loader {
 							if (jsonElement!=null && jsonElement.equals("user")) {
 
 								// Always generating a page view event
-								if (Math.random() < 0.90) doAnalytics(analytics, "event1", referer, resourceID, resourceType);
+								if (Math.random() < 0.90) doAnalytics(analytics, "event11", referer, resourceID, resourceType);
 
 								// Sometimes generating a video view event
 								if (Math.random() < 0.75 && resourceType.equals("video/mp4")) doAnalytics(analytics, "event2", referer, resourceID, resourceType);
@@ -1302,7 +1317,7 @@ public class Loader {
 									if (email!=null) {
 
 										// Always generating a page view event
-										if (Math.random() < 0.90) doAnalytics(analytics, "event1", referer, resourceID, "video/mp4");
+										if (Math.random() < 0.90) doAnalytics(analytics, "event11", referer, resourceID, "video/mp4");
 
 										// Sometimes generating a video view event
 										if (Math.random() < 0.75 && resourceType.equals("video/mp4")) doAnalytics(analytics, "event2", referer, resourceID, resourceType);
@@ -1349,7 +1364,7 @@ public class Loader {
 				sb.append("<events>" + event + "</events>");
 				sb.append("<pageURL>" + pageURL + "</pageURL>");
 				sb.append("<pageName>" + pageurl.getPath().substring(1,pageurl.getPath().indexOf(".")).replaceAll("/",":") + "</pageName>");
-				sb.append("<evar1>" + resourcePath + "</evar1>");
+				sb.append("<evar10>" + resourcePath + "</evar10>");
 				sb.append("<evar2>" + resourceType + "</evar2>");
 				sb.append("<visitorID>demomachine</visitorID>");
 				sb.append("<reportSuiteID>" + analytics.substring(0,analytics.indexOf(".")) + "</reportSuiteID>");
