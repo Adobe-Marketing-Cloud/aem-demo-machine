@@ -1989,7 +1989,7 @@
 					<param name="bundle.port" value="${AdobeAEM.publishport}"/>
 					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
 				</antcall>
-				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 30 seconds -->
+				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 60 seconds -->
 				<sleep seconds="30"/>
 				<foreach target="package_publish" param="package">
 					<path id="publish.packages">
@@ -2001,6 +2001,7 @@
 						</fileset>
 					</path>
 				</foreach>
+				<sleep seconds="30"/>
 				<antcall target="configure_post">
 					<param name="port" value="${AdobeAEM.publishport}"/>
 				</antcall>
@@ -2033,6 +2034,7 @@
 						</fileset>
 					</path>
 				</foreach>
+				<sleep seconds="30"/>
 				<antcall target="configure_post">
 					<param name="port" value="${AdobeAEM.farmport}"/>
 				</antcall>
@@ -2333,13 +2335,13 @@
 					<arg line="--output '${logs}/${port}_analytics.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
-					<arg line="-d ./password=${AdobeAnalytics.password}"/>
+					<arg line="--data-urlencode './password=${AdobeAnalytics.password}'"/>
 					<arg line="-d ./password@Encrypted="/>
-					<arg line="-d ./secret=${AdobeAnalytics.secret}"/>
+					<arg line="--data-urlencode './secret=${AdobeAnalytics.secret}'"/>
 					<arg line="-d ./secret@Encrypted="/>
-					<arg line="-d ./username=${AdobeAnalytics.username}"/>
+					<arg line="--data-urlencode './username=${AdobeAnalytics.username}'"/>
 					<arg line="-d ./server=${AdobeAnalytics.server}"/>
-					<arg line="-d ./company=${AdobeAnalytics.company}"/>
+					<arg line="--data-urlencode './company=${AdobeAnalytics.company}'"/>
 					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
 					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
@@ -2357,10 +2359,10 @@
 					<arg line="--output '${logs}/${port}_target.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
-					<arg line="-d ./password=${AdobeTarget.password}"/>
+					<arg line="--data-urlencode './password=${AdobeTarget.password}'"/>
 					<arg line="-d ./password@Encrypted="/>
-					<arg line="-d ./email=${AdobeTarget.email}"/>
-					<arg line="-d ./public/clientcode=${AdobeTarget.clientcode}"/>
+					<arg line="--data-urlencode './email=${AdobeTarget.email}'"/>
+					<arg line="--data-urlencode './public/clientcode=${AdobeTarget.clientcode}'"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/testandtarget/demomachine/jcr:content"/>
 				</exec>
 			</then>
@@ -2376,7 +2378,7 @@
 					<arg line="--output '${logs}/${port}_mobileservices.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
-					<arg line="-d ./password=${AdobeMobileServices.password}"/>
+					<arg line="--data-urlencode './password=${AdobeMobileServices.password}'"/>
 					<arg line="-d ./password@Encrypted="/>
 					<arg line="-d ./secret=${AdobeMobileServices.secret}"/>
 					<arg line="-d ./secret@Encrypted="/>
@@ -2408,7 +2410,7 @@
 					<arg line="--output '${logs}/${port}_phonegapbuild.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
-					<arg line="-d ./pgBuildPassword=${AdobePhoneGapBuild.password}"/>
+					<arg line="--data-urlencode './pgBuildPassword=${AdobePhoneGapBuild.password}'"/>
 					<arg line="-d ./pgBuildPassword@Encrypted="/>
 					<arg line="-d ./pgBuildUserId=${AdobePhoneGapBuild.user}"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/phonegap-build/phonegap-build/jcr:content"/>
@@ -4036,6 +4038,7 @@
 				<echo message="No GitHub project to install"/>
 			</else>
 		</if>
+		<sleep seconds="10"/>
 	</target>
 	<target name="github_install" depends="version">
 		<propertycopy property="git.install" from="demo.github.${gitproject.id}.install"/>
