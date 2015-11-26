@@ -42,4 +42,6 @@ public class AemDemoConstants {
 
 	public static final String PASSWORD = "******";
 	
+	public static final String Credits = "Welcome to the AEM Demo Machine! Everyone knows there isn't any good demo without a bouncing scrolltext... Remember, this is an OpenSource project and you are welcome to contribute as did the people listed later. Don't forget to \"git pull\" the latest changes often. Also make sure to check the latest updates to the Wiki documentation at https://github.com/Adobe-Marketing-Cloud/aem-demo-machine/wiki . Many thanks to the following people for contributing, one way or the other, to the AEM Demo Machine: Gerd Handke, Cedric Huesler, Greg Klebus, Gabriel Walt, Martin Buergi, Scott Date, Randah McKinnie, Don Walling, Abhinav Chakravarty, Nikhil Vasudeva, Michael Marth, Marcel Boucher, Michael Point, Brandon Tan, Raul Ugarte, Christophe Loffler, Samuel Blin, Sethu Iyer, Mark Frazer, and... Bertrand de Coatpont. Copyright - well, there's actually no copyright. Let's wrap and happy AEM demoing!";
+	
 }

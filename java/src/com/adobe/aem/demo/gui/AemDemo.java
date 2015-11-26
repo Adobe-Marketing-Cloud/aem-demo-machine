@@ -681,7 +681,7 @@ public class AemDemo {
 
 		// Adding other form elements
 		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(24, 184, 650, 230);
+		scrollPane.setBounds(24, 163, 650, 230);
 		frameMain.getContentPane().add(scrollPane);
 
 		final JTextArea textArea = new JTextArea("");
@@ -690,7 +690,7 @@ public class AemDemo {
 
 		// List of demo machines available
 		JScrollPane scrollDemoList = new JScrollPane();
-		scrollDemoList.setBounds(24, 55, 208, 100);
+		scrollDemoList.setBounds(24, 34, 208, 100);
 		frameMain.getContentPane().add(scrollDemoList);	
 		listModelDemoMachines = AemDemoUtils.listDemoMachines(buildFile.getParentFile().getAbsolutePath());
 		listDemoMachines = new JList(listModelDemoMachines);
@@ -710,7 +710,7 @@ public class AemDemo {
 			}
 		});
 
-		btnStart.setBounds(250, 50, 117, 29);
+		btnStart.setBounds(250, 29, 117, 29);
 		frameMain.getContentPane().add(btnStart);
 
 		// Set Start as the default button
@@ -725,7 +725,7 @@ public class AemDemo {
 
 			}
 		});
-		btnInfo.setBounds(250, 80, 117, 29);
+		btnInfo.setBounds(250, 59, 117, 29);
 		frameMain.getContentPane().add(btnInfo);
 
 		JButton btnStop = new JButton("Stop");
@@ -740,7 +740,7 @@ public class AemDemo {
 
 			}
 		});
-		btnStop.setBounds(500, 50, 117, 29);
+		btnStop.setBounds(500, 29, 117, 29);
 		frameMain.getContentPane().add(btnStop);
 
 		JButton btnExit = new JButton("Exit");
@@ -749,7 +749,7 @@ public class AemDemo {
 				System.exit(-1);
 			}
 		});
-		btnExit.setBounds(550, 429, 117, 29);
+		btnExit.setBounds(550, 408, 117, 29);
 		frameMain.getContentPane().add(btnExit);
 
 		JButton btnClear = new JButton("Clear");
@@ -758,7 +758,7 @@ public class AemDemo {
 				textArea.setText("");
 			}
 		});
-		btnClear.setBounds(40, 429, 117, 29);
+		btnClear.setBounds(40, 408, 117, 29);
 		frameMain.getContentPane().add(btnClear);
 
 		JButton btnBackup = new JButton("Backup");
@@ -767,7 +767,7 @@ public class AemDemo {
 				AemDemoUtils.antTarget(AemDemo.this, "backup");
 			}
 		});
-		btnBackup.setBounds(500, 80, 117, 29);
+		btnBackup.setBounds(500, 59, 117, 29);
 		frameMain.getContentPane().add(btnBackup);
 
 		JButton btnRestore = new JButton("Restore");
@@ -776,7 +776,7 @@ public class AemDemo {
 				AemDemoUtils.antTarget(AemDemo.this, "restore");
 			}
 		});
-		btnRestore.setBounds(500, 110, 117, 29);
+		btnRestore.setBounds(500, 89, 117, 29);
 		frameMain.getContentPane().add(btnRestore);
 
 		JButton btnDelete = new JButton("Delete");
@@ -789,22 +789,28 @@ public class AemDemo {
 				AemDemoUtils.antTarget(AemDemo.this, "uninstall");
 			}
 		});
-		btnDelete.setBounds(500, 140, 117, 29);
+		btnDelete.setBounds(500, 119, 117, 29);
 		frameMain.getContentPane().add(btnDelete);
 
 		JLabel lblSelectYourDemo = new JLabel("Select your Demo Environment");
-		lblSelectYourDemo.setBounds(24, 31, 219, 16);
+		lblSelectYourDemo.setBounds(24, 10, 219, 16);
 		frameMain.getContentPane().add(lblSelectYourDemo);
 
 		JLabel lblCommandOutput = new JLabel("Command Output");
-		lblCommandOutput.setBounds(24, 164, 160, 16);
+		lblCommandOutput.setBounds(24, 143, 160, 16);
 		frameMain.getContentPane().add(lblCommandOutput);
 
+		// Initializing and launching the scroller
+		AemDemoMarquee mp = new AemDemoMarquee(AemDemoConstants.Credits, 60);
+		mp.setBounds(140, 440, 650, 30);
+		frameMain.getContentPane().add(mp);
+		mp.start();
+		
 		// Launching the download tracker task
 		AemDemoDownload aemDownload = new AemDemoDownload(AemDemo.this);
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(aemDownload, 0, 5, TimeUnit.SECONDS);
-
+		
 	}
 
 	public Properties getDefaultProperties() {
