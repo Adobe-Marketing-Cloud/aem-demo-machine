@@ -1334,6 +1334,12 @@
 				<exec executable="curl">
 					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${logs}/packageshare.html' https://www.adobeaemcloud.com/content/marketplace/marketplaceProxy.html?packagePath=${filepath}"/>
 				</exec>
+				<if>
+					<resourcecontains resource="${logs}/packageshare.html" substring="an error occurred while processing your request"/>
+					<then>
+						<fail message="There was a problem downloading a package from PackageShare. Please verify the download properties ${filepath}."/>
+					</then>
+				</if>
 				<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
 				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
 				<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>

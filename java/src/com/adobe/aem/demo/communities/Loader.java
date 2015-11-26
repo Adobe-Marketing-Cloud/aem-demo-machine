@@ -841,38 +841,47 @@ public class Loader {
 				// Creates an Enablement resource
 				if (componentType.equals(RESOURCE)) {
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0?"social:createResource":"se:createResource"));
+					// Making sure it's referencing some existing file
+					File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(2));
+					if (attachment.exists()) {
 
-					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
-					nameValuePairs.addAll(otherNameValuePairs);
+						nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0?"social:createResource":"se:createResource"));
 
-					// Special processing of lists with multiple users, need to split a String into multiple entries
-					if (vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0) {
+						List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
+						nameValuePairs.addAll(otherNameValuePairs);
 
-						nameValuePairs = convertArrays(nameValuePairs,"add-learners");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-author");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
+						// Special processing of lists with multiple users, need to split a String into multiple entries
+						if (vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0) {
 
-					}
+							nameValuePairs = convertArrays(nameValuePairs,"add-learners");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-author");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
 
-					// Adding the site
-					nameValuePairs.add(new BasicNameValuePair("site", "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
+						}
 
-					// Building the cover image fragment
-					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
+						// Adding the site
+						nameValuePairs.add(new BasicNameValuePair("site", "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
+
+						// Building the cover image fragment
+						if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
+						} else {
+							nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
+						}
+
+						// Building the asset fragment
+						String coverPath = "/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
+						String coverSource = "dam";
+						String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "\"}]";
+						nameValuePairs.add(new BasicNameValuePair("assets", assets));
+
+						logger.debug("assets:" + assets);
+
 					} else {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
+						logger.error("Resource cannot be created at the referenced file is missing");
+						continue;
 					}
-
-					// Building the asset fragment
-					String coverPath = "/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
-					String coverSource = "dam";
-					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "\"}]";
-					nameValuePairs.add(new BasicNameValuePair("assets", assets));
-
-					logger.debug("assets:" + assets);
 
 				}
 
@@ -974,20 +983,30 @@ public class Loader {
 
 					File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(ASSET_INDEX_NAME));
 
-					ContentType ct = ContentType.MULTIPART_FORM_DATA;
-					if (record.get(ASSET_INDEX_NAME).indexOf(".mp4")>0) {
-						ct = ContentType.create("video/mp4", MIME.UTF8_CHARSET);
-					} else if (record.get(ASSET_INDEX_NAME).indexOf(".jpg")>0 || record.get(ASSET_INDEX_NAME).indexOf(".jpeg")>0) {
-						ct = ContentType.create("image/jpeg", MIME.UTF8_CHARSET);
-					} else if (record.get(ASSET_INDEX_NAME).indexOf(".png")>0) {
-						ct = ContentType.create("image/png", MIME.UTF8_CHARSET);
-					} else if (record.get(ASSET_INDEX_NAME).indexOf(".pdf")>0) {
-						ct = ContentType.create("application/pdf", MIME.UTF8_CHARSET);
-					} else if (record.get(ASSET_INDEX_NAME).indexOf(".zip")>0) {
-						ct = ContentType.create("application/zip", MIME.UTF8_CHARSET);
+					// Check for file existence
+					if (attachment.exists()) {
+
+						ContentType ct = ContentType.MULTIPART_FORM_DATA;
+						if (record.get(ASSET_INDEX_NAME).indexOf(".mp4")>0) {
+							ct = ContentType.create("video/mp4", MIME.UTF8_CHARSET);
+						} else if (record.get(ASSET_INDEX_NAME).indexOf(".jpg")>0 || record.get(ASSET_INDEX_NAME).indexOf(".jpeg")>0) {
+							ct = ContentType.create("image/jpeg", MIME.UTF8_CHARSET);
+						} else if (record.get(ASSET_INDEX_NAME).indexOf(".png")>0) {
+							ct = ContentType.create("image/png", MIME.UTF8_CHARSET);
+						} else if (record.get(ASSET_INDEX_NAME).indexOf(".pdf")>0) {
+							ct = ContentType.create("application/pdf", MIME.UTF8_CHARSET);
+						} else if (record.get(ASSET_INDEX_NAME).indexOf(".zip")>0) {
+							ct = ContentType.create("application/zip", MIME.UTF8_CHARSET);
+						}
+
+						builder.addBinaryBody("file", attachment, ct, attachment.getName());
+						logger.debug("Adding file to payload with name: " + attachment.getName() + " and type: " + ct.getMimeType());
+
+					} else {
+
+						logger.error("A non-existing file was referenced: " + record.get(ASSET_INDEX_NAME));
+						continue;
 					}
-					builder.addBinaryBody("file", attachment, ct, attachment.getName());
-					logger.debug("Adding file to payload with name: " + attachment.getName() + " and type: " + ct.getMimeType());
 
 				}
 
@@ -1221,9 +1240,9 @@ public class Loader {
 		date = date.replaceAll("MM", Integer.toString(1 + calendar.get(Calendar.MONTH)));
 
 		if (date.indexOf("DD")>0 && padding != null ){
-			
+
 			date = date.replaceAll("DD", Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)));			
-			
+
 		}
 
 		logger.debug("Date and time is " + date);
