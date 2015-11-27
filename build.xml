@@ -1105,6 +1105,40 @@
 				</fileset>
 			</path>
 		</foreach>
+		<!-- then configure the Adobe Target URL -->
+		<if>
+			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<!-- This is for WebSphere Commerce only -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${AdobeAEM.authorport}_targetforms.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d formsmanagerconfig.targetframework=/etc/cloudservices/testandtarget/demomachine/demomachine/jcr:content/public/mappings"/>
+					<arg line="-d formsmanagerconfig.targetURLs=http://${demo.host}:${AdobeAEM.authorport}"/>
+					<arg line="-d propertylist=formsmanagerconfig.targetframework,formsmanagerconfig.targetURLs"/>
+					<arg line="http://${demo.host}:${AdobeAEM.authorport}/system/console/configMgr/com.adobe.aem.formsndocuments.testandtarget.config.FMTargetConfiguration"/>
+				</exec>
+			</then>
+		</if>
+		<!-- then associate the cloud services -->
+		<if>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			<then>
+				<antcall target="cloudservices">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+					<param name="path" value="/content/geometrixx-gov/en/jcr:content"/>
+				</antcall>
+				<antcall target="cloudservices">
+					<param name="port" value="${AdobeAEM.authorport}"/>
+					<param name="path" value="/content/geometrixx-finance/global/en/jcr:content"/>
+				</antcall>
+			</then>
+		</if>
 	</target>
 	<!-- Target for installing the Sites demo -->
 	<target name="sites" depends="version">
