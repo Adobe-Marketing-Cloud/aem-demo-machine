@@ -106,11 +106,20 @@
 			</resourceexists>
 			<then>
 				<property file="${demos}/${demo.build}/demomachine.properties"/>
+				<if>
+					<not>
+						<isset property="demomachine.jvmargs"/>
+					</not>
+					<then>
+						<property name="demomachine.jvmargs" value=""/>
+					</then>
+				</if>
 			</then>
 			<else>
 				<property name="demomachine.srp" value="${demo.srp}"/>
 				<property name="demomachine.type" value="${demo.type}"/>
 				<property name="demomachine.store" value="${demo.store}"/>
+				<property name="demomachine.jvmargs" value="${AdobeAEM.jvmargs}"/>
 				<property name="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
 			</else>
 		</if>
@@ -118,7 +127,7 @@
 		<echo message="Demo SRP: ${demomachine.srp}"/>
 		<echo message="Demo Type: ${demomachine.type}"/>
 		<echo message="Demo Store: ${demomachine.store}"/>
-		<echo message="Enablement Add-on: ${demomachine.communities.enablement}"/>
+		<echo message="Demo JVM args: ${demomachine.jvmargs}"/>
 	</target>
 	<!-- Target for installing and starting the default AUTHOR and PUBLISH servers -->
 	<target name="install">
@@ -132,6 +141,7 @@
 			<entry key="demomachine.srp" value="${demo.srp}"/>
 			<entry key="demomachine.type" value="${demo.type}"/>
 			<entry key="demomachine.store" value="${demo.store}"/>
+			<entry key="demomachine.jvmargs" value="${AdobeAEM.jvmargs}"/>
 			<entry key="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
 		</propertyfile>
 		<property file="${demos}/${demo.build}/demomachine.properties"/>
@@ -449,6 +459,7 @@
 					<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
 					<jvmarg value="-Doak.mongo.db=${demo.mode}"/>
 					<jvmarg value="-Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port}"/>
+					<jvmarg line="${demomachine.jvmargs}"/>
 					<arg value="-r ${demo.mode},${demomachine.store}${demo.nosamples}"/>
 					<arg value="-gui"/>
 				</java>
@@ -464,6 +475,7 @@
 							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
 							<jvmarg value="-XX:MaxPermSize=256m"/>
 							<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
+							<jvmarg line="${demomachine.jvmargs}"/>
 							<arg value="-r ${demo.mode},${demomachine.store}${demo.nosamples}"/>
 							<arg value="-gui"/>
 						</java>
@@ -476,6 +488,7 @@
 							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
 							<jvmarg value="-XX:MaxPermSize=256m"/>
 							<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
+							<jvmarg line="${demomachine.jvmargs}"/>
 							<arg value="-r ${demo.mode}"/>
 							<arg value="-gui"/>
 						</java>
@@ -494,7 +507,11 @@
 					<file file="${james}/bin/run.${os.cmd}"/>
 				</resourceexists>
 				<not>
-					<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.smtp}"/>
+					<or>
+						<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.smtp}"/>
+						<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.jmx}"/>
+						<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.pop}"/>
+					</or>
 				</not>
 			</and>
 			<then>
@@ -1056,6 +1073,15 @@
 	<!-- Target for installing the Forms demo -->
 	<target name="forms" depends="version">
 		<antcall target="demomachine_analytics_forms"/>
+		<!-- set the JVM args when the Adobe Target integration is enabled -->
+		<if>
+			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<propertyfile file="${demos}/${demo.build}/demomachine.properties">
+					<entry key="demomachine.jvmargs" value="-XX:NewRatio=2 -XX:+UseConcMarkSweepGC -Dabtesting.enabled=true"/>
+				</propertyfile>
+			</then>
+		</if>
 		<!-- make sure we install the add-on first -->
 		<foreach target="package_author" param="package">
 			<path id="forms.packages">
@@ -1098,6 +1124,7 @@
 	</target>
 	<!-- Target for installing the Commerce demo -->
 	<target name="commerce" depends="version">
+		<antcall target="demomachine_analytics_commerce"/>
 		<foreach target="package_author" param="package">
 			<path id="sites.packages">
 				<fileset dir="${dist}/commerce" casesensitive="yes">
@@ -3784,6 +3811,12 @@
 		<antcall target="demomachine_analytics">
 			<param name="analytics.event" value="event9"/>
 			<param name="analytics.pagename" value="forms"/>
+		</antcall>
+	</target>
+	<target name="demomachine_analytics_commerce">
+		<antcall target="demomachine_analytics">
+			<param name="analytics.event" value="event28"/>
+			<param name="analytics.pagename" value="commerce"/>
 		</antcall>
 	</target>
 	<target name="demomachine_analytics_assets">
