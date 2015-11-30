@@ -1404,6 +1404,18 @@
 				<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
 				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
 				<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
+				<basename property="packagename" file="${filepath}"/>
+				<!-- Automatic EULA acceptance -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/download_packageshare_eula.html'"/>
+					<arg line="--cookie '${logs}/packageshare.txt'"/>
+					<arg line="-k"/>
+					<arg line="-X POST"/>
+					<arg line="-d acceptEula=on"/>
+					<arg line="-d cmd=eula"/>
+					<arg line="-d package=${packagename}"/>
+					<arg line="https://www.adobeaemcloud.com/apps/cloudmgr/content/packages/user.json"/>
+				</exec>
 				<if>
 					<and>
 						<isset property="${packageshare.filename}"/>
