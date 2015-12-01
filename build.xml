@@ -1078,7 +1078,7 @@
 			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
 			<then>
 				<propertyfile file="${demos}/${demo.build}/demomachine.properties">
-					<entry key="demomachine.jvmargs" value="-XX:NewRatio=2 -XX:+UseConcMarkSweepGC -Dabtesting.enabled=true"/>
+					<entry key="demomachine.jvmargs" value="${demo.forms.jvmargs}"/>
 				</propertyfile>
 			</then>
 		</if>

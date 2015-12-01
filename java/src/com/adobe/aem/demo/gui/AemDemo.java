@@ -36,6 +36,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.PrintStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -153,6 +157,27 @@ public class AemDemo {
 		});
 		mnAbout.add(mntmScripts);
 
+		JMenuItem mntmDiagnostics = new JMenuItem("Diagnostics");
+		mntmDiagnostics.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				Map<String, String> env = System.getenv();
+				System.out.println("====== System Environment Variables ======");
+				for (String envName : env.keySet()) {
+				    System.out.format("%s=%s%n", envName, env.get(envName));
+				}
+				System.out.println("====== JVM Properties ======");
+				RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+				List<String> jvmArgs = runtimeMXBean.getInputArguments();
+				for (String arg : jvmArgs) {
+				    System.out.println(arg);
+				}
+				System.out.println("====== Runtime Properties ======");
+				Properties props = System.getProperties();
+				props.list(System.out);
+			}
+		});
+		mnAbout.add(mntmDiagnostics);		
+		
 		JMenuItem mntmQuit = new JMenuItem("Quit");
 		mntmQuit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmQuit.addActionListener(new ActionListener() {
