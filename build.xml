@@ -46,6 +46,7 @@
 	</path>
 	<!-- Target for installing then configuring a new baseline demo -->
 	<target name="demo">
+		<property name="demo.nosamples" value=""/>
 		<antcall target="install"/>
 		<antcall target="configure"/>
 	</target>
