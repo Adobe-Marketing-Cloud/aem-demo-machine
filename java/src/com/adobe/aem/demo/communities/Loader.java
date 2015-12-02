@@ -107,6 +107,7 @@ public class Loader {
 	private static final String RESOURCE = "Resource";
 	private static final int RESOURCE_INDEX_PATH = 5;
 	private static final int RESOURCE_INDEX_THUMBNAIL = 3;
+	private static final int CALENDAR_INDEX_THUMBNAIL = 8;
 	private static final int ASSET_INDEX_NAME = 4;
 	private static final int RESOURCE_INDEX_SITE = 7;
 	private static final int RESOURCE_INDEX_FUNCTION = 9;
@@ -686,6 +687,9 @@ public class Loader {
 				String userName = getUserName(record.get(0));
 
 				// Adding the generic properties for all POST requests
+				MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+				builder.setCharset(MIME.UTF8_CHARSET);
+				builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
 				List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 
 				if (!componentType.equals(RESOURCE))
@@ -940,7 +944,20 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("address", ""));		         
 						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
 						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
-						nameValuePairs.add(new BasicNameValuePair("end", endDate));		         					
+						nameValuePairs.add(new BasicNameValuePair("end", endDate));	
+						
+						// Let's see if we have a cover image
+						if (record.size()>CALENDAR_INDEX_THUMBNAIL && record.get(CALENDAR_INDEX_THUMBNAIL).length()>0) {
+						
+							File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(CALENDAR_INDEX_THUMBNAIL));
+
+							// Check for file existence
+							if (attachment.exists()) {
+								builder.addBinaryBody("coverimage", attachment, getContentType(record.get(CALENDAR_INDEX_THUMBNAIL)), attachment.getName());
+								logger.debug("Adding file to calendar with name: " + attachment.getName());
+							}
+
+						}
 
 					} else {
 
@@ -970,40 +987,25 @@ public class Loader {
 
 				}
 
-				// Constructing a multi-part POST request
-				MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-				builder.setCharset(MIME.UTF8_CHARSET);
-				builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
 				for (NameValuePair nameValuePair : nameValuePairs) {
 					builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 				}
 
 				// See if we have attachments for this new post - or some other actions require a form nonetheless
-				if ((componentType.equals(ASSET) || componentType.equals(AVATAR) || componentType.equals(FORUM) || (componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
+				if ((componentType.equals(ASSET) || 
+						componentType.equals(AVATAR) ||
+						componentType.equals(FORUM) ||
+						(componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
 
 					File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(ASSET_INDEX_NAME));
 
 					// Check for file existence
 					if (attachment.exists()) {
 
-						ContentType ct = ContentType.MULTIPART_FORM_DATA;
-						if (record.get(ASSET_INDEX_NAME).indexOf(".mp4")>0) {
-							ct = ContentType.create("video/mp4", MIME.UTF8_CHARSET);
-						} else if (record.get(ASSET_INDEX_NAME).indexOf(".jpg")>0 || record.get(ASSET_INDEX_NAME).indexOf(".jpeg")>0) {
-							ct = ContentType.create("image/jpeg", MIME.UTF8_CHARSET);
-						} else if (record.get(ASSET_INDEX_NAME).indexOf(".png")>0) {
-							ct = ContentType.create("image/png", MIME.UTF8_CHARSET);
-						} else if (record.get(ASSET_INDEX_NAME).indexOf(".pdf")>0) {
-							ct = ContentType.create("application/pdf", MIME.UTF8_CHARSET);
-						} else if (record.get(ASSET_INDEX_NAME).indexOf(".zip")>0) {
-							ct = ContentType.create("application/zip", MIME.UTF8_CHARSET);
-						}
-
-						builder.addBinaryBody("file", attachment, ct, attachment.getName());
-						logger.debug("Adding file to payload with name: " + attachment.getName() + " and type: " + ct.getMimeType());
+						builder.addBinaryBody("file", attachment, getContentType(record.get(ASSET_INDEX_NAME)), attachment.getName());
+						logger.debug("Adding file to payload with name: " + attachment.getName());
 
 					} else {
-
 						logger.error("A non-existing file was referenced: " + record.get(ASSET_INDEX_NAME));
 						continue;
 					}
@@ -1248,6 +1250,23 @@ public class Loader {
 		logger.debug("Date and time is " + date);
 		return date;
 
+	}
+	
+	// This method returns the right HTTP content type for a file on the file system
+	private static ContentType getContentType(String fileName) {
+		ContentType ct = ContentType.MULTIPART_FORM_DATA;
+		if (fileName.indexOf(".mp4")>0) {
+			ct = ContentType.create("video/mp4", MIME.UTF8_CHARSET);
+		} else if (fileName.indexOf(".jpg")>0 || fileName.indexOf(".jpeg")>0) {
+			ct = ContentType.create("image/jpeg", MIME.UTF8_CHARSET);
+		} else if (fileName.indexOf(".png")>0) {
+			ct = ContentType.create("image/png", MIME.UTF8_CHARSET);
+		} else if (fileName.indexOf(".pdf")>0) {
+			ct = ContentType.create("application/pdf", MIME.UTF8_CHARSET);
+		} else if (fileName.indexOf(".zip")>0) {
+			ct = ContentType.create("application/zip", MIME.UTF8_CHARSET);
+		}
+		return ct;
 	}
 
 	// This method POSTs a set of comments and ratings for a resource for a particular location

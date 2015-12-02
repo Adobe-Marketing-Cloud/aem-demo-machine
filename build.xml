@@ -1924,6 +1924,7 @@
 					<arg line="-d propertylist=externalizer.domains,externalizer.host,externalizer.contextpath"/>
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
 				</exec>
+				<sleep seconds="10"/>
 			</then>
 		</if>
 	</target>
