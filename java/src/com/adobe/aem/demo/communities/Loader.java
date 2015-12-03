@@ -25,6 +25,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -1829,10 +1830,12 @@ public class Loader {
 				try {
 					JSONArray jsonArray = new JSONArray(nvp.getValue());
 					for (int i=0;i<jsonArray.length();i++) {
-						newNameValuePairs.add(new BasicNameValuePair(key, (String) jsonArray.get(i))); 
-						logger.debug("Setting property " + key + " with value " + (String) jsonArray.getString(i));
+						String value = (String) jsonArray.get(i);
+						value = URLEncoder.encode(value.replaceAll("'", "\""), java.nio.charset.StandardCharsets.UTF_8.toString());
+						newNameValuePairs.add(new BasicNameValuePair(key, value)); 
+						logger.debug("Setting property " + key + " with value " + value);
 					}					
-				} catch (JSONException e) {
+				} catch (Exception e) {
 					logger.error("Can't process JSON array for key: " + key);
 				}
 
