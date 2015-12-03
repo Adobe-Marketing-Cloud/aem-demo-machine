@@ -248,6 +248,16 @@
 			<jvmarg value="-Djava.awt.headless=true"/>
 		</java>
 		<if>
+			<not>
+				<resourceexists>
+					<file file="${demos}/${demo.build}/${demo.instance}/crx-quickstart"/>
+				</resourceexists>
+			</not>
+			<then>
+				<fail message="Invalid ${demo.jar}.jar file, please double check the file integrity"/>
+			</then>
+		</if>
+		<if>
 			<and>
 				<resourceexists>
 					<file file="${demo.spfile}"/>
