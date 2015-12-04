@@ -1934,7 +1934,11 @@
 					<arg line="-d propertylist=externalizer.domains,externalizer.host,externalizer.contextpath"/>
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
 				</exec>
-				<sleep seconds="10"/>
+				<!-- Many bundles are restarting after the Externalizer is changed -->
+				<sleep seconds="30"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+				</waitfor>
 			</then>
 		</if>
 	</target>
@@ -2082,6 +2086,9 @@
 				</antcall>
 				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 60 seconds -->
 				<sleep seconds="30"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<http url="http://${demo.host}:${AdobeAEM.publishport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+				</waitfor>
 				<foreach target="package_publish" param="package">
 					<path id="publish.packages">
 						<fileset dir="${packages}" casesensitive="yes">
