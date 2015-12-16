@@ -34,7 +34,9 @@ import org.apache.log4j.Logger;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
@@ -140,6 +142,15 @@ public class AemDemo {
 		mnAbout.setMnemonic(KeyEvent.VK_A);
 		menuBar.add(mnAbout);
 
+		JMenuItem mntmUpdates = new JMenuItem("Check for Updates");
+		mntmUpdates.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmUpdates.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "demo_update");
+			}
+		});
+		mnAbout.add(mntmUpdates);
+
 		JMenuItem mntmDoc = new JMenuItem("Help and Documentation");
 		mntmDoc.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmDoc.addActionListener(new ActionListener() {
@@ -163,13 +174,13 @@ public class AemDemo {
 				Map<String, String> env = System.getenv();
 				System.out.println("====== System Environment Variables ======");
 				for (String envName : env.keySet()) {
-				    System.out.format("%s=%s%n", envName, env.get(envName));
+					System.out.format("%s=%s%n", envName, env.get(envName));
 				}
 				System.out.println("====== JVM Properties ======");
 				RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
 				List<String> jvmArgs = runtimeMXBean.getInputArguments();
 				for (String arg : jvmArgs) {
-				    System.out.println(arg);
+					System.out.println(arg);
 				}
 				System.out.println("====== Runtime Properties ======");
 				Properties props = System.getProperties();
@@ -177,7 +188,7 @@ public class AemDemo {
 			}
 		});
 		mnAbout.add(mntmDiagnostics);		
-		
+
 		JMenuItem mntmQuit = new JMenuItem("Quit");
 		mntmQuit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmQuit.addActionListener(new ActionListener() {
@@ -347,7 +358,7 @@ public class AemDemo {
 			}
 		});
 		mnForms.add(mntmAemFormsAddon);
-		
+
 		JMenuItem mntmAemFormsFP = new JMenuItem("Download Packages (PackageShare)");
 		mntmAemFormsFP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -595,7 +606,7 @@ public class AemDemo {
 
 		mnInfrastructure.add(mnJames);		
 
-		
+
 		// FFMPEPG options
 		JMenu mnFFMPEG = new JMenu("FFMPEG");
 
@@ -830,12 +841,27 @@ public class AemDemo {
 		mp.setBounds(140, 440, 650, 30);
 		frameMain.getContentPane().add(mp);
 		mp.start();
-		
+
 		// Launching the download tracker task
 		AemDemoDownload aemDownload = new AemDemoDownload(AemDemo.this);
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(aemDownload, 0, 5, TimeUnit.SECONDS);
-		
+
+		// Loading up the README.md file
+		String line=null;
+		try {
+			FileReader fileReader = new FileReader(buildFile.getParentFile().getAbsolutePath() + File.separator + "README.md");
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			while((line = bufferedReader.readLine()) != null) {
+				if (!line.startsWith("Double"))
+					System.out.println(line);
+			}   
+			bufferedReader.close();         
+		}
+		catch(Exception ex) {
+			logger.error(ex.getMessage());               
+		}
+
 	}
 
 	public Properties getDefaultProperties() {

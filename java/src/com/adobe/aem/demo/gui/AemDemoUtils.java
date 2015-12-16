@@ -21,7 +21,10 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -29,8 +32,10 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,6 +49,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.ProjectHelper;
 
@@ -292,6 +298,62 @@ public class AemDemoUtils {
 		int exp = (int) (Math.log(bytes) / Math.log(unit));
 		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
 		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+	}
+	
+	public static String calcMD5HashForDir(File dirToHash, boolean includeSubFolders, boolean includeHiddenFiles) {
+
+		assert (dirToHash.isDirectory());
+		Vector<FileInputStream> fileStreams = new Vector<FileInputStream>();
+
+		logger.debug("Found files for hashing:");
+		collectInputStreams(dirToHash, fileStreams, includeSubFolders, includeHiddenFiles);
+
+		SequenceInputStream seqStream = 
+				new SequenceInputStream(fileStreams.elements());
+
+		try {
+			String md5Hash = DigestUtils.md5Hex(seqStream);
+			seqStream.close();
+			return md5Hash;
+		}
+		catch (IOException e) {
+			throw new RuntimeException("Error reading files to hash in "
+					+ dirToHash.getAbsolutePath(), e);
+		}
+
+	}
+
+	public static void collectInputStreams(File dir,
+			List<FileInputStream> foundStreams,
+			boolean includeSubFolders,
+			boolean includeHiddenFiles) {
+
+		File[] fileList = dir.listFiles();        
+		Arrays.sort(fileList,               // Need in reproducible order
+				new Comparator<File>() {
+			public int compare(File f1, File f2) {                       
+				return f1.getName().compareTo(f2.getName());
+			}
+		});
+
+		for (File f : fileList) {
+			if (!includeHiddenFiles && f.getName().startsWith(".")) continue;
+			if (f.isDirectory() && !includeSubFolders) continue;
+			if (f.isDirectory()) {
+				collectInputStreams(f, foundStreams, includeSubFolders, includeHiddenFiles);
+			}
+			else {
+				try {
+					logger.debug(f.getAbsolutePath());
+					foundStreams.add(new FileInputStream(f));
+				}
+				catch (FileNotFoundException e) {
+					throw new AssertionError(e.getMessage()
+							+ ": file should never not be found!");
+				}
+			}
+		}
+
 	}
 
 }

@@ -1166,6 +1166,36 @@
 		<antcall target="globallink">
 			<param name="port" value="${AdobeAEM.authorport}"/>
 		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<foreach target="package_publish" param="package">
+					<path id="sites.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="sites-packages/all/*.zip"/>
+							<include name="sites-packages/${demo.packages}/*.zip"/>
+							<include name="sites/all/*.zip"/>
+							<include name="sites/${demo.packages}/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
+			<then>
+				<foreach target="package_farm" param="package">
+					<path id="sites.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="sites-packages/all/*.zip"/>
+							<include name="sites-packages/${demo.packages}/*.zip"/>
+							<include name="sites/all/*.zip"/>
+							<include name="sites/${demo.packages}/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
 	</target>
 	<!-- Target for installing the Commerce demo -->
 	<target name="commerce" depends="version">
@@ -1264,6 +1294,7 @@
 	</target>
 	<!-- Download demo extensions -->
 	<target name="download_all">
+		<antcall target="download_hotfixes_packages"/>
 		<antcall target="download_sites"/>
 		<antcall target="download_sites_packages"/>
 		<antcall target="download_assets"/>
@@ -2328,17 +2359,21 @@
 	</target>
 	<!-- Target for uploading and installing a package on a server instance  -->
 	<target name="package">
+		<basename property="packagefilename" file="${package}"/>
+		<condition property="isHotFix">
+			<contains substring="hotfix" string="${packagefilename}" casesensitive="false"/>
+		</condition>
+		<condition property="isFeaturePack">
+			<or>
+				<contains substring="fp" string="${packagefilename}" casesensitive="false"/>
+				<contains substring="featurepack" string="${packagefilename}" casesensitive="false"/>
+			</or>
+		</condition>
 		<!-- Making sure the instance is available for uploads -->
 		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 		</waitfor>
-		<basename property="packagefilename" file="${package}"/>
 		<echo message="Uploading ${packagefilename} on port ${port}"/>
-		<condition property="isHotFix">
-			<or>
-				<matches pattern="hotfix" string="${package}"/>
-			</or>
-		</condition>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_${packagefilename}.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -2347,7 +2382,6 @@
 			<arg line="-F 'file=@${package}'"/>
 			<arg line="http://${demo.host}:${port}/crx/packmgr/service.jsp"/>
 		</exec>
-		<antcall target="packageHotFix"/>
 		<if>
 			<resourceexists>
 				<file file="${package}.txt"/>
@@ -2357,9 +2391,16 @@
 				<echo message="Uploaded: ${packageHelp}"/>
 			</then>
 		</if>
+		<antcall target="packageHotFix"/>
+		<antcall target="packageFeaturePack"/>
 	</target>
 	<target name="packageHotFix" if="isHotFix">
-		<echo message="Warning: Deployed a new hotfix ${package}, consider moving into the /dist/hotfixes folder instead"/>
+		<echo message="Waiting for hotfix to be installed"/>
+		<sleep seconds="3"/>
+	</target>
+	<target name="packageFeaturePack" if="isFeaturePack">
+		<echo message="Waiting for feature pack to be installed"/>
+		<sleep seconds="30"/>
 	</target>
 	<!-- Adobe Social Communities - setting waiting.time to 10s for notifications -->
 	<target name="notifications">
@@ -2778,10 +2819,6 @@
 		<tstamp>
 			<format property="archive-file-name" pattern="dd-MMM-yy" locale="en,US"/>
 		</tstamp>
-		<echo message="Creating an archive for the Demo Machine..."/>
-		<delete file="${archives}/demomachine-${archive-file-name}.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}.zip" basedir="." excludes="dist/license/*.properties,dist/bin/*.jar,dist/bin/*.zip,archives/**,logs/**,dist/commerce/**,mongodb/**,conf/*.properties,demos/**,mysql/**,solr/**,ffmpeg/**,ant/manual/**,dist/apps/**,dist/assets/**,dist/forms/**,dist/sites/**,dist/enablement/**,dist/downloads/**,james/log/**"/>
-		<copy file="${archives}/demomachine-${archive-file-name}.zip" tofile="${archives}/aem-demomachine.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Enablement content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-enablement.zip"/>
 		<zip destfile="${archives}/demomachine-${archive-file-name}-enablement.zip" basedir="." includes="dist/enablement/**"/>
@@ -2802,9 +2839,6 @@
 		<delete file="${archives}/demomachine-${archive-file-name}-apps.zip"/>
 		<zip destfile="${archives}/demomachine-${archive-file-name}-apps.zip" basedir="." includes="dist/apps/**" excludes="dist/apps/**/*-fp*.zip"/>
 		<copy file="${archives}/demomachine-${archive-file-name}-apps.zip" tofile="${archives}/aem-demomachine-apps.zip" overwrite="true"/>
-		<delete file="${archives}/demomachine-${archive-file-name}-commerce.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-commerce.zip" basedir="." includes="dist/commerce/**" excludes="dist/commerce/**/aem61-commerce*.zip"/>
-		<copy file="${archives}/demomachine-${archive-file-name}-commerce.zip" tofile="${archives}/aem-demomachine-commerce.zip" overwrite="true"/>
 	</target>
 	<!-- Creates a backup file for a specific demo image using an external script -->
 	<target name="backup" depends="permissions">
@@ -4169,6 +4203,34 @@
 				<exec dir="${git.path}" executable="mvn" spawn="false" failonerror="false">
 					<arg line="clean install -PautoInstallPackage"/>
 				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- This target generates new MD5 checksums for the demo add-ons and packages -->
+	<target name="demo_checksums" depends="compile">
+		<if>
+			<not>
+				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
+			</not>
+			<then>
+				<java classname="com.adobe.aem.demo.Checksums">
+					<classpath refid="demo.classpath"/>
+					<arg line="-f &quot;${basedir}&quot;"/>
+				</java>
+			</then>
+		</if>
+	</target>
+	<!-- This target checks if there are updates for the demo add-ons and packages -->
+	<target name="demo_update" depends="compile">
+		<if>
+			<not>
+				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
+			</not>
+			<then>
+				<java classname="com.adobe.aem.demo.Updates">
+					<classpath refid="demo.classpath"/>
+					<arg line="-f &quot;${basedir}&quot;"/>
+				</java>
 			</then>
 		</if>
 	</target>
