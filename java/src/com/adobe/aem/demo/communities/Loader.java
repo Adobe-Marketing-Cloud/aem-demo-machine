@@ -1912,8 +1912,13 @@ public class Loader {
 					for (int i=0;i<bundleList.length();i++) {
 						JSONObject bundle = (JSONObject) bundleList.get(i);
 						if (bundle.get("symbolicName").equals(symbolicName)) {
+							
+							String version = (String) bundle.get("version");
+							
+							// Making it a "clean version"
+							version = version.replace(".SNAPSHOT", "").trim();
 
-							return new Version( (String) bundle.get("version") );
+							return new Version( version );
 
 						}
 					}

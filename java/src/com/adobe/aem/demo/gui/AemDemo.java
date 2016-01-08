@@ -320,15 +320,6 @@ public class AemDemo {
 		});
 		mnCommunities.add(mntmAemCommunitiesLivefyre);
 
-		JMenuItem mntmAemCommunitiesUber = new JMenuItem("Download Latest Bundles (VPN)");
-		mntmAemCommunitiesUber.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
-		mntmAemCommunitiesUber.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_communities_bundles");
-			}
-		});
-		mnCommunities.add(mntmAemCommunitiesUber);
-
 		JMenuItem mntmAemCommunitiesEnablement = new JMenuItem("Download Enablement Demo Site Add-on (4.5GB)");
 		mntmAemCommunitiesEnablement.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -377,8 +368,8 @@ public class AemDemo {
 		});
 		mnForms.add(mntmAemFormsAddOn);
 
-		// Apps Add-on
-		JMenu mnApps = new JMenu("Apps");
+		// Mobile Add-on
+		JMenu mnApps = new JMenu("Mobile");
 		mnUpdate.add(mnApps);
 
 		JMenuItem mntmAemAppsAddon = new JMenuItem("Download Demo Add-on");
