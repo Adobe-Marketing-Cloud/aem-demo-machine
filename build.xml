@@ -1492,12 +1492,12 @@
 			<equals arg1="${demo.snapshot}" arg2="latest" casesensitive="false"/>
 			<then>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/maven-metadata-snapshot.xml' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${metadata.versioning.latest}/maven-metadata.xml"/>
+					<arg line="-s -k -o '${dist}/downloads/maven-metadata-snapshot.xml' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${metadata.versioning.latest}/maven-metadata.xml"/>
 				</exec>
 			</then>
 			<else>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/maven-metadata-snapshot.xml' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${demo.snapshot}/maven-metadata.xml"/>
+					<arg line="-s -k -o '${dist}/downloads/maven-metadata-snapshot.xml' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${demo.snapshot}/maven-metadata.xml"/>
 				</exec>
 			</else>
 		</if>
@@ -1506,7 +1506,7 @@
 			<then>
 				<echo message="Downloading cq-quickstart-${demo.snapshot}.jar"/>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/snapshot.jar' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${demo.snapshot}.jar"/>
+					<arg line="-s -k -o '${dist}/downloads/snapshot.jar' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${demo.snapshot}.jar"/>
 				</exec>
 			</then>
 			<else>
@@ -1514,7 +1514,7 @@
 				<propertyregex property="snapshotfile" input="${metadata.versioning.snapshotVersions.snapshotVersion.value}" regexp="(^\b.*?)," select="\1" casesensitive="false"/>
 				<echo message="Downloading cq-quickstart-${snapshotfile}.jar"/>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/snapshot.jar' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${metadata.version}/cq-quickstart-${snapshotfile}.jar"/>
+					<arg line="-s -k -o '${dist}/downloads/snapshot.jar' ${demo.nexus}/content/repositories/development-repositories/com/day/cq/cq-quickstart/${metadata.version}/cq-quickstart-${snapshotfile}.jar"/>
 				</exec>
 			</else>
 		</if>
@@ -3946,6 +3946,7 @@
 			<arg line="-d action=stop"/>
 			<arg line="http://${demo.host}:${bundle.port}/system/console/bundles/${bundle.id}"/>
 		</exec>
+		<sleep seconds="10"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${bundle.port}_bundle_${bundle.id}_start.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
