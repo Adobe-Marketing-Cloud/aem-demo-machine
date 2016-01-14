@@ -93,6 +93,8 @@ public class Loader {
 	private static final String ACTIVITIES = "Activities";
 	private static final String SLINGPOST = "SlingPost";
 	private static final String SLINGDELETE = "SlingDelete";
+	private static final String FRAGMENT = "Fragment";
+	private static final String FOLDER = "Folder";
 	private static final String PASSWORD = "password";
 	private static final String SITE = "Site";
 	private static final String SITEUPDATE = "SiteUpdate";
@@ -633,6 +635,8 @@ public class Loader {
 						|| record.get(0).equals(ASSET) 
 						|| record.get(0).equals(AVATAR) 
 						|| record.get(0).equals(RESOURCE) 
+						|| record.get(0).equals(FOLDER) 
+						|| record.get(0).equals(FRAGMENT) 
 						|| record.get(0).equals(LEARNING) 
 						|| record.get(0).equals(QNA) 
 						|| record.get(0).equals(FORUM)) {
@@ -842,6 +846,35 @@ public class Loader {
 
 				}
 
+				// Creates a simple Folder
+				if (componentType.equals(FOLDER)) {
+
+					nameValuePairs.add(new BasicNameValuePair("./jcr:content/jcr:title", record.get(2)));
+					nameValuePairs.add(new BasicNameValuePair(":name", record.get(3)));
+					nameValuePairs.add(new BasicNameValuePair("./jcr:primaryType", "sling:Folder"));
+					nameValuePairs.add(new BasicNameValuePair("./jcr:content/jcr:primaryType", "nt:unstructured"));
+
+				}				
+
+				// Creates a simple Text Fragement
+				if (componentType.equals(FRAGMENT)) {
+
+					nameValuePairs.add(new BasicNameValuePair("template", "/libs/settings/dam/cfm/templates/simple/jcr:content"));
+					nameValuePairs.add(new BasicNameValuePair("name", record.get(2)));
+					nameValuePairs.add(new BasicNameValuePair("parentPath", record.get(3)));
+					nameValuePairs.add(new BasicNameValuePair("./jcr:title", record.get(4)));
+					nameValuePairs.add(new BasicNameValuePair("description", record.get(5)));
+					nameValuePairs.add(new BasicNameValuePair("author", record.get(0)));
+
+					//We might have some tags to add to the content fragment
+					if (record.get(5).length()>0) {
+						nameValuePairs.add(new BasicNameValuePair("tags", record.get(6)));		         				
+						nameValuePairs.add(new BasicNameValuePair("tags@TypeHint", "String[]"));		         				
+						nameValuePairs.add(new BasicNameValuePair("tags@Delete", ""));		         				
+					}
+
+				}				
+
 				// Creates an Enablement resource
 				if (componentType.equals(RESOURCE)) {
 
@@ -945,10 +978,10 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
 						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
 						nameValuePairs.add(new BasicNameValuePair("end", endDate));	
-						
+
 						// Let's see if we have a cover image
 						if (record.size()>CALENDAR_INDEX_THUMBNAIL && record.get(CALENDAR_INDEX_THUMBNAIL).length()>0) {
-						
+
 							File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(CALENDAR_INDEX_THUMBNAIL));
 
 							// Check for file existence
@@ -1036,6 +1069,34 @@ public class Loader {
 					int pathIndex = url[urlLevel].lastIndexOf(".createasset.html");
 					if (pathIndex>0)
 						doWaitPath(hostname, port, adminPassword, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions", "nt:file");
+				}
+
+				// If we are loading a content fragment, we need to post the actual content next
+				if (componentType.equals(FRAGMENT)) {
+
+					// Publishing the learning path 
+					List<NameValuePair> fragmentNameValuePairs = new ArrayList<NameValuePair>();
+					fragmentNameValuePairs.add(new BasicNameValuePair("contentType","text/html"));
+
+					StringBuffer message = new StringBuffer("<p>" + record.get(7) + "</p>");
+
+					//We might have more paragraphs to add to the fragment
+					if (record.size()>8) {
+						for (int i=8; i < record.size();i++) {
+							if (record.get(i).length()>0) {
+								message.append("<p>" + record.get(i) + "</p>");
+							}
+						}
+					}
+
+					fragmentNameValuePairs.add(new BasicNameValuePair("content", message.toString()));		         
+
+					Loader.doPost(hostname, port,
+							record.get(3) + "/" + record.get(2) + ".cfm.content.json",
+							userName, password,
+							new UrlEncodedFormEntity(fragmentNameValuePairs),
+							null);
+
 				}
 
 				// Let's see if it needs to be added to a learning path
@@ -1251,7 +1312,7 @@ public class Loader {
 		return date;
 
 	}
-	
+
 	// This method returns the right HTTP content type for a file on the file system
 	private static ContentType getContentType(String fileName) {
 		ContentType ct = ContentType.MULTIPART_FORM_DATA;
@@ -1912,9 +1973,9 @@ public class Loader {
 					for (int i=0;i<bundleList.length();i++) {
 						JSONObject bundle = (JSONObject) bundleList.get(i);
 						if (bundle.get("symbolicName").equals(symbolicName)) {
-							
+
 							String version = (String) bundle.get("version");
-							
+
 							// Making it a "clean version"
 							version = version.replace(".SNAPSHOT", "").trim();
 

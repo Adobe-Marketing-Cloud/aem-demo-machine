@@ -1916,7 +1916,8 @@
 			<arg line="--output '${logs}/${port}_livefyre_components.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/comments"/>
+			<arg line="-d ./components=/social/integrations/livefyre/components/comments"/>
+			<arg line="-d ./components=/libs/social/reporting/analytics/components/hbs/communityactivitylist"/>
 			<arg line="-d ./components=/libs/social/integrations/livefyre/components/chat"/>
 			<arg line="-d ./components=/libs/social/integrations/livefyre/components/carousel"/>
 			<arg line="-d ./components=/libs/social/integrations/livefyre/components/liveblog"/>
@@ -2791,6 +2792,14 @@
 		<java classname="com.adobe.aem.demo.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${port} -a ${demo.loader.altport} -u ${demo.admin.password} -f &quot;${dist}/users/loader-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+		</java>
+	</target>
+	<!-- This target loads some content fragments from a .csv file -->
+	<target name="sites_fragments" depends="community_loader_flag,compile">
+		<echo message="Loading up Content Fragments..."/>
+		<java classname="com.adobe.aem.demo.communities.Loader">
+			<classpath refid="demo.classpath"/>
+			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${AdobeAEM.authorport} -u ${demo.admin.password} -f &quot;${dist}/community/wizard/loader-fragments.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 	</target>
 	<!-- Adobe Dynamic Media: enables dynamic media on the AEM instance -->
