@@ -2307,6 +2307,7 @@
 		<antcall target="community-moderators">
 			<param name="port" value="${port}"/>
 		</antcall>
+		<!-- Configuration tasks on Author only -->
 		<if>
 			<equals arg1="${port}" arg2="${AdobeAEM.authorport}" casesensitive="false"/>
 			<then>
@@ -2314,6 +2315,9 @@
 					<param name="port" value="${port}"/>
 				</antcall>
 				<antcall target="assets_versions">
+					<param name="port" value="${port}"/>
+				</antcall>
+				<antcall target="dps">
 					<param name="port" value="${port}"/>
 				</antcall>
 			</then>
@@ -2485,6 +2489,44 @@
 					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
 					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Adobe DPS: configuring Adobe Digital Publishing Solution Client -->
+	<target name="dps">
+		<if>
+			<equals arg1="${AdobeDPS.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring DPS client"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_dpsclient.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="--data-urlencode 'clientId=${AdobeDPS.clientId}'"/>
+					<arg line="--data-urlencode 'clientSecret=${AdobeDPS.clientSecret}'"/>
+					<arg line="-d minThreadPoolSize=10"/>
+					<arg line="-d maxThreadPoolSize=20"/>
+					<arg line="-d accessTokenExpiryInMinutes=30"/>
+					<arg line="-d environment="/>
+					<arg line="-d propertylist=clientId,clientSecret,minThreadPoolSize,maxThreadPoolSize,accessTokenExpiryInMinutes,environment"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.mobile.dps.impl.service.AdobeDPSClient"/>
+				</exec>
+				<echo message="Configuring DPS cloud service"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_dpscloudservice.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--data-urlencode './dpsDeviceToken=${AdobeDPS.deviceToken}'"/>
+					<arg line="-d ./dpsDeviceToken@Encrypted="/>
+					<arg line="--data-urlencode './dpsDeviceId=${AdobeDPS.deviceId}'"/>
+					<arg line="-d ./dpsDeviceId@Encrypted="/>
+					<arg line="-d ./sling:resourceType=mobileapps/dps/components/dps-cloudservice-config"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/dps2015/demomachine/jcr:content"/>
 				</exec>
 			</then>
 		</if>
@@ -4061,7 +4103,7 @@
 				<echo message="WARNING: Hotfixes have not been downloaded yet - please do it!"/>
 			</then>
 			<else>
-				<echo message="${count.hotfixes} Hotfixes will be installed at startup time"/>
+				<echo message="${count.hotfixes} Hotfixes can be installed at startup time depending on the version"/>
 			</else>
 		</if>
 		<!-- Scenarios for AEM Communities -->
