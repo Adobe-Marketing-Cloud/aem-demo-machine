@@ -1917,6 +1917,7 @@
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d ./components=/social/integrations/livefyre/components/comments"/>
+			<arg line="-d ./components=/libs/dam/cfm/components/contentfragment"/>
 			<arg line="-d ./components=/libs/social/reporting/analytics/components/hbs/communityactivitylist"/>
 			<arg line="-d ./components=/libs/social/integrations/livefyre/components/chat"/>
 			<arg line="-d ./components=/libs/social/integrations/livefyre/components/carousel"/>
@@ -3058,12 +3059,27 @@
 				</and>
 			</not>
 			<then>
-				<!-- This content is for AEM 6.1 FP2 and beyond -->
-				<echo message="Loading Community Site Content (for AEM 6.1 FP2 and beyond)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
+				<if>
+					<or>
+						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp2" casesensitive="false"/>
+						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp3" casesensitive="false"/>
+					</or>
+					<then>
+						<!-- This content is for AEM 6.1 FP2 and beyond -->
+						<echo message="Loading Community Site Content (for AEM 6.1 FP2 and beyond)"/>
+						<java classname="com.adobe.aem.demo.communities.Loader">
+							<classpath refid="demo.classpath"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+						</java>
+					</then>
+					<else>
+						<echo message="Loading Community Site Content (for AEM 6.1 FP4 and beyond)"/>
+						<java classname="com.adobe.aem.demo.communities.Loader">
+							<classpath refid="demo.classpath"/>
+							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp4-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+						</java>
+					</else>
+				</if>
 				<antcall target="community_loader">
 					<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp2.csv"/>
 				</antcall>
@@ -3098,11 +3114,26 @@
 						</java>
 					</then>
 					<else>
-						<echo message="Loading Community Site Templates (for AEM 6.1 FP2 and beyond)"/>
-						<java classname="com.adobe.aem.demo.communities.Loader">
-							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-						</java>
+						<if>
+							<or>
+								<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp2" casesensitive="false"/>
+								<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp3" casesensitive="false"/>
+							</or>
+							<then>
+								<echo message="Loading Community Site Templates (for AEM 6.1 FP2 and FP3)"/>
+								<java classname="com.adobe.aem.demo.communities.Loader">
+									<classpath refid="demo.classpath"/>
+									<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+								</java>
+							</then>
+							<else>
+								<echo message="Loading Community Site Templates (for AEM 6.1 FP4 and beyond)"/>
+								<java classname="com.adobe.aem.demo.communities.Loader">
+									<classpath refid="demo.classpath"/>
+									<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp4.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+								</java>
+							</else>
+						</if>
 					</else>
 				</if>
 			</else>
