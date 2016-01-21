@@ -1691,38 +1691,27 @@
 	</target>
 	<!-- Target for downloading latest Communities uber -->
 	<target name="download_communities">
-		<echo message="Downloading latest Communities bundle"/>
+		<echo message="Downloading latest Communities bundles for various versions (service packs and feature packs)"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
-		<if>
-			<equals arg1="${demo.communities.uber}" arg2="release" casesensitive="false"/>
-			<then>
-				<echo message="Downloading cq-socialcommunities-pkg-${metadata.versioning.release}.zip"/>
-				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/communities.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/${metadata.versioning.release}/cq-socialcommunities-pkg-${metadata.versioning.release}.zip"/>
-				</exec>
-			</then>
-			<else>
-				<if>
-					<equals arg1="${demo.communities.uber}" arg2="latest" casesensitive="false"/>
-					<then>
-						<echo message="Downloading cq-socialcommunities-pkg-${metadata.versioning.latest}.zip"/>
-						<exec executable="curl">
-							<arg line="-s -o '${dist}/downloads/communities.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/${metadata.versioning.latest}/cq-socialcommunities-pkg-${metadata.versioning.latest}.zip"/>
-						</exec>
-					</then>
-					<else>
-						<echo message="Downloading cq-socialcommunities-pkg-${demo.communities.uber}.zip"/>
-						<exec executable="curl">
-							<arg line="-s -o '${dist}/downloads/communities.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/${demo.communities.uber}/cq-socialcommunities-pkg-${demo.communities.uber}.zip"/>
-						</exec>
-					</else>
-				</if>
-			</else>
-		</if>
+		<propertyregex property="latest17" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.7\.)([0-9]*)(\,1\.^7\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem61-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.7.${latest17}/cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
+		</exec>
+		<propertyregex property="latest18" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.8\.)([0-9]*)(\,1\.^8\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem61-latest.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.8.${latest18}/cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
+		</exec>
+		<propertyregex property="latest19" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.9\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem62-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.9.${latest19}/cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
+		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -3232,14 +3221,29 @@
 			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			<then>
 				<if>
-					<and>
-						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
-						<resourceexists>
-							<file file="${dist}/downloads/communities.zip"/>
-						</resourceexists>
-					</and>
+					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
 					<then>
-						<copy file="${dist}/downloads/communities.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+						<if>
+							<and>
+								<equals arg1="${demo.communities.uber}" arg2="latest" casesensitive="false"/>
+								<resourceexists>
+									<file file="${dist}/downloads/communities-${demo.packages}-latest.zip"/>
+								</resourceexists>
+							</and>
+							<then>
+								<copy file="${dist}/downloads/communities-${demo.packages}-latest.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+							</then>
+							<else>
+								<if>
+									<resourceexists>
+										<file file="${dist}/downloads/communities-${demo.packages}-release.zip"/>
+									</resourceexists>
+									<then>
+										<copy file="${dist}/downloads/communities-${demo.packages}-release.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+									</then>
+								</if>
+							</else>
+						</if>
 					</then>
 					<else>
 						<if>
