@@ -116,6 +116,7 @@ public class Loader {
 	private static final int RESOURCE_INDEX_PROPERTIES = 10;
 	private static final int GROUP_INDEX_NAME = 1;
 	private static final String FOLLOW = "Follow";
+	private static final String NOTIFICATION = "Notification";
 	private static final String LEARNING = "LearningPath";
 	private static final String BANNER = "pagebanner";
 	private static final String THUMBNAIL = "pagethumbnail";
@@ -215,6 +216,7 @@ public class Loader {
 			// Some steps are specific to the version number of the Enablement add-on
 			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
 			Version vBundleCommunitiesCalendar = getVersion(bundlesList, "com.adobe.cq.social.cq-social-calendar");
+			Version vBundleCommunitiesNotifications = getVersion(bundlesList, "com.adobe.cq.social.cq-social-notifications-impl");
 
 			logger.debug("AEM Demo Loader: Processing file " + csvfile);
 
@@ -631,6 +633,7 @@ public class Loader {
 						|| record.get(0).equals(ACTIVITIES) 
 						|| record.get(0).equals(JOIN) 
 						|| record.get(0).equals(FOLLOW) 
+						|| record.get(0).equals(NOTIFICATION) 
 						|| record.get(0).equals(MESSAGE) 
 						|| record.get(0).equals(ASSET) 
 						|| record.get(0).equals(AVATAR) 
@@ -721,10 +724,38 @@ public class Loader {
 				// Follows a user (followedId) for the user posting the request
 				if (componentType.equals(FOLLOW)) {
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:follow"));
-					nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + userName));
-					nameValuePairs.add(new BasicNameValuePair("followedId", "/social/authors/" + record.get(2)));
+					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.12"))<0) {
 
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:follow"));
+						nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + userName));
+						nameValuePairs.add(new BasicNameValuePair("followedId", "/social/authors/" + record.get(2)));
+
+					} else {
+
+						logger.debug("Ignoring FOLLOW with this version of AEM Communities");
+						continue;
+
+					}
+				}
+
+				// Notifications
+				if (componentType.equals(NOTIFICATION)) {
+
+					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updatesubscriptions"));
+						nameValuePairs.add(new BasicNameValuePair("types", "following"));
+						nameValuePairs.add(new BasicNameValuePair("types", "notification"));
+						nameValuePairs.add(new BasicNameValuePair("states", record.get(2).toLowerCase()));
+						nameValuePairs.add(new BasicNameValuePair("states", record.get(3).toLowerCase()));
+						nameValuePairs.add(new BasicNameValuePair("subscribedId", record.get(5)));
+
+					} else {
+
+						logger.debug("Ignoring NOTIFICATION with this version of AEM Communities");
+						continue;
+
+					}
 				}
 
 				// Uploading Avatar picture
