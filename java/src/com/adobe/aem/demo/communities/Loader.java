@@ -107,6 +107,7 @@ public class Loader {
 	private static final String KILL = "Kill";
 	private static final String MESSAGE = "Message";
 	private static final String RESOURCE = "Resource";
+	private static final String BADGE = "Badge";
 	private static final int RESOURCE_INDEX_PATH = 5;
 	private static final int RESOURCE_INDEX_THUMBNAIL = 3;
 	private static final int CALENDAR_INDEX_THUMBNAIL = 8;
@@ -408,6 +409,35 @@ public class Loader {
 
 					continue;
 				}
+				
+				// Let's see if we need to assign some badges
+				if (record.get(0).equals(BADGE)) {
+
+					// Building the form entity to be posted
+					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+					builder.setCharset(MIME.UTF8_CHARSET);
+
+					for (int i=2;i<record.size()-1;i=i+2) {
+
+						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0 && record.get(i+1).length()>0) {
+
+							String name = record.get(i).trim();
+							String value = record.get(i+1).trim();
+							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+						}
+					}
+
+					// Badge assignment
+					doPost(hostname, port,
+							record.get(1),
+							"admin", adminPassword,
+							builder.build(),
+							null);
+
+					continue;
+				}
+				
 
 				// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
 				if (record.get(0).equals(SITETEMPLATE)) {

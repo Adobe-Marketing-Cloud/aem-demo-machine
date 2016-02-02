@@ -3067,6 +3067,9 @@
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp4-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
+						<antcall target="community_loader">
+							<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp4.csv"/>
+						</antcall>
 					</else>
 				</if>
 				<antcall target="community_loader">
@@ -3470,7 +3473,32 @@
 				<antcall target="community_loader_cloudservices"/>
 			</then>
 		</if>
+		<antcall target="community_analytics"/>
 		<antcall target="community_warmup"/>
+	</target>
+	<!-- Target for configuring the Analytics import process -->
+	<target name="community_analytics">
+		<if>
+			<and>
+				<equals arg1="${AdobeAnalytics.install}" arg2="true" casesensitive="false"/>
+				<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			</and>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${AdobeAEM.publishport}_analytics_interval.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d cq.social.reporting.analytics.polling.importer.interval=1"/>
+					<arg line="-d cq.social.reporting.analytics.polling.importer.pageSize=50000"/>
+					<arg line="-d propertylist=cq.social.reporting.analytics.polling.importer.interval,cq.social.reporting.analytics.polling.importer.pageSize"/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/system/console/configMgr/com.adobe.cq.social.reporting.analytics.services.impl.AnalyticsReportImporterServiceImpl"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Targets for setting the Cloud Services on the Community Sites -->
 	<target name="community_loader_cloudservices">
@@ -3734,6 +3762,18 @@
 			<arg line="-d scorm.password=Sc0rm12"/>
 			<arg line="-d propertylist=jdbc.connection.uri,jdbc.username,jdbc.password,scorm.password"/>
 			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.social.scorm.impl.ScormEngineServiceImpl"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_scorm_handler.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="--data-urlencode process.label='AEM Communities SCORM Content Handler'"/>
+			<arg line="-d propertylist=process.label"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.social.scorm.dam.impl.ScormMetaDataExtractor"/>
 		</exec>
 	</target>
 	<!-- Target for configuring the SRP according to the property configuration -->
