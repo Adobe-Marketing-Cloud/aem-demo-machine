@@ -634,6 +634,14 @@ public class AemDemo {
 
 		JMenu mntmAemDownload = new JMenu("AEM & License files (VPN)");
 
+		JMenuItem mntmAemDownloadAEM62 = new JMenuItem("Download AEM 6.2");
+		mntmAemDownloadAEM62.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_aem62");
+			}
+		});
+		mntmAemDownload.add(mntmAemDownloadAEM62);
+
 		JMenuItem mntmAemDownloadAEM61 = new JMenuItem("Download AEM 6.1");
 		mntmAemDownloadAEM61.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {

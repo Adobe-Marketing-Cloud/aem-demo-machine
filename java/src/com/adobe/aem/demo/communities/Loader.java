@@ -124,6 +124,9 @@ public class Loader {
 	private static final String LANGUAGE = "baseLanguage";
 	private static final int MAXRETRIES=30;
 	private static final int REPORTINGDAYS=-21;
+	private static final String ENABLEMENT61FP2 = "1.0.135";
+	private static final String ENABLEMENT61FP3 = "1.0.148";
+	
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
 
 	public static void main(String[] args) {
@@ -943,18 +946,20 @@ public class Loader {
 					File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(2));
 					if (attachment.exists()) {
 
-						nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0?"social:createResource":"se:createResource"));
+						nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0?"social:createResource":"se:createResource"));
 
 						List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
 						nameValuePairs.addAll(otherNameValuePairs);
 
 						// Special processing of lists with multiple users, need to split a String into multiple entries
-						if (vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))>0) {
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) {
 
 							nameValuePairs = convertArrays(nameValuePairs,"add-learners");
 							nameValuePairs = convertArrays(nameValuePairs,"resource-author");
 							nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
 							nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
+							
+							nameValuePairs.add(new BasicNameValuePair("enablement-type", "social/enablement/components/hbs/resource"));
 
 						}
 
@@ -986,17 +991,29 @@ public class Loader {
 				// Creates a learning path
 				if (componentType.equals(LEARNING)) {
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", "se:editLearningPath"));
+					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"social:editLearningPath":"se:editLearningPath"));
 
 					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
 
+					// Special processing of lists with multiple users, need to split a String into multiple entries
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) {
+
+						nameValuePairs = convertArrays(nameValuePairs,"add-learners");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-author");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
+						
+						nameValuePairs.add(new BasicNameValuePair("enablement-type", "social/enablement/components/hbs/learningpath"));
+
+					}
+					
 					// Adding the site
 					nameValuePairs.add(new BasicNameValuePair("site", "/content/sites/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("card-image", doThumbnail(hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
+						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
 					}
 
 					// Building the learning path fragment
@@ -1018,7 +1035,7 @@ public class Loader {
 					assets.append("\"]");
 					nameValuePairs.add(new BasicNameValuePair("learningpath-items", assets.toString()));
 					logger.debug("Learning path:" + assets.toString());
-
+					
 				}
 
 				// Creates a calendar event
@@ -1108,10 +1125,10 @@ public class Loader {
 
 				// If it's a resource or a learning path, we need the path to the resource for subsequent publishing
 				String jsonElement = "location";
-				if (componentType.equals(RESOURCE) && vBundleCommunitiesEnablement.compareTo(new Version("1.0.140"))<0) {
+				if (componentType.equals(RESOURCE) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))<=0) {
 					jsonElement = "changes/argument";
 				}
-				if (componentType.equals(LEARNING)) {
+				if (componentType.equals(LEARNING) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<=0) {
 					jsonElement = "path";
 				}
 				if (componentType.equals(ASSET)) {
@@ -2040,6 +2057,8 @@ public class Loader {
 							// Making it a "clean version"
 							version = version.replace(".SNAPSHOT", "").trim();
 
+							logger.debug(symbolicName + " : " + version);
+							
 							return new Version( version );
 
 						}

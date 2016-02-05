@@ -98,6 +98,9 @@
        specific jar file.  This will cause a serious error to be logged 
        if it can't be loaded.
     -->
+    <lib dir="../../../contrib/analysis-extras/lib" regex=".*\.jar" />
+    <lib dir="../../../contrib/analysis-extras/lucene-libs" regex=".*\.jar" />
+
     <!--
      <lib path="../a-jar-that-does-not-exist.jar" /> 
   -->

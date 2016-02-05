@@ -270,43 +270,55 @@
 			</then>
 		</if>
 		<if>
-			<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
+			<or>
+				<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
+				<equals arg1="${demo.communities.enablement}" arg2="true" casesensitive="false"/>
+			</or>
 			<then>
-				<antcall target="mysql_start"/>
+				<unzip src="${dist}/rdb/mysql.zip" dest="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 				<if>
-					<and>
-						<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
-						<resourceexists>
-							<file file="${mysql}/bin/mysql"/>
-						</resourceexists>
-					</and>
+					<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
 					<then>
-						<property name="mysql.exec" value="${mysql}/bin/mysql"/>
+						<antcall target="mysql_start"/>
+						<if>
+							<and>
+								<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+								<resourceexists>
+									<file file="${mysql}/bin/mysql"/>
+								</resourceexists>
+							</and>
+							<then>
+								<property name="mysql.exec" value="${mysql}/bin/mysql"/>
+							</then>
+							<else>
+								<property name="mysql.exec" value="${demo.mysql.path}"/>
+							</else>
+						</if>
+						<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+						<copy file="${dist}/rdb/mysql.sql" tofile="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" overwrite="true"/>
+						<replace file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" token="@schema@" value="${mysql.prefix}${demo.instance}"/>
+						<if>
+							<resourceexists>
+								<file file="${mysql.exec}"/>
+							</resourceexists>
+							<then>
+								<exec executable="${mysql.exec}" spawn="false" failonerror="false">
+									<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/mysql_${demo.instance}${demo.build}.sql'"/>
+								</exec>
+							</then>
+						</if>
+						<delete file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql"/>
+						<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@SCHEMA@@" value="${mysql.prefix}${demo.instance}"/>
+						<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@HOST@@" value="${demo.mysql.host}"/>
+						<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@PORT@@" value="${demo.mysql.port}"/>
+						<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@USER@@" value="${demo.mysql.user}"/>
+						<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@PASSWORD@@" value="${demo.mysql.password}"/>
 					</then>
 					<else>
-						<property name="mysql.exec" value="${demo.mysql.path}"/>
+						<!-- For the enablement use case alone, we don't need the OAK datasource to be configured -->
+						<delete file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg"/>
 					</else>
 				</if>
-				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
-				<copy file="${dist}/rdb/mysql.sql" tofile="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" overwrite="true"/>
-				<replace file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" token="@schema@" value="${mysql.prefix}${demo.instance}"/>
-				<if>
-					<resourceexists>
-						<file file="${mysql.exec}"/>
-					</resourceexists>
-					<then>
-						<exec executable="${mysql.exec}" spawn="false" failonerror="false">
-							<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/mysql_${demo.instance}${demo.build}.sql'"/>
-						</exec>
-					</then>
-				</if>
-				<delete file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql"/>
-				<unzip src="${dist}/rdb/mysql.zip" dest="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
-				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@SCHEMA@@" value="${mysql.prefix}${demo.instance}"/>
-				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@HOST@@" value="${demo.mysql.host}"/>
-				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@PORT@@" value="${demo.mysql.port}"/>
-				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@USER@@" value="${demo.mysql.user}"/>
-				<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/org.apache.sling.datasource.DataSourceFactory-oak.cfg" token="@@PASSWORD@@" value="${demo.mysql.password}"/>
 			</then>
 		</if>
 		<antcall target="hotfix_instance"/>
@@ -1256,6 +1268,15 @@
 		</antcall>
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
+	<target name="download_aem62">
+		<echo message="Downloading AEM 6.2 Beta"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/aem62.jar' ${demo.download.aem.62}"/>
+		</exec>
+		<echo message="AEM 6.2 Beta successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/aem62.jar" todir="${dist}/bin"/>
+	</target>
 	<target name="download_aem61">
 		<echo message="Downloading AEM 6.1"/>
 		<mkdir dir="${dist}/downloads"/>
@@ -2023,8 +2044,14 @@
 			</then>
 		</if>
 		<!-- These conditions are used to run specitic targets starting with a certain release or later -->
+		<condition property="aem63orlater">
+			<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+		</condition>
 		<condition property="aem62orlater">
-			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+			<or>
+				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+			</or>
 		</condition>
 		<condition property="aem61orlater">
 			<or>
@@ -3841,6 +3868,19 @@
 			<arg line="-d propertylist=isEnablementActive"/>
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/system/console/configMgr/com.adobe.cq.social.enablement.impl.site.EnablementSiteServiceImpl"/>
 		</exec>
+		<echo message="Configuring the Content Disposition filter..."/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${AdobeAEM.publishport}_disposition.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d sling.content.disposition.all.paths=false"/>
+			<arg line="-d propertylist=sling.content.disposition.all.paths"/>
+			<arg line="http://${demo.host}:${AdobeAEM.publishport}/system/console/configMgr/org.apache.sling.security.impl.ContentDispositionFilter"/>
+		</exec>
 		<antcall target="community_enablement_managers"/>
 		<antcall target="community_enablement_notifications"/>
 		<if>
@@ -4236,6 +4276,16 @@
 					<then>
 						<fail message="Your demo configuration requires SOLR and it doesn't seem to be installed. Please use the demo machine commands to download and to install SOLR"/>
 					</then>
+					<else>
+						<if>
+							<not>
+								<resourcecontains resource="${solr}/example/solr/collection1/conf/schema.xml" substring="extra 23 languages"/>
+							</not>
+							<then>
+								<fail message="A newer SOLR schema is required. Please use the demo machine commands to download and to re-install SOLR"/>
+							</then>
+						</if>
+					</else>
 				</if>
 			</then>
 		</if>
