@@ -1631,7 +1631,7 @@ public class Loader {
 					null,
 					referer);
 
-			doAnalytics(analytics, "event3", referer, resourceID, resourceType);
+			doAnalytics(analytics, "event13", referer, resourceID, resourceType);
 
 		} catch(Exception e) {
 
