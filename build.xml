@@ -4112,7 +4112,7 @@
 			<arg line="-d action=stop"/>
 			<arg line="http://${demo.host}:${bundle.port}/system/console/bundles/${bundle.id}"/>
 		</exec>
-		<sleep seconds="10"/>
+		<sleep seconds="30"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${bundle.port}_bundle_${bundle.id}_start.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
