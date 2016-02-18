@@ -4,11 +4,6 @@
 	<property file="conf/build-personal.properties"/>
 	<!-- The build.properties file contains the default configuration value -->
 	<property file="build.properties"/>
-	<!-- This file requires the ant-contrib-1.0b3.jar file to be in the ant/lib folder -->
-	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
-	<description>
-        This is the AEM Demo Machine. Comprensive toolkit for running and configuring integrated AEM demos.
-    </description>
 	<!-- Setting some global properties for this build -->
 	<property name="dist" location="./dist"/>
 	<property name="ant" location="./ant"/>
@@ -25,6 +20,13 @@
 	<property name="james" location="./james"/>
 	<property name="archives" location="./archives"/>
 	<property name="bin" location="./bin"/>
+	<!-- This file requires the ant-contrib-1.0b3.jar file to be in the ant/lib folder -->
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!-- This file requires the biz.aQute.bnd-3.2.0 file to be available under java/libs/bnd	 -->
+    <taskdef resource="aQute/bnd/ant/taskdef.properties" classpath="${java}/libs/bnd/biz.aQute.bnd-3.2.0.jar"/> 
+	<description>
+        This is the AEM Demo Machine. Comprensive toolkit for running and configuring integrated AEM demos.
+    </description>
 	<condition property="isWindows">
 		<os family="windows"/>
 	</condition>
@@ -2309,9 +2311,6 @@
 		<antcall target="scene7_registration">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="dynamic_media">
-			<param name="port" value="${port}"/>
-		</antcall>
 		<antcall target="brightedge">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2328,6 +2327,9 @@
 		<if>
 			<equals arg1="${port}" arg2="${AdobeAEM.authorport}" casesensitive="false"/>
 			<then>
+				<antcall target="dynamic_media">
+					<param name="port" value="${port}"/>
+				</antcall>
 				<antcall target="assets_homepage">
 					<param name="port" value="${port}"/>
 				</antcall>
@@ -2848,7 +2850,7 @@
 	<!-- This target sets some user preferences in advance for some users -->
 	<target name="users">
 		<echo message="Updating User Preferences on port ${port}..."/>
-		<java classname="com.adobe.aem.demo.communities.Loader">
+		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${port} -a ${demo.loader.altport} -u ${demo.admin.password} -f &quot;${dist}/users/loader-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -2856,7 +2858,7 @@
 	<!-- This target loads some content fragments from a .csv file -->
 	<target name="sites_fragments" depends="community_loader_flag,compile">
 		<echo message="Loading up Content Fragments..."/>
-		<java classname="com.adobe.aem.demo.communities.Loader">
+		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -a ${AdobeAEM.authorport} -u ${demo.admin.password} -f &quot;${dist}/community/wizard/loader-fragments.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -3023,7 +3025,7 @@
 	</target>
 	<!-- Target for loading a CSV file with UGC into the author instance -->
 	<target name="community_loader_author" depends="community_loader_flag,compile">
-		<java classname="com.adobe.aem.demo.communities.Loader">
+		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${AdobeAEM.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -3034,7 +3036,7 @@
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
 				<echo message="Loading Community content on Publish ${demo.loader.currentfile}..."/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -3083,14 +3085,14 @@
 					<then>
 						<!-- This content is for AEM 6.1 FP2 and beyond -->
 						<echo message="Loading Community Site Content (for AEM 6.1 FP2 and beyond)"/>
-						<java classname="com.adobe.aem.demo.communities.Loader">
+						<java classname="com.adobe.aem.demomachine.communities.Loader">
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
 					</then>
 					<else>
 						<echo message="Loading Community Site Content (for AEM 6.1 FP4 and beyond)"/>
-						<java classname="com.adobe.aem.demo.communities.Loader">
+						<java classname="com.adobe.aem.demomachine.communities.Loader">
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp4-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
@@ -3114,7 +3116,7 @@
 			</and>
 			<then>
 				<echo message="Loading Community Site Templates (for AEM 6.1 FP1)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp1.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -3127,7 +3129,7 @@
 					</and>
 					<then>
 						<echo message="Loading Community Site Templates (for AEM 6.1 GA)"/>
-						<java classname="com.adobe.aem.demo.communities.Loader">
+						<java classname="com.adobe.aem.demomachine.communities.Loader">
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
@@ -3140,14 +3142,14 @@
 							</or>
 							<then>
 								<echo message="Loading Community Site Templates (for AEM 6.1 FP2 and FP3)"/>
-								<java classname="com.adobe.aem.demo.communities.Loader">
+								<java classname="com.adobe.aem.demomachine.communities.Loader">
 									<classpath refid="demo.classpath"/>
 									<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 								</java>
 							</then>
 							<else>
 								<echo message="Loading Community Site Templates (for AEM 6.1 FP4 and beyond)"/>
-								<java classname="com.adobe.aem.demo.communities.Loader">
+								<java classname="com.adobe.aem.demomachine.communities.Loader">
 									<classpath refid="demo.classpath"/>
 									<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-site-templates-fp4.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 								</java>
@@ -3161,14 +3163,14 @@
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
 				<echo message="Loading Community sites (and publishing)..."/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
 				<echo message="Loading Community sites (without publishing)..."/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${AdobeAEM.authorport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -3671,7 +3673,7 @@
 			<arg line="http://${demo.host}:${AdobeAEM.authorport}/home/groups/c/content-authors.html"/>
 		</exec>
 		<echo message="Updating user profiles on the Author instance"/>
-		<java classname="com.adobe.aem.demo.communities.Loader">
+		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -3679,7 +3681,7 @@
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
 				<echo message="Updating Community Members profiles on the Publish instance"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -3689,7 +3691,7 @@
 			<socket server="${demo.host}" port="${AdobeAEM.farmport}"/>
 			<then>
 				<echo message="Updating Members on the Farm instance"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.farmport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -3943,27 +3945,27 @@
 			</and>
 			<then>
 				<echo message="Creating tags for Enablement demo site (on Author and Publish)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<echo message="Creating site for Enablement demo site (on Author)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<echo message="Creating members for Enablement demo site (on Publish)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 				<antcall target="community_enablement_loader_resources"/>
 				<echo message="Creating UGC for Enablement demo site (on Publish)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.publishport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/enablement/loader-enablement-publish.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -3975,7 +3977,7 @@
 	</target>
 	<target name="community_enablement_loader_resources" depends="community_loader_flag,compile">
 		<echo message="Creating Resources for Enablement demo site (on Author - 20+ minutes)"/>
-		<java classname="com.adobe.aem.demo.communities.Loader">
+		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-resources.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
 		</java>
@@ -3990,7 +3992,7 @@
 			</and>
 			<then>
 				<echo message="Creating Resources for Communities demo site (on Author)"/>
-				<java classname="com.adobe.aem.demo.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-communities.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
 				</java>
@@ -4128,7 +4130,7 @@
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
 			</not>
 			<then>
-				<java classname="com.adobe.aem.demo.Hostname" outputproperty="demo.hostname">
+				<java classname="com.adobe.aem.demomachine.Hostname" outputproperty="demo.hostname">
 					<classpath refid="demo.classpath"/>
 				</java>
 			</then>
@@ -4149,7 +4151,7 @@
 				<replace file="${dist}/analytics/event-data.xml" token="@analytics.user@" value="${demo.hostname}"/>
 				<replace file="${dist}/analytics/event-data.xml" token="@analytics.pagename@" value="${analytics.pagename}"/>
 				<replace file="${dist}/analytics/event-data.xml" token="@AdobeAnalytics.reportsuite@" value="${demo.analytics.reportsuite}"/>
-				<java classname="com.adobe.aem.demo.Analytics">
+				<java classname="com.adobe.aem.demomachine.Analytics">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.analytics.reportsuite}.d3.sc.omtrdc.net -u /b/ss//6 -f &quot;${dist}/analytics/event-data.xml&quot;"/>
 				</java>
@@ -4380,6 +4382,14 @@
 				<exec dir="${git.path}" executable="mvn" spawn="false" failonerror="false">
 					<arg line="clean install -PautoInstallPackage"/>
 				</exec>
+				<if>
+					<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+					<then>
+						<exec dir="${git.path}" executable="mvn" spawn="false" failonerror="false">
+							<arg line="install -PautoInstallPackagePublish"/>
+						</exec>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -4390,7 +4400,7 @@
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
 			</not>
 			<then>
-				<java classname="com.adobe.aem.demo.Checksums">
+				<java classname="com.adobe.aem.demomachine.Checksums">
 					<classpath refid="demo.classpath"/>
 					<arg line="-f &quot;${basedir}&quot;"/>
 				</java>
@@ -4404,12 +4414,21 @@
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
 			</not>
 			<then>
-				<java classname="com.adobe.aem.demo.Updates">
+				<java classname="com.adobe.aem.demomachine.Updates">
 					<classpath refid="demo.classpath"/>
 					<arg line="-f &quot;${basedir}&quot;"/>
 				</java>
 			</then>
 		</if>
+	</target>
+	<target name="osgi_build" depends="compile">
+	    <bnd 
+	        classpath="${java}/bin" 
+			output="${dist}/osgi"
+	        eclipse="false" 
+	        failok="false" 
+	        exceptions="true" 
+	        files="${dist}/osgi/aem-demo-machine.bnd"/>
 	</target>
 	<target name="gui_build" depends="compile">
 		<delete file="demomachine.jar"/>
@@ -4417,7 +4436,7 @@
 			<zipgroupfileset dir="${java}/libs" includes="**/*.jar"/>
 			<zipgroupfileset dir="${ant}/lib" includes="**/*.jar"/>
 			<manifest>
-				<attribute name="Main-Class" value="com.adobe.aem.demo.gui.AemDemo"/>
+				<attribute name="Main-Class" value="com.adobe.aem.demomachine.gui.AemDemo"/>
 			</manifest>
 		</jar>
 	</target>
