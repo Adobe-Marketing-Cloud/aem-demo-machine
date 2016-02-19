@@ -28,7 +28,7 @@ import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 
-@SlingServlet(paths="/bin/createCommunities", methods = "GET", metatype=false)
+@SlingServlet(paths="/bin/CreateCommunities", methods = "GET", metatype=false)
 public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMethodsServlet {
 
 	private static final long serialVersionUID = 9187308313909516127L;

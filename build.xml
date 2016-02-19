@@ -23,7 +23,7 @@
 	<!-- This file requires the ant-contrib-1.0b3.jar file to be in the ant/lib folder -->
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<!-- This file requires the biz.aQute.bnd-3.2.0 file to be available under java/libs/bnd	 -->
-    <taskdef resource="aQute/bnd/ant/taskdef.properties" classpath="${java}/libs/bnd/biz.aQute.bnd-3.2.0.jar"/> 
+	<taskdef resource="aQute/bnd/ant/taskdef.properties" classpath="${java}/libs/bnd/biz.aQute.bnd-3.2.0.jar"/>
 	<description>
         This is the AEM Demo Machine. Comprensive toolkit for running and configuring integrated AEM demos.
     </description>
@@ -2293,6 +2293,9 @@
 	</target>
 	<!-- Target for post configuration steps -->
 	<target name="configure_post">
+		<antcall target="demo_bundle">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<antcall target="social_cloudstorage">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2425,6 +2428,40 @@
 	<target name="packageFeaturePack" if="isFeaturePack">
 		<echo message="Waiting for feature pack to be installed"/>
 		<sleep seconds="30"/>
+	</target>
+	<!-- Deploying the AEM Demo Machine bundle -->
+	<target name="demo_bundle">
+		<echo message="Uploading Demo Machine bundle on port ${port}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_aemdemomachine_csv.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-F action=install"/>
+			<arg line="-F bundlestart=start"/>
+			<arg line="-F bundlestartlevel=20"/>
+			<arg line="-F refreshPackages=refresh"/>
+			<arg line="-F 'bundlefile=@${java}/libs/csv/commons-csv-1.1.jar'"/>
+			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_aemdemomachine_cli.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-F action=install"/>
+			<arg line="-F bundlestart=start"/>
+			<arg line="-F bundlestartlevel=20"/>
+			<arg line="-F refreshPackages=refresh"/>
+			<arg line="-F 'bundlefile=@${java}/libs/commons-cli-1.2/commons-cli-1.2.jar'"/>
+			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_aemdemomachine.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-F action=install"/>
+			<arg line="-F bundlestart=start"/>
+			<arg line="-F bundlestartlevel=20"/>
+			<arg line="-F refreshPackages=refresh"/>
+			<arg line="-F 'bundlefile=@${dist}/osgi/com.adobe.aem.demomachine.jar'"/>
+			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
+		</exec>
 	</target>
 	<!-- Adobe Social Communities - setting waiting.time to 10s for notifications -->
 	<target name="notifications">
@@ -3066,6 +3103,7 @@
 		<antcall target="community_loader">
 			<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities.csv"/>
 		</antcall>
+		<antcall target="stepbystep"/>
 		<if>
 			<not>
 				<and>
@@ -3089,6 +3127,7 @@
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.loader.host} -p ${AdobeAEM.authorport} -u ${demo.admin.password} -a ${demo.loader.altport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 						</java>
+						<antcall target="stepbystep"/>
 					</then>
 					<else>
 						<echo message="Loading Community Site Content (for AEM 6.1 FP4 and beyond)"/>
@@ -3099,11 +3138,13 @@
 						<antcall target="community_loader">
 							<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp4.csv"/>
 						</antcall>
+						<antcall target="stepbystep"/>
 					</else>
 				</if>
 				<antcall target="community_loader">
 					<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp2.csv"/>
 				</antcall>
+				<antcall target="stepbystep"/>
 			</then>
 		</if>
 	</target>
@@ -4379,13 +4420,13 @@
 					</then>
 				</if>
 				<echo message="Building GitHub project ${gitproject.id}"/>
-				<exec dir="${git.path}" executable="mvn" spawn="false" failonerror="false">
+				<exec dir="${git.path}" executable="${demo.mvn}" spawn="false" failonerror="false">
 					<arg line="clean install -PautoInstallPackage"/>
 				</exec>
 				<if>
 					<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 					<then>
-						<exec dir="${git.path}" executable="mvn" spawn="false" failonerror="false">
+						<exec dir="${git.path}" executable="${demo.mvn}" spawn="false" failonerror="false">
 							<arg line="install -PautoInstallPackagePublish"/>
 						</exec>
 					</then>
@@ -4422,13 +4463,7 @@
 		</if>
 	</target>
 	<target name="osgi_build" depends="compile">
-	    <bnd 
-	        classpath="${java}/bin" 
-			output="${dist}/osgi"
-	        eclipse="false" 
-	        failok="false" 
-	        exceptions="true" 
-	        files="${dist}/osgi/aem-demo-machine.bnd"/>
+		<bnd classpath="${java}/bin" output="${dist}/osgi" eclipse="false" failok="false" exceptions="true" files="${dist}/osgi/aem-demo-machine.bnd"/>
 	</target>
 	<target name="gui_build" depends="compile">
 		<delete file="demomachine.jar"/>
@@ -4442,6 +4477,14 @@
 	</target>
 	<target name="gui">
 		<java dir="." jar="demomachine.jar" fork="true" spawn="true"/>
+	</target>
+	<target name="stepbystep">
+		<if>
+			<equals arg1="${demo.stepbystep}" arg2="true" casesensitive="false"/>
+			<then>
+				<input message="Enter any key to move one step forward"/>
+			</then>
+		</if>
 	</target>
 	<target name="default">
 		<echo message="Welcome to the AEM Demo Machine! Please use the install target to setup your first environment"/>

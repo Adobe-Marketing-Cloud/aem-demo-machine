@@ -5,7 +5,7 @@
             <provide interface="javax.servlet.Servlet"/>
         </service>
         <property name="sling.servlet.paths">
-            /bin/setupCommunities
+            /bin/SetupCommunities
         </property>
         <property name="sling.servlet.methods">
             GET

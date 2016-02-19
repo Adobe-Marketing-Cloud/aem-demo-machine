@@ -23,7 +23,7 @@ import org.apache.felix.scr.annotations.sling.SlingServlet;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
 
-@SlingServlet(paths="/bin/setupCommunities", methods = "GET", metatype=false)
+@SlingServlet(paths="/bin/SetupCommunities", methods = "GET", metatype=false)
 public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMethodsServlet {
 
 	private static final long serialVersionUID = 2891656166255468489L;
