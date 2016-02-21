@@ -1162,7 +1162,7 @@
 						</exec>
 					</then>
 					<else>
-						<exec executable="mongo" dir="${mongodb}/bin" spawn="true">
+						<exec executable="mongo" spawn="true">
 							<arg line='${mongo.prefix} --eval "db.dropDatabase()"'/>
 						</exec>
 					</else>
