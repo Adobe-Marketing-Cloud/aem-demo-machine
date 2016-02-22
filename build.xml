@@ -3053,7 +3053,7 @@
 		<copy file="${archives}/demomachine-${archive-file-name}-apps.zip" tofile="${archives}/aem-demomachine-apps.zip" overwrite="true"/>
 	</target>
 	<!-- Creates a backup file for a specific demo image using an external script -->
-	<target name="backup" depends="permissions">
+	<target name="backup" depends="permissions,configuration">
 		<antcall target="stop"/>
 		<if>
 			<resourceexists>
@@ -3090,7 +3090,7 @@
 		</if>
 	</target>
 	<!-- Restores a backup file for a specific demo image using an external script -->
-	<target name="restore" depends="permissions">
+	<target name="restore" depends="permissions,configuration">
 		<antcall target="stop"/>
 		<if>
 			<resourceexists>
