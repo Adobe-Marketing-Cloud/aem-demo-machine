@@ -31,6 +31,13 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 	@Override
 	protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServerException, IOException {
 
+		// Checking if we have valid configuration parameters
+		String csvPath = (String) request.getParameter("contentPath");
+		if (csvPath==null) {
+			csvPath = "";
+			return;
+		}
+
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
 		out.println("<html><head>");
@@ -42,11 +49,11 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/coralui3.js\"></script>");
 		out.println("</head><body class=\"coral--light u-coral-clearFix\" style=\"margin:40px\">");
 		out.println("<div><h1>AEM Communities - Demo Setup</h1>");
-		out.println("<form action=\"/bin/createCommunities\" method=\"GET\" class=\"coral-Form coral-Form--vertical\" style=\"width:700px\">");
+		out.println("<form action=\"/bin/CreateCommunities\" method=\"GET\" class=\"coral-Form coral-Form--vertical\" style=\"width:700px\">");
 		out.println("<section class=\"coral-Form-fieldset\">");
 		out.println("<span>All the fun takes place on the Publish instance with AEM - please ensure yours is available at the following coordinates</spanl>");
 		out.println("<label class=\"coral-Form-fieldlabel\">Path to configuration files</label>");
-		out.println("<input is=\"coral-textfield\" name=\"contentPath\" type=\"text\" value=\"/etc/community/we-retail\" class=\"coral-Form-field coral-Textfield\">");
+		out.println("<input is=\"coral-textfield\" name=\"contentPath\" type=\"text\" value=\"" + csvPath + "\" class=\"coral-Form-field coral-Textfield\">");
 		out.println("<label class=\"coral-Form-fieldlabel\">Author instance</label>");
 		out.println("<div class=\"coral-Form--aligned\">");
 		out.println("<input is=\"coral-textfield\" name=\"hostname_author\" type=\"text\" value=\"localhost\" class=\"coral-Textfield\">");

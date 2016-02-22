@@ -115,7 +115,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 
 		response.getWriter().write("<p>Process completed!</p>");
 		if (returnURL!=null) {
-			response.getWriter().write("<p><a href=\"http://" + hostname + ":" + port + returnURL +"\">Check your site !</a></p>");
+			response.getWriter().write("<p><a href=\"http://" + request.getServerName() + ":" + request.getServerPort() + returnURL +"\">Check your site !</a></p>");
 		}
 		response.flushBuffer();
 		out.println("</body></html>");
