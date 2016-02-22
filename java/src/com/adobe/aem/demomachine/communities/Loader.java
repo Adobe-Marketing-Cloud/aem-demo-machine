@@ -434,6 +434,7 @@ public class Loader {
 					// Building the form entity to be posted
 					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 					builder.setCharset(MIME.UTF8_CHARSET);
+					builder.addTextBody(":operation", "social:assignBadge", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 					for (int i=2;i<record.size()-1;i=i+2) {
 

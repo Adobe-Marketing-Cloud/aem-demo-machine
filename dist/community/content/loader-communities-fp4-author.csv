@@ -6,7 +6,7 @@ SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/tre
 SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending2,activityType,posts,displayCount,5,displayTitle,Top Contributors,sling:resourceType,social/reporting/analytics/components/hbs/communityactivitylist,timePeriod,total,type,members,contextPath,/content/sites/communities/en,,,,,,,,,,,,
 SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending2/cq:responsive/default,width,6,,,,,,,,,,,,,,,,,,,,,,,,
 SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending3,activityType,views,displayCount,5,displayTitle,Top Content,sling:resourceType,social/reporting/analytics/components/hbs/communityactivitylist,timePeriod,total,type,content,contextPath,/content/sites/communities/en,,,,,,,,,,,,
-SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending3/cq:responsive/default,width,6,,,,,,,,,,,,,,,,,,,,,,,,
+SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending3/cq:responsive/default,width,6,behavior,newline,,,,,,,,,,,,,,,,,,,,,,
 SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending4,activityType,posts,displayCount,5,displayTitle,Trending Content,sling:resourceType,social/reporting/analytics/components/hbs/communityactivitylist,timePeriod,total,type,content,contextPath,/content/sites/communities/en,,,,,,,,,,,,
 SlingPost,/content/sites/communities/en/trending/jcr:content/content/primary/trending4/cq:responsive/default,width,6,,,,,,,,,,,,,,,,,,,,,,,,
 # Updating a few components with new settings,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -16,3 +16,5 @@ Forum,/content/sites/communities/en/groups/hiking/jcr:content/content/primary/fo
 Forum,/content/sites/communities/en/groups/surfing/jcr:content/content/primary/forum.social.json,rteEnabled,TRUE,allowVoting,TRUE,allowRepliesToComments,TRUE,allowCloseComments,TRUE,allowDeleteComments,TRUE,allowDenyComments,TRUE,allowFlagComments,TRUE,flagModerateThreshold,1,flagViewThreshold,3,allowFileUploads,TRUE,allowMoves,TRUE,allowBadges,TRUE,showCrumbs,TRUE
 # Assigning a few role based badges,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Badge,/home/users/geometrixx-outdoors/aaron.mcdonald%40mailinator.com/profile.social.json,badgeContentPath,/conf/global/settings/communities/badging/images/moderator/jcr:content/moderator.png,,,,,,,,,,,,,,,,,,,,,,,,
+# Assigning the scoring and badging rules to the site,,,,,,,,,,,,,,,,,,,,,,,,,,,
+SlingPost,/content/sites/communities/jcr:content,scoringRules@String[],/conf/global/settings/communities/scoring/rules/forums-scoring,badgingRules@String[],/conf/global/settings/communities/badging/rules/forums-badging,,,,,,,,,,,,,,,,,,,,,,
