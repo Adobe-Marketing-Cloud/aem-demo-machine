@@ -560,20 +560,6 @@
 			</else>
 		</if>
 		<if>
-			<and>
-				<isset property="gitprojects"/>
-				<not>
-					<equals arg1="${gitprojects}" arg2=""/>
-				</not>
-			</and>
-			<then>
-				<foreach list="${gitprojects}" target="github_install" param="gitproject.id"/>
-			</then>
-			<else>
-				<echo message="No GitHub project to install"/>
-			</else>
-		</if>
-		<if>
 			<equals arg1="${demomachine.store}" arg2="crx3,crx3mongo" casesensitive="false"/>
 			<!-- AEM6.x MongoMK use case -->
 			<then>
@@ -996,7 +982,9 @@
 				</if>
 				<echo message="Dropping the MySQL schemas for SCORM and Reporting..."/>
 				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+				<!--
 				<echo message="${demo.build} ${mysql.prefix} ${mysql.exec}"/>
+				-->
 				<copy file="${dist}/community/mysql/drop_schemas.sql" tofile="${dist}/community/mysql/drop_schemas_${demo.build}.sql" overwrite="true"/>
 				<replace file="${dist}/community/mysql/drop_schemas_${demo.build}.sql" token="enablementdb" value="${mysql.prefix}reporting"/>
 				<replace file="${dist}/community/mysql/drop_schemas_${demo.build}.sql" token="ScormEngineDB" value="${mysql.prefix}scorm"/>
@@ -2091,7 +2079,6 @@
 	</target>
 	<!-- Target for getting version number -->
 	<target name="version">
-		<echo message="Retrieving the AEM Version number"/>
 		<if>
 			<resourceexists>
 				<file file="${demos}/${demo.build}/demomachine.properties"/>
@@ -2178,7 +2165,9 @@
 				<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
 			</or>
 		</condition>
+		<!--
 		<echo message="demo.packages: ${demo.packages}"/>
+		-->
 	</target>
 	<!-- Target for loading the packages -->
 	<target name="configure" depends="version,configuration">
