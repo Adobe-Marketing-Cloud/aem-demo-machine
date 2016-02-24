@@ -582,7 +582,7 @@
 					<then>
 						<!-- AEM6.x use case -->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
-						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true">
+						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
 							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
 							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
 							<jvmarg value="-XX:MaxPermSize=256m"/>
