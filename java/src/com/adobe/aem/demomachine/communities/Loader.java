@@ -35,6 +35,9 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -226,6 +229,9 @@ public class Loader {
 
 		String language = "en";
 		String location = null;
+		String sitePagePath = null;
+        String analyticsPagePath = null;
+        String resourceType = null;
 		String rootPath = "/content/sites";
 		String[] url = new String[10];  // Handling 10 levels maximum for nested comments 
 		int urlLevel = 0;
@@ -302,12 +308,14 @@ public class Loader {
 						}
 					}
 
-					// Site creation
-					String siteId = doPost(hostname, port,
-							"/content.social.json",
-							"admin", adminPassword,
-							builder.build(),
-							"response/siteId");
+					Map<String, String> elements = new HashMap<String, String>();
+                    elements.put("response/siteId", "");
+                    elements.put("response/sitePagePath", "");
+                    // Site creation
+                    doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), elements,
+                        null);
+                    String siteId = elements.get("response/siteId");
+                    sitePagePath = elements.get("response/sitePagePath");
 
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
@@ -692,6 +700,11 @@ public class Loader {
 					componentType = record.get(0);
 					url[0] = record.get(1);
 					urlLevel=0;
+
+					if(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))
+					{
+						sitePagePath = url[0].substring(0, url[0].indexOf("/en") + 3);
+					}
 
 					if (!componentType.equals(SLINGPOST) && reset) {
 
@@ -1126,12 +1139,18 @@ public class Loader {
 					jsonElement = null;
 				}
 
-				// This call generally returns the path to the content fragment that was just created
-				location = Loader.doPost(hostname, port,
-						url[urlLevel],
-						userName, password,
-						builder.build(),
-						jsonElement);
+				Map<String, String> elements = new HashMap<String, String>();
+                elements.put(jsonElement, "");
+                elements.put("response/resourceType", "");
+                elements.put("response/id", "");
+                // This call generally returns the path to the content fragment that was just created
+                Loader.doPost(hostname, port, url[urlLevel], userName, password, builder.build(), elements, null);
+                location = elements.get(jsonElement);
+                String referrer = elements.get("response/id");
+                if (Integer.parseInt(record.get(1)) == 0) {
+                    analyticsPagePath = location;
+                    resourceType = elements.get("response/resourceType");
+                }
 
 				// If we are loading a DAM asset, we are waiting for all renditions to be generated before proceeding
 				if (componentType.equals(ASSET)) {
@@ -1258,7 +1277,25 @@ public class Loader {
 					// Adding comments and ratings for this resource
 					doDecorate(hostname, altport, location, record, analytics, rootPath);
 
-				}				
+				}
+
+				logger.debug("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
+				logger.debug("analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
+                if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))) {
+                	logger.debug("level: " + Integer.parseInt(record.get(1)));
+                    if (Integer.parseInt(record.get(1)) == 0) {
+                        // we just created a forum topic. simulate view events.
+                        int views = new Random().nextInt(21) + 10;
+                        for (int i = 0; i < views; i++) {
+                            doUGCAnalytics(analytics, "event11", analyticsPagePath, resourceType, sitePagePath,
+                                userName, referrer);
+                        }
+                    } else {
+                        // we just created a forum topic reply. simulate post event.
+                        doUGCAnalytics(analytics, "event13", analyticsPagePath, resourceType, sitePagePath,
+                            userName, referrer);
+                    }
+                }			
 
 			}
 
@@ -1547,6 +1584,65 @@ public class Loader {
 
 	}
 
+	// This methods POSTS an analytics event for UGC
+    private static void doUGCAnalytics(String analytics, String event, String path, String type, String sitePath,
+        String user, String referrer) {
+
+        if (analytics != null && path != null && type != null && sitePath != null && user != null && event != null && referrer != null) {
+
+            URLConnection urlConn = null;
+            DataOutputStream printout = null;
+            BufferedReader input = null;
+            String tmp = null;
+            try {
+
+                StringBuffer sb =
+                    new StringBuffer("<?xml version=1.0 encoding=UTF-8?><request><sc_xml_ver>1.0</sc_xml_ver>");
+                sb.append("<events>" + event + "</events>");
+                sb.append("<pageURL>" + referrer + "</pageURL>");
+				sb.append("<pageName>" + referrer.replaceAll("/",":") + "</pageName>");
+                sb.append("<evar10>" + path + "</evar10>");
+                sb.append("<evar7>" + type + "</evar7>");
+                sb.append("<evar13>" + sitePath + "</evar13>");
+                sb.append("<evar9>" + user + "</evar9>");
+                sb.append("<visitorID>demomachine</visitorID>");
+                sb.append("<reportSuiteID>" + analytics.substring(0, analytics.indexOf(".")) + "</reportSuiteID>");
+                sb.append("</request>");
+
+                logger.debug("New UGC Analytics Event: " + sb.toString());
+
+                URL sitecaturl = new URL("http://" + analytics);
+
+                urlConn = sitecaturl.openConnection();
+                urlConn.setDoInput(true);
+                urlConn.setDoOutput(true);
+                urlConn.setUseCaches(false);
+                urlConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+                printout = new DataOutputStream(urlConn.getOutputStream());
+
+                printout.writeBytes(sb.toString());
+                printout.flush();
+                printout.close();
+
+                input = new BufferedReader(new InputStreamReader(urlConn.getInputStream()));
+
+                while (null != ((tmp = input.readLine()))) {
+                    logger.debug(tmp);
+                }
+                printout.close();
+                input.close();
+
+            } catch (Exception ex) {
+
+                logger.error(ex.getMessage());
+
+            }
+
+        }
+
+    }
+
 	// This methods POSTS an analytics event
 	private static void doAnalytics(String analytics, String event, String pageURL, String resourcePath, String resourceType) {
 
@@ -1663,115 +1759,118 @@ public class Loader {
 
 	}
 
-	// This method POSTs a request to the server, returning the location JSON attribute, when available
-	private static String doPost(String hostname, String port, String url, String user, String password, HttpEntity entity, String lookup) {
+	    // This method POSTs a request to the server, returning the location JSON attribute, when available
+    private static String doPost(String hostname, String port, String url, String user, String password,
+        HttpEntity entity, String lookup) {
 
-		return doPost(hostname, port, url, user, password, entity, lookup, null);
+        Map<String, String> elements = new HashMap<String, String>();
+        elements.put(lookup, "");
+        doPost(hostname, port, url, user, password, entity, elements, null);
+        return elements.get(lookup);
 
-	}
+    }
 
-	private static String doPost(String hostname, String port, String url, String user, String password, HttpEntity entity, String lookup, String referer) {
+    private static void doPost(String hostname, String port, String url, String user, String password,
+        HttpEntity entity, Map<String, String> elements, String referer) {
+        String jsonElement = null;
 
-		String jsonElement = null;
+        try {
 
-		try {
+            HttpHost target = new HttpHost(hostname, Integer.parseInt(port), "http");
+            CredentialsProvider credsProvider = new BasicCredentialsProvider();
+            credsProvider.setCredentials(new AuthScope(target.getHostName(), target.getPort()),
+                new UsernamePasswordCredentials(user, password));
+            CloseableHttpClient httpClient =
+                HttpClients.custom().setDefaultCredentialsProvider(credsProvider).build();
 
-			HttpHost target = new HttpHost(hostname, Integer.parseInt(port), "http");
-			CredentialsProvider credsProvider = new BasicCredentialsProvider();
-			credsProvider.setCredentials(
-					new AuthScope(target.getHostName(), target.getPort()),
-					new UsernamePasswordCredentials(user, password));
-			CloseableHttpClient httpClient = HttpClients.custom()
-					.setDefaultCredentialsProvider(credsProvider).build();
+            try {
 
-			try {
+                // Adding the Basic Authentication data to the context for this command
+                AuthCache authCache = new BasicAuthCache();
+                BasicScheme basicAuth = new BasicScheme();
+                authCache.put(target, basicAuth);
+                HttpClientContext localContext = HttpClientContext.create();
+                localContext.setAuthCache(authCache);
 
-				// Adding the Basic Authentication data to the context for this command
-				AuthCache authCache = new BasicAuthCache();
-				BasicScheme basicAuth = new BasicScheme();
-				authCache.put(target, basicAuth);
-				HttpClientContext localContext = HttpClientContext.create();
-				localContext.setAuthCache(authCache);
+                // Composing the root URL for all subsequent requests
+                String postUrl = "http://" + hostname + ":" + port + url;
+                logger.debug("Posting request as " + user + " with password " + password + " to " + postUrl);
 
-				// Composing the root URL for all subsequent requests
-				String postUrl = "http://" + hostname + ":" + port + url;
-				logger.debug("Posting request as " + user + " with password " + password  + " to " + postUrl);
+                // Preparing a standard POST HTTP command
+                HttpPost request = new HttpPost(postUrl);
+                request.setEntity(entity);
+                if (!entity.getContentType().toString().contains("multipart")) {
+                    request.addHeader("content-type", "application/x-www-form-urlencoded");
+                }
+                request.addHeader("Accept", "application/json, text/javascript, */*; q=0.01");
+                request.addHeader("Origin", postUrl);
+                if (referer != null) {
+                    logger.debug("Referer header added to request: " + referer);
+                    request.addHeader("Referer", referer);
+                }
 
-				// Preparing a standard POST HTTP command
-				HttpPost request = new HttpPost(postUrl);
-				request.setEntity(entity);
-				if (!entity.getContentType().toString().contains("multipart")) {
-					request.addHeader("content-type", "application/x-www-form-urlencoded");
-				}
-				request.addHeader("Accept", "application/json, text/javascript, */*; q=0.01");
-				request.addHeader("Origin", postUrl);
-				if (referer!=null) {
-					logger.debug("Referer header added to request: " + referer);
-					request.addHeader("Referer", referer);
-				}
+                // Sending the HTTP POST command
+                CloseableHttpResponse response = httpClient.execute(target, request, localContext);
+                try {
+                    String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
+                    logger.debug("Got POST response:" + responseString);
+                    Set<String> keys = elements.keySet();
+                    for (String lookup : keys) {
+                        if (lookup != null) {
+                            logger.debug("JSON lookup value: " + lookup);
+                            int separatorIndex = lookup.indexOf("/");
+                            if (separatorIndex > 0) {
 
-				// Sending the HTTP POST command
-				CloseableHttpResponse response = httpClient.execute(target, request, localContext);
-				try {            
-					String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");   
-					logger.debug("Got POST response:" + responseString); 
-					if (lookup!=null) {
-						logger.debug("JSON lookup value: " + lookup); 
-						int separatorIndex = lookup.indexOf("/");
-						if (separatorIndex>0) {
+                                // Grabbing element in a nested element
+                                Object object =
+                                    new JSONObject(responseString).get(lookup.substring(0, separatorIndex));
+                                if (object != null) {
 
-							// Grabbing element in a nested element
-							Object object = new JSONObject(responseString).get(lookup.substring(0,separatorIndex));
-							if (object!=null) {
+                                    if (object instanceof JSONArray) {
 
-								if (object instanceof JSONArray) {
+                                        logger.debug("JSON object is a JSONArray");
+                                        JSONArray jsonArray = (JSONArray) object;
+                                        if (jsonArray.length() == 1) {
+                                            JSONObject jsonObject = jsonArray.getJSONObject(0);
+                                            jsonElement = jsonObject.getString(lookup.substring(1 + separatorIndex));
+                                            logger.debug("JSON value (jsonArray) returned is " + jsonElement);
+                                        }
 
-									logger.debug("JSON object is a JSONArray");
-									JSONArray jsonArray = (JSONArray) object;
-									if (jsonArray.length()==1) {
-										JSONObject jsonObject = jsonArray.getJSONObject(0);
-										jsonElement = jsonObject.getString(lookup.substring(1 + separatorIndex));
-										logger.debug("JSON value (jsonArray) returned is " + jsonElement);
-									}
+                                    } else if (object instanceof JSONObject) {
 
-								} else if (object instanceof JSONObject) {
+                                        logger.debug("JSON object is a JSONObject");
+                                        JSONObject jsonobject = (JSONObject) object;
+                                        jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));
+                                        logger.debug("JSON value (jsonObject) returned is " + jsonElement);
 
-									logger.debug("JSON object is a JSONObject");
-									JSONObject jsonobject = (JSONObject) object; 
-									jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));	
-									logger.debug("JSON value (jsonObject) returned is " + jsonElement);
+                                    }
+                                }
 
-								}
-							}
+                            } else {
+                                // Grabbing element at the top of the JSON response
+                                jsonElement = new JSONObject(responseString).getString(lookup);
+                                logger.debug("JSON (top) value returned is " + jsonElement);
+                            }
+                        }
+                        elements.put(lookup, jsonElement);
+                    }
 
-						} else {
-							// Grabbing element at the top of the JSON response
-							jsonElement = new JSONObject(responseString).getString(lookup);
-							logger.debug("JSON (top) value returned is " + jsonElement);
+                } catch (Exception ex) {
+                    logger.error(ex.getMessage());
+                } finally {
+                    response.close();
+                }
 
-						}
-					}
+            } catch (Exception ex) {
+                logger.error(ex.getMessage());
+            } finally {
+                httpClient.close();
+            }
 
-
-				} catch (Exception ex) {
-					logger.error(ex.getMessage());
-				} finally {
-					response.close();
-				}
-
-			} catch (Exception ex) {
-				logger.error(ex.getMessage());				
-			} finally {
-				httpClient.close();
-			}
-
-		} catch (IOException e) {
-			logger.error(e.getMessage());				
-		}
-
-		return jsonElement;
-
-	}
+        } catch (IOException e) {
+            logger.error(e.getMessage());
+        }
+    }
 
 	// This method DELETES a request to the server
 	private static void doDelete(String hostname, String port, String url, String user, String password) {
