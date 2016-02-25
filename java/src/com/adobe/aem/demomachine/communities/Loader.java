@@ -1284,14 +1284,14 @@ public class Loader {
                 if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))) {
                 	logger.debug("level: " + Integer.parseInt(record.get(1)));
                     if (Integer.parseInt(record.get(1)) == 0) {
-                        // we just created a forum topic. simulate view events.
+                        // we just created a UGC page that gets viewed. simulate view events.
                         int views = new Random().nextInt(21) + 10;
                         for (int i = 0; i < views; i++) {
                             doUGCAnalytics(analytics, "event11", analyticsPagePath, resourceType, sitePagePath,
                                 userName, referrer);
                         }
                     } else {
-                        // we just created a forum topic reply. simulate post event.
+                        // we just posted to a UGC page (comment, reply, etc.). simulate post event.
                         doUGCAnalytics(analytics, "event13", analyticsPagePath, resourceType, sitePagePath,
                             userName, referrer);
                     }
