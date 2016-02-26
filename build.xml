@@ -3172,7 +3172,7 @@
 				<echo message="Loading Community content on Publish ${demo.loader.currentfile}..."/>
 				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
 				</java>
 			</then>
 		</if>
