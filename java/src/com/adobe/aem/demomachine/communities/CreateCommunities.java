@@ -38,6 +38,15 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
+
+		ResourceResolver resourceResolver = request.getResourceResolver();
+
+		String userId = resourceResolver.getUserID();
+		if (userId==null || !userId.equals("admin")) {
+			out.println("admin user requested to access this feature");
+			return;
+		}
+		
 		out.println("<html><head>");
 		out.println("<link rel=\"stylesheet\" href=\"/etc/clientlibs/granite/coralui3.css\" type=\"text/css\">");
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/typekit.js\"></script>");
@@ -64,23 +73,32 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		String returnURL = (String) request.getParameter("returnURL");
 
 		// Config options
+		String setupUGC = (String) request.getParameter("setupUGC");
 		String setupSite = (String) request.getParameter("setupSite");
 		String setupContent = (String) request.getParameter("setupContent");
 		String setupGroup = (String) request.getParameter("setupGroup");
 		String setupEnablement = (String) request.getParameter("setupEnablement");
 
 		response.getWriter().write("<p>Path to configuration file: " + csvPath + "</p>" );
-
-		ResourceResolver resourceResolver = request.getResourceResolver();
+		
+		// UGC configuration
+		Resource resUGC = resourceResolver.getResource(csvPath + "/setup/ugc.csv/jcr:content");
+		if (resUGC!=null && setupUGC!=null) {
+			InputStream stream = resUGC.adaptTo(InputStream.class);		
+			Reader inUGC = new InputStreamReader(stream);
+			response.getWriter().write("<p>Creating UGC on Publish...</p>");
+			response.flushBuffer();;
+			Loader.processLoading(resourceResolver, inUGC, hostname_author, port_author, port, password, null, false, false, csvPath);
+		}
 
 		// Site configuration
 		Resource resSite = resourceResolver.getResource(csvPath + "/setup/site.csv/jcr:content");
 		if (resSite!=null && setupSite!=null) {
 			InputStream stream = resSite.adaptTo(InputStream.class);		
-			Reader in = new InputStreamReader(stream);
+			Reader inSites = new InputStreamReader(stream);
 			response.getWriter().write("<p>Creating Community Site on Author...</p>");
 			response.flushBuffer();;
-			Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, null, false, false, csvPath);
+			Loader.processLoading(resourceResolver, inSites, hostname_author, port_author, port, password, null, false, false, csvPath);
 		}
 
 		// Content configuration

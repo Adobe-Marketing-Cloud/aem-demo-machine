@@ -1149,12 +1149,12 @@
 					<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
 					<then>
 						<exec executable="${mongodb}/bin/mongo" dir="${mongodb}/bin" spawn="true">
-							<arg line='${mongo.prefix} --eval "db.dropDatabase()"'/>
+							<arg line="${mongo.prefix} --eval &quot;db.dropDatabase()&quot;"/>
 						</exec>
 					</then>
 					<else>
 						<exec executable="mongo" spawn="true">
-							<arg line='${mongo.prefix} --eval "db.dropDatabase()"'/>
+							<arg line="${mongo.prefix} --eval &quot;db.dropDatabase()&quot;"/>
 						</exec>
 					</else>
 				</if>
@@ -2389,7 +2389,7 @@
 	</target>
 	<!-- Target for post configuration steps -->
 	<target name="configure_post">
-		<antcall target="demo_bundle">
+		<antcall target="osgi_deploy">
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="social_cloudstorage">
@@ -2436,6 +2436,18 @@
 					<param name="port" value="${port}"/>
 				</antcall>
 				<antcall target="dps">
+					<param name="port" value="${port}"/>
+				</antcall>
+			</then>
+		</if>
+		<!-- Configuration tasks on Author only -->
+		<if>
+			<or>
+				<equals arg1="${port}" arg2="${demomachine.publishport}" casesensitive="false"/>
+				<equals arg1="${port}" arg2="${demomachine.farmport}" casesensitive="false"/>
+			</or>
+			<then>
+				<antcall target="weretail_conf">
 					<param name="port" value="${port}"/>
 				</antcall>
 			</then>
@@ -2526,7 +2538,12 @@
 		<sleep seconds="30"/>
 	</target>
 	<!-- Deploying the AEM Demo Machine bundle -->
-	<target name="demo_bundle">
+	<target name="osgi_build" depends="compile">
+		<copy file="${dist}/osgi/aem-demo-machine.bnd.template" tofile="${dist}/osgi/aem-demo-machine.bnd"/>
+		<replace file="${dist}/osgi/aem-demo-machine.bnd" token="@@VERSION@@" value="${demo.osgi.version}"/>
+		<bnd classpath="${java}/bin" output="${dist}/osgi" eclipse="false" failok="false" exceptions="true" files="${dist}/osgi/aem-demo-machine.bnd"/>
+	</target>
+	<target name="osgi_deploy" depends="osgi_build">
 		<echo message="Uploading Demo Machine bundle on port ${port}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_aemdemomachine_csv.html'"/>
@@ -2558,8 +2575,18 @@
 			<arg line="-F 'bundlefile=@${dist}/osgi/com.adobe.aem.demomachine.jar'"/>
 			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
 		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_aemdemomachine_jcraccess.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-F action=install"/>
+			<arg line="-F bundlestart=start"/>
+			<arg line="-F bundlestartlevel=20"/>
+			<arg line="-F refreshPackages=refresh"/>
+			<arg line="-F 'bundlefile=@${java}/libs/sling/org.apache.sling.jcr.jackrabbit.accessmanager-2.1.2.jar'"/>
+			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
+		</exec>
 	</target>
-	<!-- Adobe Social Communities - setting waiting.time to 10s for notifications -->
+	<!-- Adobe Social Communities - setting waiting time to 10s for notifications -->
 	<target name="notifications">
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_notifications.html'"/>
@@ -2642,6 +2669,32 @@
 					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
 				</exec>
+				<antcall target="assets_insights"/>
+			</then>
+		</if>
+	</target>
+	<target name="assets_insights" if="aem62orlater">
+		<!-- Adds Assets Insights -->
+		<if>
+			<and>
+				<equals arg1="${demo.assets.insights.install}" arg2="true" casesensitive="false"/>
+				<equals arg1="${port}" arg2="${demomachine.authorport}" casesensitive="false"/>
+			</and>
+			<then>
+				<echo message="Configure Assets Insights"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_analytics_insights.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--data-urlencode './password=${AdobeAnalytics.password}'"/>
+					<arg line="-d ./password@Encrypted="/>
+					<arg line="--data-urlencode './secret=${AdobeAnalytics.secret}'"/>
+					<arg line="-d ./secret@Encrypted="/>
+					<arg line="--data-urlencode './username=${AdobeAnalytics.username}'"/>
+					<arg line="-d ./server=${AdobeAnalytics.server}"/>
+					<arg line="--data-urlencode './company=${AdobeAnalytics.company}'"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/assetinsights/jcr:content"/>
+				</exec>
 			</then>
 		</if>
 	</target>
@@ -2683,6 +2736,18 @@
 			</then>
 		</if>
 	</target>
+	<!-- We.Retail specific configuration settings -->
+	<target name="weretail_conf" if="aem62orlater" depends="version">
+		<echo message="Configuring system for We.Retail"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_weretail_conf.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--data-urlencode 'principalId=everyone'"/>
+			<arg line="--data-urlencode 'privilege@jcr:read=granted'"/>
+			<arg line="http://${demo.host}:${port}/conf.modifyAce.html"/>
+		</exec>
+	</target>
 	<!-- Adobe Target: posting email, client code and password -->
 	<target name="target">
 		<if>
@@ -2703,7 +2768,7 @@
 		</if>
 	</target>
 	<!-- Adobe Mobile Services: posting username, password and secret key for encryption wiht local instance keys -->
-	<target name="mobileservices" if="aem61orlater">
+	<target name="mobileservices" if="aem61orlater" depends="version">
 		<if>
 			<equals arg1="${AdobeMobileServices.install}" arg2="true" casesensitive="false"/>
 			<then>
@@ -2735,7 +2800,7 @@
 		</if>
 	</target>
 	<!-- Adobe PhoneGap Build: posting username, password for encryption wiht local instance keys -->
-	<target name="phonegapbuild" if="aem61orlater">
+	<target name="phonegapbuild" if="aem61orlater" depends="version">
 		<if>
 			<equals arg1="${AdobePhoneGapBuild.install}" arg2="true" casesensitive="false"/>
 			<then>
@@ -3640,8 +3705,44 @@
 				<antcall target="community_loader_cloudservices"/>
 			</then>
 		</if>
+		<!-- Then we create the We.Retail demo environment -->
+		<if>
+			<equals arg1="${demo.communities.samples.weretail}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_weretail"/>
+				<antcall target="community_loader_weretail_cloudservices"/>
+			</then>
+		</if>
 		<antcall target="community_analytics"/>
 		<antcall target="community_warmup"/>
+	</target>
+	<!-- Target for configuring the We.Retail Community subsite -->
+	<target name="community_loader_weretail" depends="configuration">
+		<echo message="Creating the We.Retail Community Site"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_weretail_site.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setupUGC=on&amp;setupSite=on&amp;setupContent=on&amp;setupGroup=on&amp;setupEnablement=on"/>
+		</exec>
+	</target>
+	<target name="community_loader_weretail_cloudservices">
+		<if>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			<then>
+				<antcall target="cloudservices">
+					<param name="port" value="${demomachine.authorport}"/>
+					<param name="path" value="/content/we-retail/community/en/jcr:content"/>
+				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${demomachine.publishport}"/>
+					<then>
+						<antcall target="community_publish">
+							<param name="path" value="/content/we-retail/community/en"/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the Analytics import process -->
 	<target name="community_analytics">
@@ -4559,9 +4660,6 @@
 				</java>
 			</then>
 		</if>
-	</target>
-	<target name="osgi_build" depends="compile">
-		<bnd classpath="${java}/bin" output="${dist}/osgi" eclipse="false" failok="false" exceptions="true" files="${dist}/osgi/aem-demo-machine.bnd"/>
 	</target>
 	<target name="gui_build" depends="compile">
 		<delete file="demomachine.jar"/>

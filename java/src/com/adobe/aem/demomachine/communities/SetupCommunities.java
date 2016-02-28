@@ -22,6 +22,7 @@ import java.rmi.ServerException;
 import org.apache.felix.scr.annotations.sling.SlingServlet;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.resource.ResourceResolver;
 
 @SlingServlet(paths="/bin/SetupCommunities", methods = "GET", metatype=false)
 public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMethodsServlet {
@@ -31,15 +32,23 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 	@Override
 	protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServerException, IOException {
 
+		PrintWriter out = response.getWriter();
+
+		// Checking if we have a valid admin user
+		ResourceResolver resourceResolver = request.getResourceResolver();
+		String userId = resourceResolver.getUserID();
+		if (userId==null || !userId.equals("admin")) {
+			out.println("admin user requested to access this feature");
+			return;
+		}
+				
 		// Checking if we have valid configuration parameters
 		String csvPath = (String) request.getParameter("contentPath");
 		if (csvPath==null) {
 			csvPath = "";
-			return;
 		}
 
 		response.setContentType("text/html");
-		PrintWriter out = response.getWriter();
 		out.println("<html><head>");
 		out.println("<link rel=\"stylesheet\" href=\"/etc/clientlibs/granite/coralui3.css\" type=\"text/css\">");
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/typekit.js\"></script>");
@@ -48,6 +57,7 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/moment.js\"></script>");
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/coralui3.js\"></script>");
 		out.println("</head><body class=\"coral--light u-coral-clearFix\" style=\"margin:40px\">");
+	    out.println("<a name=\"top\"/>");
 		out.println("<div><h1>AEM Communities - Demo Setup</h1>");
 		out.println("<form action=\"/bin/CreateCommunities\" method=\"GET\" class=\"coral-Form coral-Form--vertical\" style=\"width:700px\">");
 		out.println("<section class=\"coral-Form-fieldset\">");
@@ -67,6 +77,7 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		out.println("<label class=\"coral-Form-fieldlabel\">Admin password</label>");
 		out.println("<input is=\"coral-textfield\" name=\"password\" type=\"text\" value=\"admin\" class=\"coral-Form-field coral-Textfield\">");
 		out.println("<label class=\"coral-Form-fieldlabel\">Please select from the following options</label>");
+		printCheckbox(out, "setupUGC", "Install User Generated Content","This option first creates comments, reviews and ratings on product/article pages for the main we.Retail site");
 		printCheckbox(out, "setupSite", "Install Community Site and Templates","This option first creates a Community Site template, then creates the We.Retail Community Site ouf the template, then publishes the We.Retail Community Site");
 		printCheckbox(out, "setupContent", "Install Community Content","This option loads Community content on the publish instance for the primary Community functions such as Blogs, Forums, Calendars...");
 		printCheckbox(out, "setupGroup", "Install Community Groups","This option creates Community Groups on a publish instance then populates them with content");
@@ -81,7 +92,7 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		}
 
 	    out.println("</section></form>");
-		out.println("</body></html>");
+	    out.println("</body></html>");
 
 	}
 
