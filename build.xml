@@ -2440,7 +2440,7 @@
 				</antcall>
 			</then>
 		</if>
-		<!-- Configuration tasks on Author only -->
+		<!-- Configuration tasks on Publish only -->
 		<if>
 			<or>
 				<equals arg1="${port}" arg2="${demomachine.publishport}" casesensitive="false"/>
@@ -2448,6 +2448,9 @@
 			</or>
 			<then>
 				<antcall target="weretail_conf">
+					<param name="port" value="${port}"/>
+				</antcall>
+				<antcall target="user_configuration">
 					<param name="port" value="${port}"/>
 				</antcall>
 			</then>
@@ -2596,6 +2599,38 @@
 			<arg line="-d ./waiting.time@TypeHint=Long"/>
 			<arg line="http://${demo.host}:${port}/libs/wcm/notification/config/com.day.cq.wcm.notification.impl.NotificationManagerImpl"/>
 		</exec>
+	</target>
+	<!-- Adobe Social Communities - setting waiting time to 10s for notifications -->
+	<target name="user_configuration" if="aem62orlater">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usercache.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d usersPath=/home/users"/>
+			<arg line="-d groupsPath=/home/groups"/>
+			<arg line="-d systemRelativePath=system"/>
+			<arg line="-d defaultDepth=1"/>
+			<arg line="-d importBehavior=besteffort"/>
+			<arg line="-d passwordHashAlgorithm=unmodified"/>
+			<arg line="-d passwordHashIterations=1000"/>
+			<arg line="-d passwordSaltSize=8"/>
+			<arg line="-d supportAutoSave=false"/>
+			<arg line="-d passwordMaxAge=0"/>
+			<arg line="-d initialPasswordChange=false"/>
+			<arg line="-d passwordHistorySize=0"/>
+			<arg line="-d cacheExpiration=${demo.oak.usercache}"/>
+			<arg line="-d propertylist=usersPath,groupsPath,systemRelativePath,defaultDepth,importBehavior,passwordHashAlgorithm,passwordHashIterations,passwordSaltSize,supportAutoSave,passwordMaxAge,initialPasswordChange,passwordHistorySize,cacheExpiration"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.jackrabbit.oak.security.user.UserConfigurationImpl"/>
+		</exec>
+		<!-- Making sure the instance is available for uploads -->
+		<sleep seconds="10"/>
+		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		</waitfor>
 	</target>
 	<!-- Configure the dispatcher flush on Publish -->
 	<target name="dispatcher">
@@ -4281,6 +4316,11 @@
 					<arg line="--output '${logs}/preload_communities_moderation.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/content/sites/communities/moderation.html"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/preload_communities_weretail.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/content/we-retail/language-masters/en.html"/>
 				</exec>
 			</then>
 		</if>
