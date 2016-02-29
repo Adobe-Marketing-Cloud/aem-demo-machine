@@ -2543,7 +2543,7 @@
 		<replace file="${dist}/osgi/aem-demo-machine.bnd" token="@@VERSION@@" value="${demo.osgi.version}"/>
 		<bnd classpath="${java}/bin" output="${dist}/osgi" eclipse="false" failok="false" exceptions="true" files="${dist}/osgi/aem-demo-machine.bnd"/>
 	</target>
-	<target name="osgi_deploy" depends="osgi_build">
+	<target name="osgi_deploy">
 		<echo message="Uploading Demo Machine bundle on port ${port}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_aemdemomachine_csv.html'"/>
