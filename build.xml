@@ -1716,9 +1716,9 @@
 			<os family="mac"/>
 			<then>
 				<echo message="Downloading FFMpeg for MacOS"/>
-				<echo message="Downloading http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
+				<echo message="Downloading ${demo.ffmpeg}"/>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/ffmpeg.zip' http://ffmpegmac.net/resources/${demo.ffmpeg}.zip"/>
+					<arg line="-s -o '${dist}/downloads/ffmpeg.zip' ${demo.ffmpeg}"/>
 				</exec>
 			</then>
 			<else>
@@ -4318,9 +4318,9 @@
 					<arg line="http://${demo.host}:${demomachine.publishport}/content/sites/communities/moderation.html"/>
 				</exec>
 				<exec executable="curl">
-					<arg line="--output '${logs}/preload_communities_weretail.html'"/>
+					<arg line="--output '${logs}/preload_communities_weretail_css.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="http://${demo.host}:${demomachine.publishport}/content/we-retail/language-masters/en.html"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/etc/designs/we-retail/clientlib-all.css"/>
 				</exec>
 			</then>
 		</if>
