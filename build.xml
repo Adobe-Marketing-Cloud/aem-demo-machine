@@ -2708,7 +2708,7 @@
 			</then>
 		</if>
 	</target>
-	<target name="assets_insights" if="aem62orlater">
+	<target name="assets_insights" if="aem62orlater" depends="version,configuration,community_loader_flag">
 		<!-- Adds Assets Insights -->
 		<if>
 			<and>
@@ -2717,6 +2717,7 @@
 			</and>
 			<then>
 				<echo message="Configure Assets Insights"/>
+				<!-- Credentials for Cloud Service -->
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_analytics_insights.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -2730,6 +2731,28 @@
 					<arg line="--data-urlencode './company=${AdobeAnalytics.company}'"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/assetinsights/jcr:content"/>
 				</exec>
+				<!-- Imports every hour -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_analytics_insights_scheduler.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="--data-urlencode 'scheduler.expression=0 0 * * * ?'"/>
+					<arg line="-d propertylist=scheduler.expression"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.performance.internal.AssetPerformanceReportSyncJob"/>
+				</exec>
+				<if>
+					<equals arg1="${demo.assets.insights.analytics}" arg2="true" casesensitive="false"/>
+					<then>
+						<java classname="com.adobe.aem.demomachine.communities.Loader">
+							<classpath refid="demo.classpath"/>
+							<arg line="-h ${demo.host} -p ${demomachine.authorport} -a ${demomachine.publishport} -u ${demo.admin.password} -s &quot;${demo.assets.insights.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/analytics/loader-assets-insights.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} -t"/>
+						</java>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -4318,9 +4341,14 @@
 					<arg line="http://${demo.host}:${demomachine.publishport}/content/sites/communities/moderation.html"/>
 				</exec>
 				<exec executable="curl">
-					<arg line="--output '${logs}/preload_communities_weretail_css.html'"/>
+					<arg line="--output '${logs}/preload_communities_weretail_css_publish.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/etc/designs/we-retail/clientlib-all.css"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/preload_communities_weretail_css_author.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="http://${demo.host}:${demomachine.authorport}/etc/designs/we-retail/clientlib-all.css"/>
 				</exec>
 			</then>
 		</if>

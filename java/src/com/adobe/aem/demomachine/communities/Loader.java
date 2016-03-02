@@ -110,6 +110,7 @@ public class Loader {
 	private static final String GROUP = "Group";
 	private static final String JOIN = "Join";
 	private static final String ASSET = "Asset";
+	private static final String ASSETINSIGHTS = "AssetInsights";
 	private static final String KILL = "Kill";
 	private static final String MESSAGE = "Message";
 	private static final String RESOURCE = "Resource";
@@ -671,6 +672,28 @@ public class Loader {
 					continue;
 
 				}
+				
+				// Let's see if we need to generate analytics events for Assets Insights
+				if (record.get(0).equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
+					
+					logger.debug("Generating Assets Analytics for reportsuite " + analytics);
+					
+					// Generating Impressions
+					int impressions = new Random().nextInt(21) + 5;
+					for (int i = 0; i < impressions; i++)
+						doAssetsAnalytics( analytics, "event1", "list1", record.get(1), "o", "Asset Impression Event");
+
+					// Generating Clicks for each asset
+					List<String> assetIds = Arrays.asList(record.get(1).split("\\|", -1));
+					for (String assetId : assetIds) {
+						int clicks = new Random().nextInt(5) + 2;
+						for (int i = 0; i < clicks; i++)
+							doAssetsAnalytics( analytics, "event2", "eVar4", assetId, "e", "Asset Click Event");
+					}
+					
+					continue;
+			
+				}
 
 				// Let's see if we deal with a new block of content or just a new entry
 				if (record.get(0).equals(CALENDAR) 
@@ -908,9 +931,13 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("ratings", record.get(3)));
 						if (record.size()>4 &&
 								record.get(4).length()>0) {
-							// If we are dealing with a non-existent resource, then the design drives the behavior
-							nameValuePairs.add(new BasicNameValuePair("scf:resourceType", "social/reviews/components/hbs/reviews"));
 							nameValuePairs.add(new BasicNameValuePair("scf:included",record.get(4)));							
+							if (record.size()>5 &&
+									record.get(5).length()>0) {
+								nameValuePairs.add(new BasicNameValuePair("scf:resourceType",record.get(5)));							
+							} else {
+								nameValuePairs.add(new BasicNameValuePair("scf:resourceType", "social/reviews/components/hbs/reviews"));
+							}
 						}
 					} else {
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
@@ -1286,7 +1313,7 @@ public class Loader {
 
 				// Generating Analytics when needed for the new fragment of UGC content
 				if (analytics!=null && referrer!=null) {
-					
+
 					logger.debug("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
 					logger.debug("Analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
 					if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))) {
@@ -1304,7 +1331,7 @@ public class Loader {
 									userName, referrer);
 						}
 					}
-					
+
 				}
 
 			}
@@ -1594,76 +1621,60 @@ public class Loader {
 
 	}
 
-	// This methods POSTS an analytics event for UGC
+	// This methods POSTS analytics events for AEM Assets Insights
+	private static void doAssetsAnalytics(String analytics, String event, String evar, String assetID, String linkType, String linkName) {
+
+		if (analytics!=null && event!=null && evar!=null) {
+
+			StringBuffer sb =
+					new StringBuffer("<?xml version=1.0 encoding=UTF-8?><request><sc_xml_ver>1.0</sc_xml_ver>");
+			sb.append("<events>" + event + "</events>");
+			sb.append("<pageURL>http://communities.geometrixx.com</pageURL>");
+			sb.append("<" + evar + ">" + assetID + "</" + evar + ">");
+			sb.append("<linkType>" + linkType + "</linkType>");
+			sb.append("<linkName>" + linkName + "</linkName>");
+			sb.append("<visitorID>demomachine</visitorID>");
+			sb.append("<reportSuiteID>" + analytics.substring(0, analytics.indexOf(".")) + "</reportSuiteID>");
+			sb.append("</request>");
+
+			postAnalytics(analytics, sb.toString());
+
+		}
+	}
+
+	// This methods creates an Analytics event for UGC
 	private static void doUGCAnalytics(String analytics, String event, String path, String type, String sitePath,
 			String user, String referrer) {
 
 		if (analytics != null && path != null && type != null && sitePath != null && user != null && event != null && referrer != null) {
 
-			URLConnection urlConn = null;
-			DataOutputStream printout = null;
-			BufferedReader input = null;
-			String tmp = null;
-			try {
+			StringBuffer sb =
+					new StringBuffer("<?xml version=1.0 encoding=UTF-8?><request><sc_xml_ver>1.0</sc_xml_ver>");
+			sb.append("<events>" + event + "</events>");
+			sb.append("<pageURL>" + referrer + "</pageURL>");
+			sb.append("<pageName>" + referrer.replaceAll("/",":") + "</pageName>");
+			sb.append("<evar10>" + path + "</evar10>");
+			sb.append("<evar7>" + type + "</evar7>");
+			sb.append("<evar13>" + sitePath + "</evar13>");
+			sb.append("<evar9>" + user + "</evar9>");
+			sb.append("<visitorID>demomachine</visitorID>");
+			sb.append("<reportSuiteID>" + analytics.substring(0, analytics.indexOf(".")) + "</reportSuiteID>");
+			sb.append("</request>");
 
-				StringBuffer sb =
-						new StringBuffer("<?xml version=1.0 encoding=UTF-8?><request><sc_xml_ver>1.0</sc_xml_ver>");
-				sb.append("<events>" + event + "</events>");
-				sb.append("<pageURL>" + referrer + "</pageURL>");
-				sb.append("<pageName>" + referrer.replaceAll("/",":") + "</pageName>");
-				sb.append("<evar10>" + path + "</evar10>");
-				sb.append("<evar7>" + type + "</evar7>");
-				sb.append("<evar13>" + sitePath + "</evar13>");
-				sb.append("<evar9>" + user + "</evar9>");
-				sb.append("<visitorID>demomachine</visitorID>");
-				sb.append("<reportSuiteID>" + analytics.substring(0, analytics.indexOf(".")) + "</reportSuiteID>");
-				sb.append("</request>");
-
-				logger.debug("New UGC Analytics Event: " + sb.toString());
-
-				URL sitecaturl = new URL("http://" + analytics);
-
-				urlConn = sitecaturl.openConnection();
-				urlConn.setDoInput(true);
-				urlConn.setDoOutput(true);
-				urlConn.setUseCaches(false);
-				urlConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-				printout = new DataOutputStream(urlConn.getOutputStream());
-
-				printout.writeBytes(sb.toString());
-				printout.flush();
-				printout.close();
-
-				input = new BufferedReader(new InputStreamReader(urlConn.getInputStream()));
-
-				while (null != ((tmp = input.readLine()))) {
-					logger.debug(tmp);
-				}
-				printout.close();
-				input.close();
-
-			} catch (Exception ex) {
-
-				logger.error(ex.getMessage());
-
-			}
+			postAnalytics(analytics, sb.toString());
 
 		}
 
 	}
 
-	// This methods POSTS an analytics event
+	// This methods creates an Analytics event for Resources
 	private static void doAnalytics(String analytics, String event, String pageURL, String resourcePath, String resourceType) {
 
 		if (analytics!=null && pageURL!=null && resourcePath!=null && resourceType!=null && event!=null) {
 
-			URLConnection urlConn = null;
-			DataOutputStream printout = null;
-			BufferedReader input = null;
-			String tmp = null;
 			try {
 
+				//
 				URL pageurl = new URL( pageURL);
 				StringBuffer sb = new StringBuffer("<?xml version=1.0 encoding=UTF-8?><request><sc_xml_ver>1.0</sc_xml_ver>");
 				sb.append("<events>" + event + "</events>");
@@ -1675,7 +1686,30 @@ public class Loader {
 				sb.append("<reportSuiteID>" + analytics.substring(0,analytics.indexOf(".")) + "</reportSuiteID>");
 				sb.append("</request>");
 
-				logger.debug("New Analytics Event: " + sb.toString());
+				postAnalytics(analytics, sb.toString());				
+
+			} catch (Exception ex) {
+
+				logger.error(ex.getMessage());
+
+			}		
+
+		}
+
+	}
+
+	// This method POSTS an event body to Adobe Analytics
+	private static void postAnalytics(String analytics, String body) {
+
+		if (analytics!=null && body!=null) {
+
+			URLConnection urlConn = null;
+			DataOutputStream printout = null;
+			BufferedReader input = null;
+			String tmp = null;
+			try {
+
+				logger.debug("New Analytics Event: " + body);
 
 				URL sitecaturl = new URL( "http://" + analytics );
 
@@ -1687,7 +1721,7 @@ public class Loader {
 
 				printout = new DataOutputStream(urlConn.getOutputStream());
 
-				printout.writeBytes( sb.toString() );
+				printout.writeBytes( body );
 				printout.flush();
 				printout.close();
 
@@ -1710,7 +1744,7 @@ public class Loader {
 
 	}
 
-	// This methods POSTS a rating and comments
+	// This method POSTS a rating and comments
 	private static void doRatings(String hostname, String altport, String key, String resourceRatingsEndpoint, String referer, String resourceID, String resourceType, String analytics) {
 
 		try {
