@@ -1355,12 +1355,6 @@
 				<sleep seconds="120"/>
 			</then>
 		</if>
-		<antcall target="mobileservices">
-			<param name="port" value="${demomachine.authorport}"/>
-		</antcall>
-		<antcall target="phonegapbuild">
-			<param name="port" value="${demomachine.authorport}"/>
-		</antcall>
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
 	<target name="download_aem62">
@@ -2407,9 +2401,6 @@
 		<antcall target="target">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="scene7_registration">
-			<param name="port" value="${port}"/>
-		</antcall>
 		<antcall target="brightedge">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2426,6 +2417,15 @@
 		<if>
 			<equals arg1="${port}" arg2="${demomachine.authorport}" casesensitive="false"/>
 			<then>
+				<antcall target="mobileservices">
+					<param name="port" value="${port}"/>
+				</antcall>
+				<antcall target="phonegapbuild">
+					<param name="port" value="${port}"/>
+				</antcall>
+				<antcall target="scene7_registration">
+					<param name="port" value="${port}"/>
+				</antcall>
 				<antcall target="dynamic_media">
 					<param name="port" value="${port}"/>
 				</antcall>
@@ -2729,6 +2729,8 @@
 					<arg line="--data-urlencode './username=${AdobeAnalytics.username}'"/>
 					<arg line="-d ./server=${AdobeAnalytics.server}"/>
 					<arg line="--data-urlencode './company=${AdobeAnalytics.company}'"/>
+					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
+					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/assetinsights/jcr:content"/>
 				</exec>
 				<!-- Imports every hour -->
@@ -2845,15 +2847,35 @@
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/mobileservices/amsconfig/jcr:content"/>
 				</exec>
 				<echo message="Associating Mobile Analytics cloud service to Geometrixx Outdoors app"/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_mobileservices_shell.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
-					<arg line="-d mobileServiceConfig=/etc/cloudservices/mobileservices/amsconfig/geometrixx-outdoors"/>
-					<arg line="-d :operation=mobileapps:appMetrics"/>
-					<arg line="http://${demo.host}:${port}/libs/mobileapps/admin/content/dashboard.html/content/phonegap/geometrixx-outdoors/shell"/>
-				</exec>
+				<if>
+					<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
+					<then>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_mobileservices_shell_aem61.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
+							<arg line="-d mobileServiceConfig=/etc/cloudservices/mobileservices/amsconfig/geometrixx-outdoors"/>
+							<arg line="-d :operation=mobileapps:appMetrics"/>
+							<arg line="http://${demo.host}:${port}/libs/mobileapps/admin/content/dashboard.html/content/phonegap/geometrixx-outdoors/shell"/>
+						</exec>
+					</then>
+					<else>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_mobileservices_shell.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d mac.provisioning.automatic=false"/>
+							<arg line="-d cloudConfig=/etc/cloudservices/mobileservices/amsconfig/geometrixx-outdoors"/>
+							<arg line="-d cloudConfigField=mobileServiceConfig"/>
+							<arg line="-d targetPaths=/content/phonegap/geometrixx-outdoors/shell"/>
+							<arg line="-d cloudServiceName=mobileservices"/>
+							<arg line="-d cloudConfigCreate=false"/>
+							<arg line="-d :operation=mobileapps:cloudService"/>
+							<arg line="http://${demo.host}:${port}/content/phonegap/geometrixx-outdoors/shell.html"/>
+						</exec>
+					</else>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -2873,15 +2895,35 @@
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/phonegap-build/phonegap-build/jcr:content"/>
 				</exec>
 				<echo message="Associating PhoneGap Build cloud service to Geometrixx Outdoors app"/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_phonegapbuild_shell.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
-					<arg line="-d phonegapConfig=/etc/cloudservices/phonegap-build/phonegap-build"/>
-					<arg line="-d :operation=mobileapps:phoneGapBuildSettings"/>
-					<arg line="http://${demo.host}:${port}/libs/mobileapps/admin/content/dashboard.html/content/phonegap/geometrixx-outdoors/shell"/>
-				</exec>
+				<if>
+					<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
+					<then>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_phonegapbuild_shell_aem61.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d appInstance=/content/phonegap/geometrixx-outdoors/shell"/>
+							<arg line="-d phonegapConfig=/etc/cloudservices/phonegap-build/phonegap-build"/>
+							<arg line="-d :operation=mobileapps:phoneGapBuildSettings"/>
+							<arg line="http://${demo.host}:${port}/libs/mobileapps/admin/content/dashboard.html/content/phonegap/geometrixx-outdoors/shell"/>
+						</exec>
+					</then>
+					<else>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_phonegapbuild_shell.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d mac.provisioning.automatic=false"/>
+							<arg line="-d cloudConfig=/etc/cloudservices/phonegap-build/phonegap-build"/>
+							<arg line="-d cloudConfigField=phonegapConfig"/>
+							<arg line="-d targetPaths=/content/phonegap/geometrixx-outdoors/shell"/>
+							<arg line="-d cloudServiceName=phonegap-build"/>
+							<arg line="-d cloudConfigCreate=false"/>
+							<arg line="-d :operation=mobileapps:cloudService"/>
+							<arg line="http://${demo.host}:${port}/content/phonegap/geometrixx-outdoors/shell.html"/>
+						</exec>
+					</else>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -3054,7 +3096,7 @@
 		</if>
 	</target>
 	<!-- This target prepares the Geomedia site for future translation jobs -->
-	<target name="translations_geomedia" if="aem61orlater">
+	<target name="translations_geomedia" if="aem61">
 		<antcall target="translations_page">
 			<param name="translation.language" value="fr"/>
 			<param name="translation.title" value="Francais"/>

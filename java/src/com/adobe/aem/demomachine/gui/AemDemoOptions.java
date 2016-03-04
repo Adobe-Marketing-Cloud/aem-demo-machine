@@ -42,9 +42,9 @@ public class AemDemoOptions extends JDialog {
 
 		this.aemDemo = aemDemoInput;
 
-		setBounds(150,150,860,600);
+		setBounds(150,150,960,600);
 		getContentPane().setLayout(null);
-		contentPanel.setBounds(0, 0, 860, 600);
+		contentPanel.setBounds(0, 0, 960, 600);
 		getContentPane().add(contentPanel);
 		contentPanel.setLayout(null);
 
@@ -118,14 +118,19 @@ public class AemDemoOptions extends JDialog {
 		table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 		table.setAutoCreateRowSorter(true);
 		table.getRowSorter().toggleSortOrder(1);
-		table.getColumnModel().getColumn(0).setPreferredWidth(10);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		table.getColumnModel().getColumn(0).setPreferredWidth(60);
+		table.getColumnModel().getColumn(1).setPreferredWidth(240);
+		table.getColumnModel().getColumn(2).setPreferredWidth(120);
+		table.getColumnModel().getColumn(3).setPreferredWidth(120);
+		table.getColumnModel().getColumn(4).setPreferredWidth(350);
 		JScrollPane scrollPane = new JScrollPane(table);
-		scrollPane.setBounds(20, 20, 800, 500);
+		scrollPane.setBounds(20, 20, 910, 500);
 		contentPanel.add(scrollPane);
 
 		// Create Button (DEFAULT)
 		JButton applyButton = new JButton("Apply");
-		applyButton.setBounds(620, 535, 100, 30);
+		applyButton.setBounds(700, 535, 100, 30);
 		applyButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
@@ -139,7 +144,7 @@ public class AemDemoOptions extends JDialog {
 
 		// Cancel Button
 		JButton cancelButton = new JButton("Cancel");
-		cancelButton.setBounds(740, 535, 100, 30);
+		cancelButton.setBounds(820, 535, 100, 30);
 		cancelButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
