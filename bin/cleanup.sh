@@ -17,6 +17,5 @@
 
 date
 cd /opt/aem-demo-machine
-rm -rf nohup.out
-nohup /opt/aem-demo-machine/ant/bin/ant uninstall &
+/opt/aem-demo-machine/ant/bin/ant uninstall
 date

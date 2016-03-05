@@ -17,7 +17,5 @@
 
 date
 cd /opt/aem-demo-machine
-rm -rf logs/*.log
-rm -rf nohup.out
-nohup /opt/aem-demo-machine/ant/bin/ant demo_communities &
+/opt/aem-demo-machine/ant/bin/ant demo_communities
 date
