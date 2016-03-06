@@ -681,7 +681,7 @@ public class Loader {
 					// Generating Impressions
 					int impressions = new Random().nextInt(21) + 5;
 					for (int i = 0; i < impressions; i++)
-						doAssetsAnalytics( analytics, "event1", "list1", record.get(1), "o", "Asset Impression Event");
+						doAssetsAnalytics( analytics, "event1", "list1", record.get(1).replace('|',','), "o", "Asset Impression Event");
 
 					// Generating Clicks for each asset
 					List<String> assetIds = Arrays.asList(record.get(1).split("\\|", -1));
