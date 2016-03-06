@@ -1153,7 +1153,7 @@
 						</exec>
 					</then>
 					<else>
-						<exec executable="mongo" spawn="true">
+						<exec executable="${demo.mongo.path}" spawn="true">
 							<arg line="${mongo.prefix} --eval &quot;db.dropDatabase()&quot;"/>
 						</exec>
 					</else>
