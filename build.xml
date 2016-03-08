@@ -3824,7 +3824,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setupUGC=on&amp;setupSite=on&amp;setupContent=on&amp;setupGroup=on&amp;setupEnablement=on"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on"/>
 		</exec>
 	</target>
 	<target name="community_loader_weretail_cloudservices">
