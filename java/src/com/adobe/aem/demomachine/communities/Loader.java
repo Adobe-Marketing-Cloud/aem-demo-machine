@@ -1356,7 +1356,7 @@ public class Loader {
 				logger.error("A non existent file named " + value + "was referenced");
 			}
 		} else {
-			Resource res = rr.getResource(csvfile + "/" + value + "/jcr:content");
+			Resource res = rr.getResource(csvfile + "/attachments/" + value + "/jcr:content");
 			if (res!=null) {
 				logger.debug("Adding resource named " + value + " to POST");
 				InputStream stream = res.adaptTo(InputStream.class);
@@ -1838,7 +1838,7 @@ public class Loader {
 
 				// Composing the root URL for all subsequent requests
 				String postUrl = "http://" + hostname + ":" + port + url;
-				logger.debug("Posting request as " + user + " with password " + password + " to " + postUrl);
+				logger.debug("Posting request as " + user + " to " + postUrl);
 
 				// Preparing a standard POST HTTP command
 				HttpPost request = new HttpPost(postUrl);
@@ -1940,7 +1940,7 @@ public class Loader {
 
 				// Composing the root URL for all subsequent requests
 				String postUrl = "http://" + hostname + ":" + port + url;
-				logger.debug("Deleting request as " + user + " with password " + password  + " to " + postUrl);
+				logger.debug("Deleting request as " + user + " to " + postUrl);
 				HttpDelete request = new HttpDelete(postUrl);
 				httpClient.execute(target, request, localContext);
 

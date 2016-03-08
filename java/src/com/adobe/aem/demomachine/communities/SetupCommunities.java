@@ -16,12 +16,21 @@
 package com.adobe.aem.demomachine.communities;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.rmi.ServerException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.felix.scr.annotations.sling.SlingServlet;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 
 @SlingServlet(paths="/bin/SetupCommunities", methods = "GET", metatype=false)
@@ -41,7 +50,7 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 			out.println("admin user requested to access this feature");
 			return;
 		}
-				
+
 		// Checking if we have valid configuration parameters
 		String csvPath = (String) request.getParameter("contentPath");
 		if (csvPath==null) {
@@ -57,7 +66,7 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/moment.js\"></script>");
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/coralui3.js\"></script>");
 		out.println("</head><body class=\"coral--light u-coral-clearFix\" style=\"margin:40px\">");
-	    out.println("<a name=\"top\"/>");
+		out.println("<a name=\"top\"/>");
 		out.println("<div><h1>AEM Communities - Demo Setup</h1>");
 		out.println("<form action=\"/bin/CreateCommunities\" method=\"GET\" class=\"coral-Form coral-Form--vertical\" style=\"width:700px\">");
 		out.println("<section class=\"coral-Form-fieldset\">");
@@ -68,46 +77,93 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		out.println("<div class=\"coral-Form--aligned\">");
 		out.println("<input is=\"coral-textfield\" name=\"hostname_author\" type=\"text\" value=\"localhost\" class=\"coral-Textfield\">");
 		out.println("<input is=\"coral-textfield\" name=\"port_author\" type=\"text\" value=\"4502\" class=\"coral-Textfield\">");
-	    out.println("</div>");
+		out.println("</div>");
 		out.println("<label class=\"coral-Form-fieldlabel\">Publish instance</label>");
 		out.println("<div class=\"coral-Form--aligned\">");
 		out.println("<input is=\"coral-textfield\" name=\"hostname\" type=\"text\" value=\"localhost\" class=\"coral-Textfield\">");
 		out.println("<input is=\"coral-textfield\" name=\"port\" type=\"text\" value=\"4503\" class=\"coral-Textfield\">");
-	    out.println("</div>");
+		out.println("</div>");
 		out.println("<label class=\"coral-Form-fieldlabel\">Admin password</label>");
 		out.println("<input is=\"coral-textfield\" name=\"password\" type=\"text\" value=\"admin\" class=\"coral-Form-field coral-Textfield\">");
 		out.println("<label class=\"coral-Form-fieldlabel\">Please select from the following options</label>");
-		printCheckbox(out, "setupUGC", "Install User Generated Content","This option first creates comments, reviews and ratings on product/article pages for the main we.Retail site");
-		printCheckbox(out, "setupSite", "Install Community Site and Templates","This option first creates a Community Site template, then creates the We.Retail Community Site ouf the template, then publishes the We.Retail Community Site");
-		printCheckbox(out, "setupContent", "Install Community Content","This option loads Community content on the publish instance for the primary Community functions such as Blogs, Forums, Calendars...");
-		printCheckbox(out, "setupGroup", "Install Community Groups","This option creates Community Groups on a publish instance then populates them with content");
-		printCheckbox(out, "setupEnablement", "Install Community Enablement","This option creates Community Enablement content (Videos and SCORM) when the Enablement features are available on the instance. The resources are first created on author, then assigned and published to demo users.");
-		out.println("<div class=\"coral-Form-fieldwrapper coral-Form-fieldwrapper--alignRight\">");
-		out.println("<button class=\"coral-Form-field coral-Button coral-Button--primary\">Submit</button>");
-	    out.println("</div>");
+
+		// Getting the list of .csv configuration files for this content path
+		int intOptions = 0;
+		Resource resConfigFiles = resourceResolver.getResource(csvPath);
+		if (!csvPath.equals("") && resConfigFiles!=null) {
+			ArrayList<String[]> configOptions = new ArrayList<String[]>();
+			for (Resource resConfigFile: resConfigFiles.getChildren()) {
+				if (resConfigFile!=null && resConfigFile.getName().endsWith(".csv")) {
+					String[] resConfigSettings = resConfigFile.getName().split("-");
+					configOptions.add(resConfigSettings);
+				}
+
+			}
+			Collections.sort(configOptions,new Comparator<String[]>() {
+				public int compare(String[] strings, String[] otherStrings) {
+					return strings[0].compareTo(otherStrings[0]);
+				}
+			});
+			for (String[] configOption : configOptions) {
+
+				// Loading title and description
+				String title = configOption[2];
+				String description = configOption[0] + "-" + configOption[1] + "-" + configOption[2];
+				Resource resConfigFile = resourceResolver.getResource(csvPath + "/" + description + "/jcr:content");
+				if (resConfigFile != null) {
+
+					InputStream stream = resConfigFile.adaptTo(InputStream.class);		
+					Reader inConfigFile = new InputStreamReader(stream);	
+					Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(inConfigFile);
+					for (CSVRecord record : records) {
+						String rDescription = "# Description: ";
+						if (record.get(0).startsWith(rDescription)) description = record.get(0).replace(rDescription, "").trim() + " (" + description + ")";
+						String rTitle = "# Title: ";
+						if (record.get(0).startsWith(rTitle)) title = record.get(0).replace(rTitle,"").trim();
+					}
+					intOptions++;
+
+				}
+
+				printCheckbox(out, "setup-" + configOption[0], title, description);
+
+			}
+		}
+
+		if (intOptions>0) {
+
+			out.println("<div class=\"coral-Form-fieldwrapper coral-Form-fieldwrapper--alignRight\">");
+			out.println("<button class=\"coral-Form-field coral-Button coral-Button--primary\">Submit</button>");
+			out.println("</div>");
+
+		} else {
+
+			out.println("<p>No configuration file to process</p>");
+
+		}
 
 		String returnURL = (String) request.getParameter("returnURL");
 		if (returnURL!=null) {
 			out.println("<input type=\"hidden\" name=\"returnURL\" value=\"" + returnURL + "\">");
 		}
 
-	    out.println("</section></form>");
-	    out.println("</body></html>");
+		out.println("</section></form>");
+		out.println("</body></html>");
 
 	}
 
 	private static void printCheckbox(PrintWriter out, String fieldName, String fieldLabel, String fieldTooltip) {
-		
+
 		out.println("<div class=\"coral-Form-fieldwrapper coral-Form-fieldwrapper--singleline\">");
 		out.println("<label class=\"coral-Form-field coral-Checkbox\">");
-	    out.println("<input class=\"coral-Checkbox-input\" type=\"checkbox\" name=\"" + fieldName + "\" checked=\"\">");
-	    out.println("<span class=\"coral-Checkbox-checkmark\"></span>");
-	    out.println("<span class=\"coral-Checkbox-description\">" + fieldLabel + "</span>");
-	    out.println("</label>");
-	    out.println("<span id=\"coral-Form-Vertical-Checkbox-" + fieldName + "\" class=\"coral-Form-fieldinfo coral-Icon coral-Icon--infoCircle coral-Icon--sizeS\"></span>");
-	    out.println("<coral-tooltip variant=\"info\" placement=\"right\" target=\"#coral-Form-Vertical-Checkbox-" + fieldName + "\" class=\"coral3-Tooltip coral3-Tooltip--info\" aria-hidden=\"true\" tabindex=\"-1\" role=\"tooltip\" style=\"display: none;\"><coral-tooltip-content>" + fieldTooltip + "</coral-tooltip-content></coral-tooltip>");
-	    out.println("</div>");
-		
+		out.println("<input class=\"coral-Checkbox-input\" type=\"checkbox\" name=\"" + fieldName + "\" checked=\"\">");
+		out.println("<span class=\"coral-Checkbox-checkmark\"></span>");
+		out.println("<span class=\"coral-Checkbox-description\">" + fieldLabel + "</span>");
+		out.println("</label>");
+		out.println("<span id=\"coral-Form-Vertical-Checkbox-" + fieldName + "\" class=\"coral-Form-fieldinfo coral-Icon coral-Icon--infoCircle coral-Icon--sizeS\"></span>");
+		out.println("<coral-tooltip variant=\"info\" placement=\"right\" target=\"#coral-Form-Vertical-Checkbox-" + fieldName + "\" class=\"coral3-Tooltip coral3-Tooltip--info\" aria-hidden=\"true\" tabindex=\"-1\" role=\"tooltip\" style=\"display: none;\"><coral-tooltip-content>" + fieldTooltip + "</coral-tooltip-content></coral-tooltip>");
+		out.println("</div>");
+
 	}
-	
+
 }

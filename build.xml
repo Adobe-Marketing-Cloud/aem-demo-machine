@@ -284,7 +284,9 @@
 					<path id="hotfix.packages">
 						<fileset dir="${hotfixes}" casesensitive="yes">
 							<include name="all/*.zip"/>
+							<include name="all/*.jar"/>
 							<include name="${demo.packages}/*.zip"/>
+							<include name="${demo.packages}/*.jar"/>
 						</fileset>
 					</path>
 				</foreach>
@@ -2417,6 +2419,9 @@
 		<if>
 			<equals arg1="${port}" arg2="${demomachine.authorport}" casesensitive="false"/>
 			<then>
+				<antcall target="users">
+					<param name="port" value="${port}"/>
+				</antcall>
 				<antcall target="mobileservices">
 					<param name="port" value="${port}"/>
 				</antcall>
@@ -2459,9 +2464,6 @@
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="autocomplete">
-			<param name="port" value="${port}"/>
-		</antcall>
-		<antcall target="users">
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="ffmpeg">
@@ -4557,6 +4559,7 @@
 				<resourcecount property="count.hotfixes">
 					<fileset dir="${dist}/hotfixes">
 						<include name="**/*.zip"/>
+						<include name="**/*.jar"/>
 					</fileset>
 				</resourcecount>
 			</then>

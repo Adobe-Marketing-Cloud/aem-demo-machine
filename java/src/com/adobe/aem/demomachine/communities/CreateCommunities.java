@@ -21,6 +21,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.rmi.ServerException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 
 import org.apache.felix.scr.annotations.sling.SlingServlet;
 import org.apache.sling.api.SlingHttpServletRequest;
@@ -46,7 +49,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 			out.println("admin user requested to access this feature");
 			return;
 		}
-		
+
 		out.println("<html><head>");
 		out.println("<link rel=\"stylesheet\" href=\"/etc/clientlibs/granite/coralui3.css\" type=\"text/css\">");
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/typekit.js\"></script>");
@@ -72,63 +75,45 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		// Checking if we have a return URL
 		String returnURL = (String) request.getParameter("returnURL");
 
-		// Config options
-		String setupUGC = (String) request.getParameter("setupUGC");
-		String setupSite = (String) request.getParameter("setupSite");
-		String setupContent = (String) request.getParameter("setupContent");
-		String setupGroup = (String) request.getParameter("setupGroup");
-		String setupEnablement = (String) request.getParameter("setupEnablement");
-
 		response.getWriter().write("<p>Path to configuration file: " + csvPath + "</p>" );
-		
-		// UGC configuration
-		Resource resUGC = resourceResolver.getResource(csvPath + "/setup/ugc.csv/jcr:content");
-		if (resUGC!=null && setupUGC!=null) {
-			InputStream stream = resUGC.adaptTo(InputStream.class);		
-			Reader inUGC = new InputStreamReader(stream);
-			response.getWriter().write("<p>Creating UGC on Publish...</p>");
-			response.flushBuffer();;
-			Loader.processLoading(resourceResolver, inUGC, hostname_author, port_author, port, password, null, false, false, csvPath);
+
+		// Config options
+		ArrayList<String> configOptions = new ArrayList<String>();
+		for (@SuppressWarnings("unchecked")
+		Enumeration<String> e = request.getParameterNames(); e.hasMoreElements(); ) {
+
+			String paramName = e.nextElement();
+			if (paramName.startsWith("setup")) {
+
+				configOptions.add(paramName);
+
+			}
 		}
 
-		// Site configuration
-		Resource resSite = resourceResolver.getResource(csvPath + "/setup/site.csv/jcr:content");
-		if (resSite!=null && setupSite!=null) {
-			InputStream stream = resSite.adaptTo(InputStream.class);		
-			Reader inSites = new InputStreamReader(stream);
-			response.getWriter().write("<p>Creating Community Site on Author...</p>");
-			response.flushBuffer();;
-			Loader.processLoading(resourceResolver, inSites, hostname_author, port_author, port, password, null, false, false, csvPath);
-		}
+		Collections.sort(configOptions);
 
-		// Content configuration
-		Resource resContent = resourceResolver.getResource(csvPath + "/setup/content.csv/jcr:content");
-		if (resContent!=null & setupContent!=null) {
-			InputStream streamContent = resContent.adaptTo(InputStream.class);		
-			Reader inContent = new InputStreamReader(streamContent);
-			response.getWriter().write("<p>Creating Community Content on Publish...</p>");
-			response.flushBuffer();;
-			Loader.processLoading(resourceResolver, inContent, hostname, port, port, password, null, false, false, csvPath);
-		}
+		if (configOptions.size()>0) {
 
-		// Group configuration
-		Resource resGroup = resourceResolver.getResource(csvPath + "/setup/group.csv/jcr:content");
-		if (resGroup!=null & setupGroup!=null) {
-			InputStream streamContent = resGroup.adaptTo(InputStream.class);		
-			Reader inGroup = new InputStreamReader(streamContent);
-			response.getWriter().write("<p>Creating Community Groups on Publish...</p>");
-			response.flushBuffer();;
-			Loader.processLoading(resourceResolver, inGroup, hostname, port, port, password, null, false, false, csvPath);
-		}
+			for (String configOption : configOptions) {
 
-		// Enablement configuration
-		Resource resEnablement = resourceResolver.getResource(csvPath + "/setup/enablement.csv/jcr:content");
-		if (resEnablement!=null & setupEnablement!=null) {
-			InputStream streamContent = resEnablement.adaptTo(InputStream.class);		
-			Reader inEnablement = new InputStreamReader(streamContent);
-			response.getWriter().write("<p>Creating Community Enablement content on Author...</p>");
-			response.flushBuffer();;
-			Loader.processLoading(resourceResolver, inEnablement, hostname_author, port_author, port, password, null, false, false, csvPath);
+				Resource resConfigFiles = resourceResolver.getResource(csvPath);
+				for (Resource resConfigFile: resConfigFiles.getChildren()) {
+					if (resConfigFile!=null && resConfigFile.getName().startsWith(configOption.replace("setup-", "")) && resConfigFile.getName().endsWith(".csv")) {
+						InputStream stream = resConfigFile.adaptTo(InputStream.class);		
+						Reader in = new InputStreamReader(stream);
+						response.getWriter().write("<p>Processing: " + resConfigFile.getName() + "</p>");
+						response.flushBuffer();;
+						if (resConfigFile.getName().contains("author")) {
+							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, null, false, false, csvPath);
+						} else {
+							Loader.processLoading(resourceResolver, in, hostname, port, port, password, null, false, false, csvPath);
+						}
+					}
+
+				}
+
+			}
+
 		}
 
 		response.getWriter().write("<p>Process completed!</p>");
