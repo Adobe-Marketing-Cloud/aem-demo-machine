@@ -2069,7 +2069,7 @@
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
 				</exec>
 				<!-- Many bundles are restarting after the Externalizer is changed -->
-				<sleep seconds="30"/>
+				<sleep seconds="60"/>
 				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 				</waitfor>
@@ -2469,10 +2469,10 @@
 		<antcall target="ffmpeg">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="externalizer">
+		<antcall target="translations_geomedia">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="translations_geomedia">
+		<antcall target="externalizer">
 			<param name="port" value="${port}"/>
 		</antcall>
 	</target>
