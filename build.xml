@@ -2069,7 +2069,7 @@
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.commons.impl.ExternalizerImpl"/>
 				</exec>
 				<!-- Many bundles are restarting after the Externalizer is changed -->
-				<sleep seconds="60"/>
+				<sleep seconds="30"/>
 				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 				</waitfor>
@@ -3980,7 +3980,7 @@
 	<target name="community_users" depends="compile">
 		<echo message="Updating all demo users on the Author instance to be administrators"/>
 		<exec executable="curl">
-			<arg line="--output '${logs}/roles_community_administrators.html'"/>
+			<arg line="--output '${logs}/${demomachine.authorport}_roles_community_administrators.html'"/>
 			<arg line="--globoff"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
@@ -4003,7 +4003,7 @@
 		</exec>
 		<echo message="Adding demo users to the content managers group"/>
 		<exec executable="curl">
-			<arg line="--output '${logs}/roles_content_managers.html'"/>
+			<arg line="--output '${logs}/${demomachine.authorport}_roles_content_managers.html'"/>
 			<arg line="--globoff"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
@@ -4375,34 +4375,34 @@
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
 				<exec executable="curl">
-					<arg line="--output '${logs}/preload_communities_publish.html'"/>
+					<arg line="--output '${logs}/${demomachine.publishport}_preload_communities.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/content/sites/communities.html"/>
 				</exec>
 				<exec executable="curl">
-					<arg line="--output '${logs}/preload_communities_moderation.html'"/>
+					<arg line="--output '${logs}/${demomachine.publishport}_preload_communities_moderation.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/content/sites/communities/moderation.html"/>
 				</exec>
 				<exec executable="curl">
-					<arg line="--output '${logs}/preload_communities_weretail_css_publish.html'"/>
+					<arg line="--output '${logs}/${demomachine.publishport}_preload_communities_weretail.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/etc/designs/we-retail/clientlib-all.css"/>
 				</exec>
 				<exec executable="curl">
-					<arg line="--output '${logs}/preload_communities_weretail_css_author.html'"/>
+					<arg line="--output '${logs}/${demomachine.authorport}_preload_communities_weretail.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${demomachine.authorport}/etc/designs/we-retail/clientlib-all.css"/>
 				</exec>
 			</then>
 		</if>
 		<exec executable="curl">
-			<arg line="--output '${logs}/preload_communities_author.html'"/>
+			<arg line="--output '${logs}/${demomachine.authorport}_preload_communities.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${demomachine.authorport}/content/sites/communities.html"/>
 		</exec>
 		<exec executable="curl">
-			<arg line="--output '${logs}/preload_communities.html'"/>
+			<arg line="--output '${logs}/${demomachine.authorport}_preload_communities_sites.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${demomachine.authorport}/communities/sites"/>
 		</exec>
