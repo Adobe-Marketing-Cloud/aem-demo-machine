@@ -2042,7 +2042,7 @@
 		<if>
 			<equals arg1="${demo.externalizer}" arg2="true" casesensitive="false"/>
 			<then>
-				<echo message="Configuring the Externalizer"/>
+				<echo message="Configuring the Externalizer (30s pause)"/>
 				<if>
 					<equals arg1="${port}" arg2="${demomachine.authorport}" casesensitive="false"/>
 					<then>
@@ -2220,7 +2220,7 @@
 					<arg line="-d ignoredeactivated=true"/>
 					<arg line="http://${demo.host}:${demomachine.authorport}/etc/replication/treeactivation.html"/>
 				</exec>
-				<echo message="Restarting the Crypto Bundle on Publish instance"/>
+				<echo message="Restarting the Crypto Bundle on Publish instance (30s pause)"/>
 				<antcall target="bundle_restart">
 					<param name="bundle.port" value="${demomachine.publishport}"/>
 					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
@@ -2455,9 +2455,11 @@
 				<antcall target="weretail_conf">
 					<param name="port" value="${port}"/>
 				</antcall>
+				<!--
 				<antcall target="user_configuration">
 					<param name="port" value="${port}"/>
 				</antcall>
+					-->
 			</then>
 		</if>
 		<antcall target="community_srp">
@@ -2544,7 +2546,7 @@
 	</target>
 	<!-- Deploying the AEM Demo Machine bundle -->
 	<target name="osgi_build" depends="compile">
-		<copy file="${dist}/osgi/aem-demo-machine.bnd.template" tofile="${dist}/osgi/aem-demo-machine.bnd"/>
+		<copy file="${dist}/osgi/aem-demo-machine.bnd.template" tofile="${dist}/osgi/aem-demo-machine.bnd" overwrite="true"/>
 		<replace file="${dist}/osgi/aem-demo-machine.bnd" token="@@VERSION@@" value="${demo.osgi.version}"/>
 		<bnd classpath="${java}/bin" output="${dist}/osgi" eclipse="false" failok="false" exceptions="true" files="${dist}/osgi/aem-demo-machine.bnd"/>
 	</target>
@@ -2604,6 +2606,7 @@
 	</target>
 	<!-- Adobe Social Communities - setting waiting time to 10s for notifications -->
 	<target name="user_configuration" if="aem62orlater">
+		<echo message="Configuring OAK Users and Groups cache settings (30s pause)"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_usercache.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -3468,14 +3471,14 @@
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
 				<echo message="Loading Community sites (and publishing)..."/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader" failonerror="true">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 			<else>
 				<echo message="Loading Community sites (without publishing)..."/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
+				<java classname="com.adobe.aem.demomachine.communities.Loader" failonerror="true">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.authorport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -4055,7 +4058,7 @@
 	<target name="community_enablement_managers">
 		<echo message="Adding demo users to the enablement managers group"/>
 		<exec executable="curl">
-			<arg line="--output '${logs}/roles_content_managers.html'"/>
+			<arg line="--output '${logs}/${demomachine.authorport}_roles_enablement_managers.html'"/>
 			<arg line="--globoff"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>

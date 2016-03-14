@@ -20,6 +20,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.rmi.ServerException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,7 +50,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 
 		String userId = resourceResolver.getUserID();
 		if (userId==null || !userId.equals("admin")) {
-			out.println("admin user requested to access this feature");
+			out.println("Permission denied: admin user requested to access this feature");
 			return;
 		}
 
@@ -63,7 +67,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		// Checking if we have valid configuration parameters
 		String csvPath = (String) request.getParameter("contentPath");
 		if (csvPath==null) {
-			response.getWriter().write("No content path to configuration file provided with csv query string");
+			out.println("Aborting: No content path to configuration file provided with csv query string");
 			return;
 		}
 		String hostname = (String) request.getParameter("hostname");
@@ -72,10 +76,20 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		String port_author = (String) request.getParameter("port_author");
 		String password = (String) request.getParameter("password");
 
+		// Checking if the specified hosts and ports are reachable
+		if (!isReachable(hostname,port)) {
+			out.println("Aborting: Your AEM Publish instance is not reachable. Please verify it is properly started.");
+			return;
+		}
+		if (!isReachable(hostname_author,port_author)) {
+			out.println("Aborting: Your AEM Author instance is not reachable. Please verify it is properly started.");
+			return;
+		}
+		
 		// Checking if we have a return URL
 		String returnURL = (String) request.getParameter("returnURL");
 
-		response.getWriter().write("<p>Path to configuration file: " + csvPath + "</p>" );
+		out.println("<p>Path to configuration file: " + csvPath + "</p>" );
 
 		// Config options
 		ArrayList<String> configOptions = new ArrayList<String>();
@@ -101,7 +115,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 					if (resConfigFile!=null && resConfigFile.getName().startsWith(configOption.replace("setup-", "")) && resConfigFile.getName().endsWith(".csv")) {
 						InputStream stream = resConfigFile.adaptTo(InputStream.class);		
 						Reader in = new InputStreamReader(stream);
-						response.getWriter().write("<p>Processing: " + resConfigFile.getName() + "</p>");
+						out.println("<p>Processing: " + resConfigFile.getName() + "</p>");
 						response.flushBuffer();;
 						if (resConfigFile.getName().contains("author")) {
 							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, null, false, false, csvPath);
@@ -116,13 +130,40 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 
 		}
 
-		response.getWriter().write("<p>Process completed!</p>");
+		out.println("<p>Process completed!</p>");
 		if (returnURL!=null) {
-			response.getWriter().write("<p><a href=\"http://" + request.getServerName() + ":" + request.getServerPort() + returnURL +"\">Check your site !</a></p>");
+			out.println("<p><a href=\"http://" + request.getServerName() + ":" + request.getServerPort() + returnURL +"\">Check your site !</a></p>");
 		}
 		response.flushBuffer();
 		out.println("</body></html>");
 
+	}
+	
+	private boolean isReachable(String host, String port) {
+		
+		if (port==null || port.equals("")) return false;
+		if (host==null || host.equals("")) return false;
+		
+		SocketAddress sockaddr = new InetSocketAddress(host, Integer.parseInt(port));
+		Socket socket = new Socket();
+		boolean online = true;
+		try {
+		    socket.connect(sockaddr, 10000);
+		} catch (SocketTimeoutException stex) {
+		    // treating timeout errors separately from other io exceptions
+		    online = false;
+		} catch (IOException iOException) {
+		    online = false;    
+		} finally {
+		    // As the close() operation can also throw an IOException
+		    try {
+		        socket.close();
+		    } catch (IOException ex) {
+		    }
+		}
+		
+		return online;
+		
 	}
 
 }

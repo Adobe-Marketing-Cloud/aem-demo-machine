@@ -115,6 +115,9 @@ public class Loader {
 	private static final String MESSAGE = "Message";
 	private static final String RESOURCE = "Resource";
 	private static final String BADGE = "Badge";
+	private static final String CLOUDSERVICE_ANALYTICS = "analyticsCloudConfigPath";
+	private static final String CLOUDSERVICE_FACEBOOK = "fbconnectoauthid";
+	private static final String CLOUDSERVICE_TWITTER = "twitterconnectoauthid";
 	private static final int RESOURCE_INDEX_PATH = 5;
 	private static final int RESOURCE_INDEX_THUMBNAIL = 3;
 	private static final int CALENDAR_INDEX_THUMBNAIL = 8;
@@ -271,7 +274,10 @@ public class Loader {
 				// Let's see if we need to terminate this process
 				if (record.get(0).equals(KILL)) {
 
-					System.exit(1);
+					if (rr==null)
+							System.exit(1);
+					else
+							return;
 
 				}
 
@@ -304,7 +310,14 @@ public class Loader {
 							} else if (name.equals(CSS)) {
 								addBinaryBody(builder, rr, CSS, csvfile, value);
 							} else {
-								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+								// For cloud services, we verify that they are actually available
+								if ((name.equals(CLOUDSERVICE_FACEBOOK) || name.equals(CLOUDSERVICE_TWITTER) || name.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, value)) {
+									logger.error("Cloud service: " + value + " is not available on this instance");
+								} else {									
+									builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+								}
+
 							}
 						}
 					}
@@ -318,6 +331,15 @@ public class Loader {
 					String siteId = elements.get("response/siteId");
 					sitePagePath = elements.get("response/sitePagePath");
 
+					// No need to keep going if these settings are not properly returned for any reason
+					if (siteId==null || siteId.equals("")) {
+						logger.error("ERROR: Community Site not created properly");
+						if (rr==null)
+							System.exit(-1);
+						else
+							return;
+					}
+					
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
 
@@ -672,12 +694,12 @@ public class Loader {
 					continue;
 
 				}
-				
+
 				// Let's see if we need to generate analytics events for Assets Insights
 				if (record.get(0).equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
-					
+
 					logger.debug("Generating Assets Analytics for reportsuite " + analytics);
-					
+
 					// Generating Impressions
 					int impressions = new Random().nextInt(21) + 5;
 					for (int i = 0; i < impressions; i++)
@@ -690,9 +712,9 @@ public class Loader {
 						for (int i = 0; i < clicks; i++)
 							doAssetsAnalytics( analytics, "event2", "eVar4", assetId, "e", "Asset Click Event");
 					}
-					
+
 					continue;
-			
+
 				}
 
 				// Let's see if we deal with a new block of content or just a new entry
@@ -1872,7 +1894,6 @@ public class Loader {
 
 									if (object instanceof JSONArray) {
 
-										logger.debug("JSON object is a JSONArray");
 										JSONArray jsonArray = (JSONArray) object;
 										if (jsonArray.length() == 1) {
 											JSONObject jsonObject = jsonArray.getJSONObject(0);
@@ -1882,7 +1903,6 @@ public class Loader {
 
 									} else if (object instanceof JSONObject) {
 
-										logger.debug("JSON object is a JSONObject");
 										JSONObject jsonobject = (JSONObject) object;
 										jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));
 										logger.debug("JSON value (jsonObject) returned is " + jsonElement);
@@ -2053,12 +2073,25 @@ public class Loader {
 		}
 
 	}
+	
+	// This method verifies if a resource is available or not on the server
+	private static boolean isResourceAvailable(String hostname, String port, String password, String path) {
+		
+		boolean isAvailable = false;
+	
+		String json = doGet(hostname, port, path.replace("/jcr:content", "") + ".json", "admin", password, null);
+
+		if (json!=null) isAvailable = true;
+		
+		return isAvailable;
+		
+	}
 
 	// This method GETs a request to the server, returning the location JSON attribute, when available
 	private static String doGet(String hostname, String port, String url, String user, String password, List<NameValuePair> params) {
 
 		String rawResponse = null;
-
+		logger.debug("Getting path: " + url + " as " + user);
 		try {
 
 			HttpHost target = new HttpHost(hostname, Integer.parseInt(port), "http");

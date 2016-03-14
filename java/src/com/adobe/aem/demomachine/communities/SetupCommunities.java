@@ -47,7 +47,7 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 		ResourceResolver resourceResolver = request.getResourceResolver();
 		String userId = resourceResolver.getUserID();
 		if (userId==null || !userId.equals("admin")) {
-			out.println("admin user requested to access this feature");
+			out.println("Permission denied: admin user requested to access this feature");
 			return;
 		}
 
