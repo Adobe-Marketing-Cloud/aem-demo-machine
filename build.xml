@@ -2455,11 +2455,6 @@
 				<antcall target="weretail_conf">
 					<param name="port" value="${port}"/>
 				</antcall>
-				<!--
-				<antcall target="user_configuration">
-					<param name="port" value="${port}"/>
-				</antcall>
-					-->
 			</then>
 		</if>
 		<antcall target="community_srp">
@@ -2803,7 +2798,7 @@
 	</target>
 	<!-- We.Retail specific configuration settings -->
 	<target name="weretail_conf" if="aem62orlater" depends="version">
-		<echo message="Configuring system for We.Retail"/>
+		<echo message="Configuring ACLs for We.Retail"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_weretail_conf.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -3827,7 +3822,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on"/>
 		</exec>
 	</target>
 	<target name="community_loader_weretail_cloudservices">

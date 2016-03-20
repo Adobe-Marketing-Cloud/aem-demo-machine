@@ -104,6 +104,7 @@ public class Loader {
 	private static final String PASSWORD = "password";
 	private static final String SITE = "Site";
 	private static final String SITEUPDATE = "SiteUpdate";
+	private static final String SITEPUBLISH = "SitePublish";
 	private static final String SITETEMPLATE = "SiteTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
 	private static final String SITEMEMBERS = "SiteMembers";
@@ -115,6 +116,9 @@ public class Loader {
 	private static final String MESSAGE = "Message";
 	private static final String RESOURCE = "Resource";
 	private static final String BADGE = "Badge";
+	private static final String OPTION_ANALYTICS = "enableAnalytics";
+	private static final String OPTION_FACEBOOK = "allowFacebook";
+	private static final String OPTION_TWITTER = "allowTwitter";
 	private static final String CLOUDSERVICE_ANALYTICS = "analyticsCloudConfigPath";
 	private static final String CLOUDSERVICE_FACEBOOK = "fbconnectoauthid";
 	private static final String CLOUDSERVICE_TWITTER = "twitterconnectoauthid";
@@ -126,6 +130,7 @@ public class Loader {
 	private static final int RESOURCE_INDEX_FUNCTION = 9;
 	private static final int RESOURCE_INDEX_PROPERTIES = 10;
 	private static final int GROUP_INDEX_NAME = 1;
+	private static final String SLEEP = "Sleep";
 	private static final String FOLLOW = "Follow";
 	private static final String NOTIFICATION = "Notification";
 	private static final String LEARNING = "LearningPath";
@@ -134,7 +139,7 @@ public class Loader {
 	private static final String LANGUAGE = "baseLanguage";
 	private static final String ROOT = "siteRoot";
 	private static final String CSS = "pagecss";
-	private static final int MAXRETRIES=30;
+	private static final int MAXRETRIES=10;
 	private static final int REPORTINGDAYS=-21;
 	private static final String ENABLEMENT61FP2 = "1.0.135";
 	private static final String ENABLEMENT61FP3 = "1.0.148";
@@ -256,6 +261,7 @@ public class Loader {
 			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
 			Version vBundleCommunitiesCalendar = getVersion(bundlesList, "com.adobe.cq.social.cq-social-calendar");
 			Version vBundleCommunitiesNotifications = getVersion(bundlesList, "com.adobe.cq.social.cq-social-notifications-impl");
+			Version vBundleCommunitiesSCORM = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scorm-dam");
 
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			for (CSVRecord record : records) {
@@ -275,9 +281,16 @@ public class Loader {
 				if (record.get(0).equals(KILL)) {
 
 					if (rr==null)
-							System.exit(1);
+						System.exit(1);
 					else
-							return;
+						return;
+
+				}
+
+				// Let's see if we need to pause a little bit
+				if (record.get(0).equals(SLEEP)) {
+
+					doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
 
 				}
 
@@ -302,7 +315,10 @@ public class Loader {
 							if (value.equals("FALSE")) { value = "false"; }	
 							if (name.equals("urlName")) { urlName = value; }
 							if (name.equals(LANGUAGE)) { language = value; }
-							if (name.equals(ROOT)) { rootPath = value; }
+							if (name.equals(ROOT)) {
+								rootPath = value;
+								logger.debug("Rootpath for subsequent processing is: " + rootPath);
+							}
 							if (name.equals(BANNER)) {
 								addBinaryBody(builder, rr, BANNER, csvfile, value);
 							} else if (name.equals(THUMBNAIL)) {
@@ -312,12 +328,28 @@ public class Loader {
 							} else {
 
 								// For cloud services, we verify that they are actually available
-								if ((name.equals(CLOUDSERVICE_FACEBOOK) || name.equals(CLOUDSERVICE_TWITTER) || name.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, value)) {
-									logger.error("Cloud service: " + value + " is not available on this instance");
-								} else {									
-									builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-								}
+								if ((name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
 
+									String cloudName = record.get(i+2).trim();
+									String cloudValue = record.get(i+3).trim();
+
+									if ((cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
+										builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+										logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
+									} else {	
+										// We have a valid cloud service
+										builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+										builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+										i=i+2;
+										logger.debug("Cloud service: " + cloudValue + " available on this instance");
+									}
+
+								} else {
+
+									// All other values just get added as is
+									builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+								}
 							}
 						}
 					}
@@ -339,7 +371,7 @@ public class Loader {
 						else
 							return;
 					}
-					
+
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
 
@@ -426,9 +458,45 @@ public class Loader {
 							builder.build(),
 							null);
 
+
+					// Site publishing, if there's a publish instance to publish to
+					if (!port.equals(altport)) {
+
+						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
+						nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + record.get(1) + "/" + record.get(2)));
+
+						doPost(hostname, port,
+								"/communities/sites.html",
+								"admin", adminPassword,
+								new UrlEncodedFormEntity(nameValuePairs),
+								null);
+					}
+
 					continue;
 				}
 
+				// Let's see if we need to publish a site
+				if (record.get(0).equals(SITEPUBLISH) && record.get(1)!=null) {
+
+					if (!port.equals(altport)) {
+
+						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
+						nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
+
+						doPost(hostname, port,
+								"/communities/sites.html",
+								"admin", adminPassword,
+								new UrlEncodedFormEntity(nameValuePairs),
+								null);
+					}
+
+					continue;
+					
+				}
 
 				// Let's see if we need to create a new Tag
 				if (record.get(0).equals(TAG)) {
@@ -1016,53 +1084,68 @@ public class Loader {
 				if (componentType.equals(RESOURCE)) {
 
 					// Making sure it's referencing some existing file
-					File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(2));
-					if (attachment.exists()) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0?"social:createResource":"se:createResource"));
-
-						List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
-						nameValuePairs.addAll(otherNameValuePairs);
-
-						// Special processing of lists with multiple users, need to split a String into multiple entries
-						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) {
-
-							nameValuePairs = convertArrays(nameValuePairs,"add-learners");
-							nameValuePairs = convertArrays(nameValuePairs,"resource-author");
-							nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
-							nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
-
-							nameValuePairs.add(new BasicNameValuePair("enablement-type", "social/enablement/components/hbs/resource"));
-
+					if (rr==null) {
+						File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(2));
+						if (!attachment.exists()) {
+							logger.error("Resource cannot be created as the referenced file is missing on the file system");
+							continue;
 						}
-
-						// Adding the site
-						nameValuePairs.add(new BasicNameValuePair("site", rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
-
-						// Building the cover image fragment
-						if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-							nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
-						} else {
-							nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
-						}
-
-						// Building the asset fragment
-						String coverPath = "/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
-						String coverSource = "dam";
-						String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "\"}]";
-						nameValuePairs.add(new BasicNameValuePair("assets", assets));
-
-						logger.debug("assets:" + assets);
-
 					} else {
-						logger.error("Resource cannot be created at the referenced file is missing");
-						continue;
+						Resource res = rr.getResource(csvfile + "/attachments/" + record.get(2) + "/jcr:content");
+						if (res==null) {
+							logger.error("A non existent resource named " + record.get(2) + "was referenced");
+							continue;
+						}
+
 					}
+
+					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0?"social:createResource":"se:createResource"));
+
+					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
+					nameValuePairs.addAll(otherNameValuePairs);
+
+					// Special processing of lists with multiple users, need to split a String into multiple entries
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) {
+						// Author, contact and experts always make sense
+						nameValuePairs = convertArrays(nameValuePairs,"add-learners");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-author");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
+						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
+
+						nameValuePairs.add(new BasicNameValuePair("enablement-type", "social/enablement/components/hbs/resource"));
+
+					}
+
+					// Assignments only make sense when SCORM is configured
+					if (vBundleCommunitiesSCORM==null) {
+						nameValuePairs.remove("add-learners");
+						nameValuePairs.remove("deltaList");
+						logger.warn("SCORM not configured on this instance, not assigning a resource");
+					}					
+
+					// Adding the site
+					nameValuePairs.add(new BasicNameValuePair("site", rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
+
+					// Building the cover image fragment
+					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
+						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
+					} else {
+						nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
+					}
+
+					// Building the asset fragment
+					String coverPath = "/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
+					String coverSource = "dam";
+					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "\"}]";
+					nameValuePairs.add(new BasicNameValuePair("assets", assets));
+
+					logger.debug("Assets payload:" + assets);
+
 
 				}
 
 				// Creates a learning path
-				if (componentType.equals(LEARNING)) {
+				if (componentType.equals(LEARNING) && vBundleCommunitiesSCORM!=null) {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"social:editLearningPath":"se:editLearningPath"));
 
@@ -1086,7 +1169,7 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL))));
+						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
 					}
 
 					// Building the learning path fragment
@@ -1194,7 +1277,7 @@ public class Loader {
 				}
 
 				// This call generally returns the path to the content fragment that was just created
-				Loader.doPost(hostname, port, url[urlLevel], userName, password, builder.build(), elements, null);
+				int returnCode = Loader.doPost(hostname, port, url[urlLevel], userName, password, builder.build(), elements, null);
 
 				// Again, Assets being a particular case
 				if (!componentType.equals(ASSET)) {
@@ -1207,7 +1290,7 @@ public class Loader {
 				}
 
 				// If we are loading a DAM asset, we are waiting for all renditions to be generated before proceeding
-				if (componentType.equals(ASSET)) {
+				if (componentType.equals(ASSET) && returnCode<400) {
 					int pathIndex = url[urlLevel].lastIndexOf(".createasset.html");
 					if (pathIndex>0)
 						doWaitPath(hostname, port, adminPassword, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions", "nt:file");
@@ -1254,7 +1337,7 @@ public class Loader {
 				}
 
 				// If it's a Learning Path, we publish it when possible
-				if (componentType.equals(LEARNING) && !port.equals(altport) && location!=null) {
+				if (componentType.equals(LEARNING) && !port.equals(altport) && location!=null && vBundleCommunitiesSCORM!=null) {
 
 					// Publishing the learning path 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
@@ -1288,7 +1371,7 @@ public class Loader {
 				// Step 4. We wait for the resource to be available on publish (checking that associated groups are available)
 				// Step 5. We retrieve the json for the resource on publish to retrieve the Social endpoints
 				// Step 6. We post ratings and comments for each of the enrollees on publish
-				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null) {
+				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
 
 					// Wait for the data to be fully copied
 					doWaitPath(hostname, port, adminPassword, location + "/assets/asset", "nt:file");
@@ -1358,7 +1441,7 @@ public class Loader {
 
 			}
 
-		} catch (IOException e) {
+		} catch (Exception e) {
 
 			logger.error(e.getMessage());
 
@@ -1375,7 +1458,7 @@ public class Loader {
 				logger.debug("Adding file named " + value + " to POST");
 				builder.addBinaryBody(field, attachment, getContentType(value), attachment.getName());
 			} else {
-				logger.error("A non existent file named " + value + "was referenced");
+				logger.error("A non existent file named " + value + " was referenced");
 			}
 		} else {
 			Resource res = rr.getResource(csvfile + "/attachments/" + value + "/jcr:content");
@@ -1384,7 +1467,7 @@ public class Loader {
 				InputStream stream = res.adaptTo(InputStream.class);
 				builder.addBinaryBody(field, stream, getContentType(value), value);
 			} else {
-				logger.error("A non existent resource named " + value + "was referenced");
+				logger.error("A non existent resource named " + value + " was referenced");
 			}
 		}
 	}
@@ -1448,40 +1531,27 @@ public class Loader {
 	}
 
 	// This method POSTs a file to be used as a thumbnail later on
-	private static String doThumbnail(ResourceResolver rr, String hostname, String port, String adminPassword, String csvfile, String filename) {
+	private static String doThumbnail(ResourceResolver rr, String hostname, String port, String adminPassword, String csvfile, String filename, String sitename) {
 
-		String pathToFile = "/content/dam/communities/resource-thumbnails/" + filename;
+		if (filename==null || filename.equals("")) return null;
 
-		if (rr==null) {
+		String pathToFile = "/content/dam/communities/resource-thumbnails/" + sitename + "/" + filename;
 
-			File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + filename);
+		MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+		builder.setCharset(MIME.UTF8_CHARSET);
+		builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
+		addBinaryBody(builder, rr, "file", csvfile, filename);
+		builder.addTextBody("fileName", filename, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-			ContentType ct = ContentType.MULTIPART_FORM_DATA;
-			if (filename.indexOf(".mp4")>0) {
-				ct = ContentType.create("video/mp4", MIME.UTF8_CHARSET);
-			} else if (filename.indexOf(".jpg")>0 || filename.indexOf(".jpeg")>0) {
-				ct = ContentType.create("image/jpeg", MIME.UTF8_CHARSET);
-			} else if (filename.indexOf(".png")>0) {
-				ct = ContentType.create("image/png", MIME.UTF8_CHARSET);
-			}
+		logger.debug("Adding file for thumbnails with name: " + filename);
 
-			MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-			builder.setCharset(MIME.UTF8_CHARSET);
-			builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
-			builder.addBinaryBody("file", attachment, ct, attachment.getName());
-			builder.addTextBody("fileName", filename, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+		Loader.doPost(hostname, port,
+				pathToFile,
+				"admin", adminPassword,
+				builder.build(),
+				null);
 
-			logger.debug("Adding file for thumbnails with name: " + attachment.getName() + " and type: " + ct.getMimeType());
-
-			Loader.doPost(hostname, port,
-					pathToFile,
-					"admin", adminPassword,
-					builder.build(),
-					null);
-
-			logger.debug("Path to thumbnail: " + pathToFile);
-
-		}
+		logger.debug("Path to thumbnail: " + pathToFile + "/file");
 
 		return pathToFile + "/file";
 
@@ -1836,9 +1906,11 @@ public class Loader {
 
 	}
 
-	private static void doPost(String hostname, String port, String url, String user, String password,
+	private static int doPost(String hostname, String port, String url, String user, String password,
 			HttpEntity entity, Map<String, String> elements, String referer) {
 		String jsonElement = null;
+
+		int returnCode = 404;
 
 		try {
 
@@ -1878,8 +1950,9 @@ public class Loader {
 				// Sending the HTTP POST command
 				CloseableHttpResponse response = httpClient.execute(target, request, localContext);
 				try {
+					returnCode = response.getStatusLine().getStatusCode();
 					String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
-					logger.debug("Got POST response:" + responseString);
+					logger.debug("POST return code: " + returnCode + " with response:" + responseString);
 					Set<String> keys = elements.keySet();
 					for (String lookup : keys) {
 						if (lookup != null) {
@@ -1934,6 +2007,7 @@ public class Loader {
 		} catch (IOException e) {
 			logger.error(e.getMessage());
 		}
+		return returnCode;
 	}
 
 	// This method DELETES a request to the server
@@ -2073,18 +2147,18 @@ public class Loader {
 		}
 
 	}
-	
+
 	// This method verifies if a resource is available or not on the server
 	private static boolean isResourceAvailable(String hostname, String port, String password, String path) {
-		
+
 		boolean isAvailable = false;
-	
+
 		String json = doGet(hostname, port, path.replace("/jcr:content", "") + ".json", "admin", password, null);
 
 		if (json!=null) isAvailable = true;
-		
+
 		return isAvailable;
-		
+
 	}
 
 	// This method GETs a request to the server, returning the location JSON attribute, when available
@@ -2127,14 +2201,17 @@ public class Loader {
 				logger.debug("URI built as " + uri.toString());
 				HttpGet httpget = new HttpGet(uri);
 				CloseableHttpResponse response = httpClient.execute(httpget, localContext);
-				try {     
-					rawResponse = EntityUtils.toString(response.getEntity(), "UTF-8");   
-				} catch (Exception ex) {
-					logger.error(ex.getMessage());
-				} finally {
-					response.close();
+				if (response.getStatusLine().getStatusCode()==200) {
+					try {     
+						rawResponse = EntityUtils.toString(response.getEntity(), "UTF-8");   
+					} catch (Exception ex) {
+						logger.error(ex.getMessage());
+					} finally {
+						response.close();
+					}
+				} else {
+					logger.warn("GET response code" + response.getStatusLine().getStatusCode());
 				}
-
 			} catch (Exception ex) {
 				logger.error(ex.getMessage());
 			} finally {
