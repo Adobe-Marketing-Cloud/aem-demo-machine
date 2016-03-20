@@ -364,12 +364,9 @@ public class Loader {
 					sitePagePath = elements.get("response/sitePagePath");
 
 					// No need to keep going if these settings are not properly returned for any reason
-					if (siteId==null || siteId.equals("")) {
+					if (sitePagePath==null || sitePagePath.equals("")) {
 						logger.error("ERROR: Community Site not created properly");
-						if (rr==null)
-							System.exit(-1);
-						else
-							return;
+						return;
 					}
 
 					// Site publishing, if there's a publish instance to publish to
