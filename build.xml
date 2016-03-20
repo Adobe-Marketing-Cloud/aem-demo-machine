@@ -3797,20 +3797,20 @@
 				<antcall target="community_loader_cloudservices_enablement"/>
 			</then>
 		</if>
-		<!-- Then we create the demo content for the demo sites -->
-		<if>
-			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
-			<then>
-				<antcall target="community_loader_content"/>
-				<antcall target="community_loader_cloudservices"/>
-			</then>
-		</if>
 		<!-- Then we create the We.Retail demo environment -->
 		<if>
 			<equals arg1="${demo.communities.samples.weretail}" arg2="true" casesensitive="false"/>
 			<then>
 				<antcall target="community_loader_weretail"/>
 				<antcall target="community_loader_weretail_cloudservices"/>
+			</then>
+		</if>
+		<!-- Then we create the demo content for the demo sites -->
+		<if>
+			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_content"/>
+				<antcall target="community_loader_cloudservices"/>
 			</then>
 		</if>
 		<antcall target="community_analytics"/>
@@ -3820,9 +3820,9 @@
 	<target name="community_loader_weretail" depends="configuration">
 		<echo message="Creating the We.Retail Community Site"/>
 		<exec executable="curl">
-			<arg line="--output '${logs}/${demomachine.authorport}_weretail_site.html'"/>
+			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on"/>
+			<arg line="http://${demo.host}:${demomachine.publishport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on"/>
 		</exec>
 	</target>
 	<target name="community_loader_weretail_cloudservices">

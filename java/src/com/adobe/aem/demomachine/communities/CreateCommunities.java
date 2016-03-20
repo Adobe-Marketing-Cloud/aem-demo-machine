@@ -118,9 +118,9 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 						out.println("<p>Processing: " + resConfigFile.getName() + "</p>");
 						response.flushBuffer();;
 						if (resConfigFile.getName().contains("author")) {
-							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, null, false, false, csvPath);
+							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, null, false, true, csvPath);
 						} else {
-							Loader.processLoading(resourceResolver, in, hostname, port, port, password, null, false, false, csvPath);
+							Loader.processLoading(resourceResolver, in, hostname, port, port, password, null, false, true, csvPath);
 						}
 					}
 
