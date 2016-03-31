@@ -22,8 +22,6 @@
 	<property name="bin" location="./bin"/>
 	<!-- This file requires the ant-contrib-1.0b3.jar file to be in the ant/lib folder -->
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
-	<!-- This file requires the biz.aQute.bnd-3.2.0 file to be available under java/libs/bnd	 -->
-	<taskdef resource="aQute/bnd/ant/taskdef.properties" classpath="${java}/libs/bnd/biz.aQute.bnd-3.2.0.jar"/>
 	<description>
         This is the AEM Demo Machine. Comprensive toolkit for running and configuring integrated AEM demos.
     </description>
@@ -776,7 +774,7 @@
 	</target>
 	<!-- Target for downloading the SOLR software -->
 	<target name="download_solr">
-		<echo message="Downloading Apache SOLR"/>
+		<echo message="Downloading Apache SOLR (from Apache Archives, might be slow...)"/>
 		<mkdir dir="${dist}/downloads"/>
 		<echo message="Downloading http://archive.apache.org/dist/lucene/solr/${demo.solr}/solr-${demo.solr}.tgz"/>
 		<exec executable="curl">
@@ -1360,12 +1358,12 @@
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
 	<target name="download_aem62">
-		<echo message="Downloading AEM 6.2 Beta"/>
+		<echo message="Downloading AEM 6.2"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/aem62.jar' ${demo.download.aem.62}"/>
 		</exec>
-		<echo message="AEM 6.2 Beta successfully downloaded in /dist/bin"/>
+		<echo message="AEM 6.2 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem62.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_aem61">
@@ -1460,17 +1458,6 @@
 		<echo message="Extracting Latest AEM Forms Demo Add-on in /dist/forms"/>
 		<delete dir="${dist}/forms"/>
 		<unzip src="${dist}/downloads/aem-demomachine-forms.zip" dest="."/>
-	</target>
-	<target name="download_enablement">
-		<echo message="Downloading Latest AEM Communities Enablement Demo Add-on in /dist/downloads"/>
-		<mkdir dir="${dist}/downloads"/>
-		<antcall target="download_google">
-			<param name="google.file" value="aem-demomachine-enablement"/>
-			<param name="google.id" value="${demo.download.demomachine.enablement}"/>
-		</antcall>
-		<echo message="Extracting Latest AEM Enablement Demo Add-on in /dist/enablement"/>
-		<delete dir="${dist}/enablement"/>
-		<unzip src="${dist}/downloads/aem-demomachine-enablement.zip" dest="."/>
 	</target>
 	<target name="download_google">
 		<exec executable="curl">
@@ -1944,21 +1931,16 @@
 	</target>
 	<!-- Target for installing and configuring the Livefyre feature pack -->
 	<target name="livefyre" if="aem61orlater" depends="version,configuration">
-		<if>
-			<equals arg1="${Livefyre.install}" arg2="true" casesensitive="false"/>
-			<then>
-				<antcall target="livefyre_instance">
-					<param name="port" value="${demomachine.authorport}"/>
-				</antcall>
-				<antcall target="livefyre_instance">
-					<param name="port" value="${demomachine.publishport}"/>
-				</antcall>
-				<antcall target="livefyre_instance">
-					<param name="port" value="${demomachine.farmport}"/>
-				</antcall>
-				<sleep seconds="10"/>
-			</then>
-		</if>
+		<antcall target="livefyre_instance">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<antcall target="livefyre_instance">
+			<param name="port" value="${demomachine.publishport}"/>
+		</antcall>
+		<antcall target="livefyre_instance">
+			<param name="port" value="${demomachine.farmport}"/>
+		</antcall>
+		<sleep seconds="10"/>
 	</target>
 	<target name="livefyre_instance">
 		<if>
@@ -2008,35 +1990,8 @@
 					<arg line="-d ./sling:resourceType=/libs/social/integrations/livefyre/cloudconfig/livefyre-config"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
 				</exec>
-				<antcall target="livefyre_components"/>
 			</then>
 		</if>
-	</target>
-	<target name="livefyre_components">
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_livefyre_components.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-X POST"/>
-			<arg line="-d ./components=/social/integrations/livefyre/components/comments"/>
-			<arg line="-d ./components=/libs/dam/cfm/components/contentfragment"/>
-			<arg line="-d ./components=/libs/social/reporting/analytics/components/hbs/communityactivitylist"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/chat"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/carousel"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/liveblog"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/map"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/mediawall"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/mosaic"/>
-			<arg line="-d ./components=/libs/social/integrations/livefyre/components/card"/>
-			<arg line="-d ./components=/libs/wcm/foundation/components/responsivegrid"/>
-			<arg line="-d ./components=/libs/foundation/components/adaptiveimage"/>
-			<arg line="-d ./components=/libs/foundation/components/image"/>
-			<arg line="-d ./components=/libs/foundation/components/list"/>
-			<arg line="-d ./components=/libs/foundation/components/text"/>
-			<arg line="-d ./components=/libs/foundation/components/textimage"/>
-			<arg line="-d ./components=/libs/foundation/components/title"/>
-			<arg line="-d ./components=/libs/social/commons/components/hbs/comments"/>
-			<arg line="http://${demo.host}:${port}/etc/designs/social/console/jcr:content/basepage/content"/>
-		</exec>
 	</target>
 	<target name="externalizer">
 		<if>
@@ -2280,7 +2235,18 @@
 			</then>
 		</if>
 		<antcall target="github"/>
-		<antcall target="livefyre"/>
+		<if>
+			<equals arg1="${Livefyre.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="livefyre"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demo.weretail.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="weretail"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the Replication agents -->
 	<target name="configure_replication" if="aem60orlater">
@@ -2385,9 +2351,6 @@
 	</target>
 	<!-- Target for post configuration steps -->
 	<target name="configure_post">
-		<antcall target="osgi_deploy">
-			<param name="port" value="${port}"/>
-		</antcall>
 		<antcall target="social_cloudstorage">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2446,17 +2409,6 @@
 			</then>
 		</if>
 		<!-- Configuration tasks on Publish only -->
-		<if>
-			<or>
-				<equals arg1="${port}" arg2="${demomachine.publishport}" casesensitive="false"/>
-				<equals arg1="${port}" arg2="${demomachine.farmport}" casesensitive="false"/>
-			</or>
-			<then>
-				<antcall target="weretail_conf">
-					<param name="port" value="${port}"/>
-				</antcall>
-			</then>
-		</if>
 		<antcall target="community_srp">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2539,44 +2491,8 @@
 		<echo message="Waiting for feature pack to be installed"/>
 		<sleep seconds="30"/>
 	</target>
-	<!-- Deploying the AEM Demo Machine bundle -->
-	<target name="osgi_build" depends="compile">
-		<copy file="${dist}/osgi/aem-demo-machine.bnd.template" tofile="${dist}/osgi/aem-demo-machine.bnd" overwrite="true"/>
-		<replace file="${dist}/osgi/aem-demo-machine.bnd" token="@@VERSION@@" value="${demo.osgi.version}"/>
-		<bnd classpath="${java}/bin" output="${dist}/osgi" eclipse="false" failok="false" exceptions="true" files="${dist}/osgi/aem-demo-machine.bnd"/>
-	</target>
 	<target name="osgi_deploy">
-		<echo message="Uploading Demo Machine bundle on port ${port}"/>
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_aemdemomachine_csv.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-F action=install"/>
-			<arg line="-F bundlestart=start"/>
-			<arg line="-F bundlestartlevel=20"/>
-			<arg line="-F refreshPackages=refresh"/>
-			<arg line="-F 'bundlefile=@${java}/libs/csv/commons-csv-1.1.jar'"/>
-			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
-		</exec>
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_aemdemomachine_cli.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-F action=install"/>
-			<arg line="-F bundlestart=start"/>
-			<arg line="-F bundlestartlevel=20"/>
-			<arg line="-F refreshPackages=refresh"/>
-			<arg line="-F 'bundlefile=@${java}/libs/commons-cli-1.2/commons-cli-1.2.jar'"/>
-			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
-		</exec>
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_aemdemomachine.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-F action=install"/>
-			<arg line="-F bundlestart=start"/>
-			<arg line="-F bundlestartlevel=20"/>
-			<arg line="-F refreshPackages=refresh"/>
-			<arg line="-F 'bundlefile=@${dist}/osgi/com.adobe.aem.demomachine.jar'"/>
-			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
-		</exec>
+		<echo message="Uploading additional OSGI bundles"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_aemdemomachine_jcraccess.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -2795,18 +2711,6 @@
 				</exec>
 			</then>
 		</if>
-	</target>
-	<!-- We.Retail specific configuration settings -->
-	<target name="weretail_conf" if="aem62orlater" depends="version">
-		<echo message="Configuring ACLs for We.Retail"/>
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_weretail_conf.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-X POST"/>
-			<arg line="--data-urlencode 'principalId=everyone'"/>
-			<arg line="--data-urlencode 'privilege@jcr:read=granted'"/>
-			<arg line="http://${demo.host}:${port}/conf.modifyAce.html"/>
-		</exec>
 	</target>
 	<!-- Adobe Target: posting email, client code and password -->
 	<target name="target">
@@ -3154,7 +3058,7 @@
 		</java>
 	</target>
 	<!-- This target loads some content fragments from a .csv file -->
-	<target name="sites_fragments" depends="community_loader_flag,compile">
+	<target name="sites_fragments" depends="community_loader_flag">
 		<echo message="Loading up Content Fragments..."/>
 		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
@@ -3188,10 +3092,6 @@
 		<tstamp>
 			<format property="archive-file-name" pattern="dd-MMM-yy" locale="en,US"/>
 		</tstamp>
-		<echo message="Creating an archive for the Enablement content..."/>
-		<delete file="${archives}/demomachine-${archive-file-name}-enablement.zip"/>
-		<zip destfile="${archives}/demomachine-${archive-file-name}-enablement.zip" basedir="." includes="dist/enablement/**"/>
-		<copy file="${archives}/demomachine-${archive-file-name}-enablement.zip" tofile="${archives}/aem-demomachine-enablement.zip" overwrite="true"/>
 		<echo message="Creating an archive for the Forms content..."/>
 		<delete file="${archives}/demomachine-${archive-file-name}-forms.zip"/>
 		<zip destfile="${archives}/demomachine-${archive-file-name}-forms.zip" basedir="." includes="dist/forms/**" excludes="dist/forms/**/aem61-forms*.zip"/>
@@ -3283,7 +3183,56 @@
 			</then>
 		</if>
 	</target>
-	<!-- Target for compiling the Java tools for the Demo Machine -->
+	<!-- Target for compiling the WeRetail Demo site -->
+	<target name="weretail_build" depends="compile">
+		<delete dir="${dist}/we-retail"/>
+		<echo message="Building the weRetail demo..."/>
+		<exec dir="${demo.github.weretail.path}" executable="${demo.mvn}" spawn="false" failonerror="true">
+			<arg line="clean install"/>
+		</exec>
+		<exec dir="${demo.github.weretail.path}/../aem-sample-we-retail-commons" executable="${demo.mvn}" spawn="false" failonerror="true">
+			<arg line="clean install"/>
+		</exec>
+		<copy todir="${dist}/we-retail" overwrite="true" flatten="true">
+			<fileset dir="${demo.github.weretail.path}">
+				<include name="ui.content/target/*.zip"/>
+				<include name="ui.apps/target/*.zip"/>
+				<include name="../aem-sample-we-retail-commons/ui.content/target/*.zip"/>
+			</fileset>
+		</copy>
+	</target>
+	<!-- Target for compiling the Communities Reference Demo site -->
+	<target name="communities_build_reference">
+		<delete dir="${dist}/community/reference"/>
+		<echo message="Building the core AEM Communities reference demo..."/>
+		<exec dir="${dist}/community/maven/reference" executable="${demo.mvn}" spawn="false" failonerror="true">
+			<arg line="clean install"/>
+		</exec>
+		<copy todir="${dist}/community/reference" overwrite="true">
+			<fileset dir="${dist}/community/maven/reference/target">
+				<include name="*.zip"/>
+			</fileset>
+		</copy>
+	</target>
+	<!-- Target for compiling the Communities Enablement Demo site -->
+	<target name="communities_build_enablement">
+		<delete dir="${dist}/community/enablement"/>
+		<echo message="Building the core AEM Communities enablement demo..."/>
+		<exec dir="${dist}/community/maven/enablement" executable="${demo.mvn}" spawn="false" failonerror="true">
+			<arg line="clean install"/>
+		</exec>
+		<copy todir="${dist}/community/enablement" overwrite="true">
+			<fileset dir="${dist}/community/maven/enablement/target">
+				<include name="*.zip"/>
+			</fileset>
+		</copy>
+	</target>
+	<!-- Target for compiling the Communities Demo sites -->
+	<target name="communities_build" depends="compile">
+		<antcall target="communities_build_reference"/>
+		<antcall target="communities_build_enablement"/>
+	</target>
+	<!-- Target for building the AEM Demo Machine core bundle -->
 	<target name="compile">
 		<if>
 			<and>
@@ -3293,11 +3242,16 @@
 				</not>
 			</and>
 			<then>
-				<delete dir="${java}/bin/com"/>
-				<echo message="Compiling the Java demo tools..."/>
-				<javac srcdir="${java}/src" includeantruntime="false" target="1.7" source="1.7" debug="true" nowarn="on" failonerror="false" destdir="${java}/bin">
-					<classpath refid="demo.classpath"/>
-				</javac>
+				<delete dir="${java}/libs/demomachine"/>
+				<echo message="Building the core AEM Demo Machine java module..."/>
+				<exec dir="${java}/core" executable="${demo.mvn}" spawn="false" failonerror="true">
+					<arg line="clean install"/>
+				</exec>
+				<copy todir="${java}/libs/demomachine" overwrite="true">
+					<fileset dir="${java}/core/target">
+						<include name="*.jar"/>
+					</fileset>
+				</copy>
 			</then>
 		</if>
 	</target>
@@ -3318,32 +3272,35 @@
 		<if>
 			<equals arg1="${demo.communities.samples.analytics}" arg2="true" casesensitive="false"/>
 			<then>
-				<property name="demo.loader.analyticsflag" value="-t"/>
+				<property name="demo.loader.analytics" value="&amp;analytics=${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6"/>
 			</then>
+			<else>
+				<property name="demo.loader.analytics" value=""/>
+			</else>
 		</if>
 	</target>
 	<!-- Target for loading a CSV file with UGC into the author instance -->
-	<target name="community_loader_author" depends="community_loader_flag,compile">
+	<target name="community_loader_author" depends="community_loader_flag">
 		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 	</target>
 	<!-- Target for loading a CSV file with UGC into a demo instance which might happen just on author (if MSRP or ASRP), or on multiple instances -->
-	<target name="community_loader" depends="community_loader_flag,compile">
+	<target name="community_loader" depends="community_loader_flag">
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
 				<echo message="Loading Community content on Publish ${demo.loader.currentfile}..."/>
 				<java classname="com.adobe.aem.demomachine.communities.Loader">
 					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
+					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
 			</then>
 		</if>
 	</target>
 	<!-- Target for loading all available CSV files for community content into a demo instance -->
-	<target name="community_loader_content" depends="community_loader_flag,compile">
+	<target name="community_loader_content" depends="community_loader_flag">
 		<!-- We only process the Samples files if ASRP or MSRP is in use (as no content will be there by default) -->
 		<if>
 			<not>
@@ -3360,125 +3317,137 @@
 				</foreach>
 			</then>
 		</if>
-		<!-- We always process the files resulting in new Sites and new Content -->
-		<echo message="Updating with new Community content for ${demomachine.srp}"/>
-		<antcall target="community_loader">
-			<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities.csv"/>
-		</antcall>
 		<antcall target="stepbystep"/>
-		<if>
-			<not>
-				<and>
-					<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
-					<or>
-						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
-						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
-					</or>
-				</and>
-			</not>
-			<then>
-				<if>
-					<or>
-						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp2" casesensitive="false"/>
-						<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp3" casesensitive="false"/>
-					</or>
-					<then>
-						<!-- This content is for AEM 6.1 FP2 and beyond -->
-						<echo message="Loading Community Site Content (for AEM 6.1 FP2 and beyond)"/>
-						<java classname="com.adobe.aem.demomachine.communities.Loader">
-							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/content/loader-communities-fp2-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-						</java>
-						<antcall target="stepbystep"/>
-					</then>
-					<else>
-						<echo message="Loading Community Site Content (for AEM 6.1 FP4 and beyond)"/>
-						<java classname="com.adobe.aem.demomachine.communities.Loader">
-							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/content/loader-communities-fp4-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-						</java>
-						<antcall target="community_loader">
-							<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp4.csv"/>
-						</antcall>
-						<antcall target="stepbystep"/>
-					</else>
-				</if>
-				<antcall target="community_loader">
-					<param name="demo.loader.currentfile" value="${dist}/community/content/loader-communities-fp2.csv"/>
-				</antcall>
-				<antcall target="stepbystep"/>
-			</then>
-		</if>
 	</target>
-	<!-- Target for loading all available CSV files for new community site templates and new community sites into a demo instance -->
-	<target name="community_loader_sites" depends="community_loader_flag,compile">
-		<if>
-			<and>
-				<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp1" casesensitive="false"/>
-				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
-			</and>
-			<then>
-				<echo message="Loading Community Site Templates (for AEM 6.1 FP1)"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/sites/loader-site-templates-fp1.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-			</then>
-			<else>
-				<if>
-					<and>
-						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
-						<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
-					</and>
-					<then>
-						<echo message="Loading Community Site Templates (for AEM 6.1 GA)"/>
-						<java classname="com.adobe.aem.demomachine.communities.Loader">
-							<classpath refid="demo.classpath"/>
-							<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/sites/loader-site-templates.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-						</java>
-					</then>
-					<else>
-						<if>
-							<or>
-								<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp2" casesensitive="false"/>
-								<equals arg1="${demo.communities.featurepack}" arg2="aem61-fp3" casesensitive="false"/>
-							</or>
-							<then>
-								<echo message="Loading Community Site Templates (for AEM 6.1 FP2 and FP3)"/>
-								<java classname="com.adobe.aem.demomachine.communities.Loader">
-									<classpath refid="demo.classpath"/>
-									<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/sites/loader-site-templates-fp2.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-								</java>
-							</then>
-							<else>
-								<echo message="Loading Community Site Templates (for AEM 6.1 FP4 and beyond)"/>
-								<java classname="com.adobe.aem.demomachine.communities.Loader">
-									<classpath refid="demo.classpath"/>
-									<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/sites/loader-site-templates-fp4.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-								</java>
-							</else>
-						</if>
-					</else>
-				</if>
-			</else>
-		</if>
+	<!-- Target for configuring the We.Retail Community subsite -->
+	<target name="weretail" if="aem62orlater" depends="version">
+		<echo message="Loading We.Retail Demo Packages"/>
+		<foreach target="package_author" param="package">
+			<path id="weretail.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="we-retail/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
-				<echo message="Loading Community sites (and publishing)..."/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader" failonerror="true">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
+				<foreach target="package_publish" param="package">
+					<path id="weretail.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="we-retail/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.farmport}"/>
+			<then>
+				<foreach target="package_farm" param="package">
+					<path id="weretail.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="we-retail/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
+	<target name="community_loader_weretail" if="aem62orlater" depends="version,community_loader_flag">
+		<echo message="Loading AEM Communities We-Retail Demo Site"/>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
 			</then>
 			<else>
-				<echo message="Loading Community sites (without publishing)..."/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader" failonerror="true">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.authorport} -f &quot;${dist}/community/sites/loader-sites.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
+				<property name="demo.loader.publish" value=""/>
 			</else>
 		</if>
+		<!-- Waiting for the bundles to be available -->
+		<sleep seconds="10"/>
+		<echo message="Configuring AEM Communities We-Retail Demo Site"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on${demo.loader.analytics}"/>
+		</exec>
+	</target>
+	<target name="community_loader_weretail_cloudservices" if="aem62orlater" depends="version">
+		<if>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			<then>
+				<antcall target="cloudservices">
+					<param name="port" value="${demomachine.authorport}"/>
+					<param name="path" value="/content/we-retail/community/en/jcr:content"/>
+				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${demomachine.publishport}"/>
+					<then>
+						<antcall target="community_publish">
+							<param name="path" value="/content/we-retail/community/en"/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<!-- Target for loading the reference demo site for AEM Communities -->
+	<target name="community_loader_reference" depends="community_loader_flag">
+		<echo message="Loading AEM Communities Reference Demo Package"/>
+		<foreach target="package_author" param="package">
+			<path id="community.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="community/reference/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<!-- Waiting for the bundles to be available -->
+		<sleep seconds="10"/>
+		<echo message="Configuring AEM Communities Reference Demo Site"/>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
+			</then>
+			<else>
+				<property name="demo.loader.publish" value=""/>
+			</else>
+		</if>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_reference_site.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on${demo.loader.analytics}"/>
+		</exec>
+	</target>
+	<!-- Target for loading the enablement demo site for AEM Communities -->
+	<target name="community_loader_enablement" depends="community_loader_flag">
+		<echo message="Loading AEM Communities Enablement Demo Package"/>
+		<foreach target="package_author" param="package">
+			<path id="community.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="community/enablement/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<!-- Waiting for the bundles to be available -->
+		<sleep seconds="10"/>
+		<echo message="Configuring AEM Communities Enablement Demo Site"/>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
+			</then>
+			<else>
+				<property name="demo.loader.publish" value=""/>
+			</else>
+		</if>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_enablement_site.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/enablement&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on${demo.loader.analytics}"/>
+		</exec>
 	</target>
 	<!-- Target for waiting for AEM to be available -->
 	<target name="community_uber_wait">
@@ -3774,75 +3743,37 @@
 		<antcall target="community_tunnel"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
-		<!-- First we create and publish the empty demo sites -->
+		<!-- Check if we need to install the reference site -->
 		<if>
 			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
 			<then>
-				<antcall target="community_loader_sites"/>
+				<antcall target="community_loader_reference"/>
+				<antcall target="community_loader_reference_cloudservices"/>
 			</then>
 		</if>
-		<!-- Then we create the enablement resources for all available sites -->
+		<antcall target="stepbystep"/>
+		<!-- Check if we need to install the enablement site -->
 		<if>
-			<and>
-				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
-				<not>
-					<and>
-						<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
-						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
-					</and>
-				</not>
-			</and>
+			<equals arg1="${demo.communities.samples.enablement}" arg2="true" casesensitive="false"/>
 			<then>
-				<antcall target="community_enablement"/>
-				<antcall target="community_loader_cloudservices_enablement"/>
+				<antcall target="community_loader_enablement"/>
+				<antcall target="community_loader_enablement_cloudservices"/>
 			</then>
 		</if>
+		<antcall target="stepbystep"/>
 		<!-- Then we create the We.Retail demo environment -->
 		<if>
-			<equals arg1="${demo.communities.samples.weretail}" arg2="true" casesensitive="false"/>
+			<and>
+				<equals arg1="${demo.communities.samples.weretail}" arg2="true" casesensitive="false"/>
+				<equals arg1="${demo.weretail.install}" arg2="true" casesensitive="false"/>
+			</and>
 			<then>
 				<antcall target="community_loader_weretail"/>
 				<antcall target="community_loader_weretail_cloudservices"/>
 			</then>
 		</if>
-		<!-- Then we create the demo content for the demo sites -->
-		<if>
-			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
-			<then>
-				<antcall target="community_loader_content"/>
-				<antcall target="community_loader_cloudservices"/>
-			</then>
-		</if>
 		<antcall target="community_analytics"/>
 		<antcall target="community_warmup"/>
-	</target>
-	<!-- Target for configuring the We.Retail Community subsite -->
-	<target name="community_loader_weretail" depends="configuration">
-		<echo message="Creating the We.Retail Community Site"/>
-		<exec executable="curl">
-			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
-			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.publishport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on"/>
-		</exec>
-	</target>
-	<target name="community_loader_weretail_cloudservices">
-		<if>
-			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
-			<then>
-				<antcall target="cloudservices">
-					<param name="port" value="${demomachine.authorport}"/>
-					<param name="path" value="/content/we-retail/community/en/jcr:content"/>
-				</antcall>
-				<if>
-					<socket server="${demo.host}" port="${demomachine.publishport}"/>
-					<then>
-						<antcall target="community_publish">
-							<param name="path" value="/content/we-retail/community/en"/>
-						</antcall>
-					</then>
-				</if>
-			</then>
-		</if>
 	</target>
 	<!-- Target for configuring the Analytics import process -->
 	<target name="community_analytics">
@@ -3869,7 +3800,7 @@
 		</if>
 	</target>
 	<!-- Targets for setting the Cloud Services on the Community Sites -->
-	<target name="community_loader_cloudservices">
+	<target name="community_loader_reference_cloudservices">
 		<if>
 			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			<then>
@@ -3888,7 +3819,7 @@
 			</then>
 		</if>
 	</target>
-	<target name="community_loader_cloudservices_enablement">
+	<target name="community_loader_enablement_cloudservices">
 		<if>
 			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			<then>
@@ -3900,7 +3831,7 @@
 					<socket server="${demo.host}" port="${demomachine.publishport}"/>
 					<then>
 						<antcall target="community_publish">
-							<param name="path" value="/content/sites/communities/en"/>
+							<param name="path" value="/content/sites/enablement/en"/>
 						</antcall>
 					</then>
 				</if>
@@ -3975,7 +3906,7 @@
 		</if>
 	</target>
 	<!-- Target for adding users to the right Communities groups -->
-	<target name="community_users" depends="compile">
+	<target name="community_users">
 		<echo message="Updating all demo users on the Author instance to be administrators"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_roles_community_administrators.html'"/>
@@ -4011,31 +3942,6 @@
 			<arg line="-d memberEntry=andrew.schaeffer@trashymail.com"/>
 			<arg line="http://${demo.host}:${demomachine.authorport}/home/groups/c/content-authors.html"/>
 		</exec>
-		<echo message="Updating user profiles on the Author instance"/>
-		<java classname="com.adobe.aem.demomachine.communities.Loader">
-			<classpath refid="demo.classpath"/>
-			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/members/loader-members.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-		</java>
-		<if>
-			<socket server="${demo.host}" port="${demomachine.publishport}"/>
-			<then>
-				<echo message="Updating Community Members profiles on the Publish instance"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-			</then>
-		</if>
-		<if>
-			<socket server="${demo.host}" port="${demomachine.farmport}"/>
-			<then>
-				<echo message="Updating Members on the Farm instance"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.farmport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/community/members/loader-members.csv&quot;  ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-			</then>
-		</if>
 	</target>
 	<!-- Target for loading the reference Community site forum with content during a demo -->
 	<target name="community_wizard">
@@ -4231,12 +4137,6 @@
 				<antcall target="community_enablement_loader"/>
 			</then>
 		</if>
-		<if>
-			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>
-			<then>
-				<antcall target="community_enablement_loader_communities"/>
-			</then>
-		</if>
 	</target>
 	<!-- Target for enabling the Enablement notifications -->
 	<target name="community_enablement_notifications">
@@ -4263,79 +4163,6 @@
 					<arg line="-d propertylist=enable.email,enable.activitystream,enable.enrollment,enable.unenrollment,email.template"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.enablement.impl.notifications.EnablementNotificationService"/>
 				</exec>
-			</then>
-		</if>
-	</target>
-	<target name="community_enablement_loader" depends="community_loader_flag,compile">
-		<if>
-			<and>
-				<resourceexists>
-					<file file="${dist}/enablement/loader-enablement-author.csv"/>
-				</resourceexists>
-				<resourceexists>
-					<file file="${dist}/enablement/loader-enablement-resources.csv"/>
-				</resourceexists>
-				<resourceexists>
-					<file file="${dist}/enablement/loader-enablement-users.csv"/>
-				</resourceexists>
-				<resourceexists>
-					<file file="${dist}/enablement/loader-enablement-tags.csv"/>
-				</resourceexists>
-				<socket server="${demo.host}" port="${demomachine.publishport}"/>
-			</and>
-			<then>
-				<echo message="Creating tags for Enablement demo site (on Author and Publish)"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/enablement/loader-enablement-tags.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-				<echo message="Creating site for Enablement demo site (on Author)"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/enablement/loader-enablement-author.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-				<echo message="Creating members for Enablement demo site (on Publish)"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/enablement/loader-enablement-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-				<antcall target="community_enablement_loader_resources"/>
-				<echo message="Creating UGC for Enablement demo site (on Publish)"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${dist}/enablement/loader-enablement-publish.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
-				</java>
-			</then>
-			<else>
-				<echo message="Conditions not met to configure the Enablement demo site"/>
-			</else>
-		</if>
-	</target>
-	<target name="community_enablement_loader_resources" depends="community_loader_flag,compile">
-		<echo message="Creating Resources for Enablement demo site (on Author - 20+ minutes)"/>
-		<java classname="com.adobe.aem.demomachine.communities.Loader">
-			<classpath refid="demo.classpath"/>
-			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-resources.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
-		</java>
-	</target>
-	<target name="community_enablement_loader_communities" depends="community_loader_flag,compile">
-		<if>
-			<and>
-				<resourceexists>
-					<file file="${dist}/enablement/loader-enablement-communities.csv"/>
-				</resourceexists>
-				<socket server="${demo.host}" port="${demomachine.publishport}"/>
-			</and>
-			<then>
-				<echo message="Creating Resources for Communities demo site (on Author)"/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
-					<classpath refid="demo.classpath"/>
-					<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -s &quot;${AdobeAnalytics.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/enablement/loader-enablement-communities.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} ${demo.loader.analyticsflag}"/>
-				</java>
 			</then>
 		</if>
 	</target>
@@ -4474,7 +4301,7 @@
 		</exec>
 	</target>
 	<!-- This target gets the current hostname -->
-	<target name="hostname" depends="compile">
+	<target name="hostname">
 		<if>
 			<not>
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
@@ -4511,7 +4338,7 @@
 	</target>
 	<target name="cloudservices">
 		<propertyselector property="constituents" match="demo.cloudservices\.([^\.]*)\.enabled" select="\1" casesensitive="false"/>
-		<echo message="Configuring cloud services on port ${port} for path ${path}: ${constituents}"/>
+		<echo message="Adding cloud services for path ${path}: ${constituents} on port ${port}"/>
 		<delete file="cloudservices.txt"/>
 		<foreach list="${constituents}" target="cloudservices.process" param="myparam"/>
 		<exec executable="curl">
@@ -4591,7 +4418,7 @@
 				<equals arg1="${demo.scenario}" arg2="demo_communities" casesensitive="false"/>
 			</and>
 			<then>
-				<fail message="Demonstrating AEM Communities requires a publish instance. Please select a demo topology with at least one Publish instance"/>
+				<echo message="Demonstrating AEM Communities should be done with a running Publish instance. Proceeding with Author only for this demo instance"/>
 			</then>
 		</if>
 		<!-- Scenarios for which Mongo is required -->
@@ -4745,7 +4572,7 @@
 		</if>
 	</target>
 	<!-- This target generates new MD5 checksums for the demo add-ons and packages -->
-	<target name="demo_checksums" depends="compile">
+	<target name="demo_checksums">
 		<if>
 			<not>
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
@@ -4759,7 +4586,7 @@
 		</if>
 	</target>
 	<!-- This target checks if there are updates for the demo add-ons and packages -->
-	<target name="demo_update" depends="compile">
+	<target name="demo_update">
 		<if>
 			<not>
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
