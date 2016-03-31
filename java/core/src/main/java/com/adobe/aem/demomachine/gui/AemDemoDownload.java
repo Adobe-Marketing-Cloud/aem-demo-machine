@@ -47,7 +47,7 @@ public class AemDemoDownload implements Runnable {
 		        Arrays.sort(files, LastModifiedFileComparator.LASTMODIFIED_REVERSE);
 		        theNewestFile = files[0];
 		        long newSize = theNewestFile.length();
-		        if (newSize!=currentSize && (theNewestFile.lastModified() > (System.currentTimeMillis() - 5000 ))) {
+		        if (newSize!=currentSize && (theNewestFile.getName().indexOf("xml")<0) && (theNewestFile.getName().indexOf("html")<0) && (theNewestFile.lastModified() > (System.currentTimeMillis() - 5000 ))) {
 		        	System.out.println("     [echo] " + theNewestFile.getName() + " (" + AemDemoUtils.humanReadableByteCount(theNewestFile.length(),true) +")");
 		        	currentSize = newSize;
 		        }

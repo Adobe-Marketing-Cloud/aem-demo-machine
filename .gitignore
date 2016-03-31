@@ -10,6 +10,10 @@ crx-quickstart
 # Ignore compilation results
 target
 
+# Ignore downloaded feature packs for Communities
+aem61-fp*
+aem62-fp*
+
 # Ignore IDE and Operating System artifacts
 .idea
 .classpath
