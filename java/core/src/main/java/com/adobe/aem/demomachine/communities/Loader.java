@@ -691,7 +691,7 @@ public class Loader {
 							groupName
 							);
 
-					if (groupList.indexOf("\"results\":1")>0) {
+					if (groupList!=null && groupList.indexOf("\"results\":1")>0) {
 
 						logger.debug("Group was found on " + port);
 						try {
@@ -725,6 +725,8 @@ public class Loader {
 						} catch (Exception e) {
 							logger.error(e.getMessage());
 						}
+					} else {
+						logger.warn("Group " + groupName + " cannot be updated as expected");
 					}
 
 					continue;
@@ -2055,7 +2057,9 @@ public class Loader {
 	// This method WAITs for a group to be present on a server, retrying when needed
 	private static String doWait(String hostname, String port, String user, String password, String group) {
 
-		return doWait(hostname, port, user, password, group, MAXRETRIES);
+		String groupList = doWait(hostname, port, user, password, group, MAXRETRIES);
+		logger.debug("returning GroupList" + groupList);
+		return groupList;
 
 	}
 
