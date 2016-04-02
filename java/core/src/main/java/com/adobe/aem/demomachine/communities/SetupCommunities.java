@@ -154,6 +154,13 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 					}
 					intOptions++;
 
+				    try {
+				    	inConfigFile.close();
+				    	stream.close();
+				    } catch (IOException ioex) {
+				        //omitted.
+				    }
+					
 				}
 
 				printCheckbox(out, "setup-" + configOption[0], title, description);

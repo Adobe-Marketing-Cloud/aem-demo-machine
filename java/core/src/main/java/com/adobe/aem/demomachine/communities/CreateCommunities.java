@@ -144,6 +144,14 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 						} else {
 							Loader.processLoading(resourceResolver, in, hostname, port, port, password, analytics, false, true, csvPath);
 						}
+
+					    try {
+					        in.close();
+					    	stream.close();
+					    } catch (IOException ioex) {
+					        //omitted.
+					    }
+					    
 					}
 
 				}
@@ -161,7 +169,14 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 			while((line=in.readLine())!= null){
 				out.println(line);
 			}
-			in.close();
+
+		    try {
+				in.close();
+		        stream.close();
+		    } catch (IOException ioex) {
+		        //omitted.
+		    }
+		    
 		}
 
 		out.println("<p>Process completed!</p>");

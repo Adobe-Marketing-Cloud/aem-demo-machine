@@ -3214,6 +3214,19 @@
 			</fileset>
 		</copy>
 	</target>
+	<!-- Target for compiling the Communities Scoring Demo site -->
+	<target name="communities_build_scoring">
+		<delete dir="${dist}/community/scoring"/>
+		<echo message="Building the core AEM Communities scoring demo..."/>
+		<exec dir="${dist}/community/maven/scoring" executable="${demo.mvn}" spawn="false" failonerror="true">
+			<arg line="clean install"/>
+		</exec>
+		<copy todir="${dist}/community/scoring" overwrite="true">
+			<fileset dir="${dist}/community/maven/scoring/target">
+				<include name="*.zip"/>
+			</fileset>
+		</copy>
+	</target>
 	<!-- Target for compiling the Communities Enablement Demo site -->
 	<target name="communities_build_enablement">
 		<delete dir="${dist}/community/enablement"/>
@@ -3230,6 +3243,7 @@
 	<!-- Target for compiling the Communities Demo sites -->
 	<target name="communities_build" depends="compile">
 		<antcall target="communities_build_reference"/>
+		<antcall target="communities_build_scoring"/>
 		<antcall target="communities_build_enablement"/>
 	</target>
 	<!-- Target for building the AEM Demo Machine core bundle -->
@@ -3419,6 +3433,34 @@
 			<arg line="--output '${logs}/${demomachine.authorport}_reference_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on${demo.loader.analytics}"/>
+		</exec>
+	</target>
+	<!-- Target for loading the scoring demo site for AEM Communities -->
+	<target name="community_loader_scoring" depends="community_loader_flag">
+		<echo message="Loading AEM Communities Scoring Demo Package"/>
+		<foreach target="package_author" param="package">
+			<path id="community.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="community/scoring/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<!-- Waiting for the bundles to be available -->
+		<sleep seconds="10"/>
+		<echo message="Configuring AEM Communities Scoring Demo Site"/>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
+			</then>
+			<else>
+				<property name="demo.loader.publish" value=""/>
+			</else>
+		</if>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_scoring_site.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/scoring&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on${demo.loader.analytics}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the enablement demo site for AEM Communities -->
@@ -3763,6 +3805,15 @@
 			</then>
 		</if>
 		<antcall target="stepbystep"/>
+		<!-- Check if we need to install the enablement site -->
+		<if>
+			<equals arg1="${demo.communities.samples.scoring}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_scoring"/>
+				<antcall target="community_loader_scoring_cloudservices"/>
+			</then>
+		</if>
+		<antcall target="stepbystep"/>
 		<!-- Then we create the We.Retail demo environment -->
 		<if>
 			<and>
@@ -3834,6 +3885,25 @@
 					<then>
 						<antcall target="community_publish">
 							<param name="path" value="/content/sites/enablement/en"/>
+						</antcall>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<target name="community_loader_scoring_cloudservices">
+		<if>
+			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			<then>
+				<antcall target="cloudservices">
+					<param name="port" value="${demomachine.authorport}"/>
+					<param name="path" value="/content/sites/scoring/en/jcr:content"/>
+				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${demomachine.publishport}"/>
+					<then>
+						<antcall target="community_publish">
+							<param name="path" value="/content/sites/scoring/en"/>
 						</antcall>
 					</then>
 				</if>

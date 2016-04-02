@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -238,6 +239,7 @@ public class Loader {
 
 		String language = "en";
 		String location = null;
+		String userHome = null;
 		String sitePagePath = null;
 		String analyticsPagePath = null;
 		String resourceType = null;
@@ -266,6 +268,7 @@ public class Loader {
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			for (CSVRecord record : records) {
 
+				LinkedList<InputStream> lIs = new LinkedList<InputStream>();
 				row = row + 1;
 				logger.info("Row: " + row + ", new record: " + record.get(0));			
 
@@ -320,11 +323,11 @@ public class Loader {
 								logger.debug("Rootpath for subsequent processing is: " + rootPath);
 							}
 							if (name.equals(BANNER)) {
-								addBinaryBody(builder, rr, BANNER, csvfile, value);
+								addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
 							} else if (name.equals(THUMBNAIL)) {
-								addBinaryBody(builder, rr, THUMBNAIL, csvfile, value);
+								addBinaryBody(builder, lIs, rr, THUMBNAIL, csvfile, value);
 							} else if (name.equals(CSS)) {
-								addBinaryBody(builder, rr, CSS, csvfile, value);
+								addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
 							} else {
 
 								// For cloud services, we verify that they are actually available
@@ -623,7 +626,7 @@ public class Loader {
 							if (value.equals("TRUE")) { value = "true"; }
 							if (value.equals("FALSE")) { value = "false"; }	
 							if (name.equals(IMAGE)) {
-								addBinaryBody(builder, rr, IMAGE, csvfile, value);
+								addBinaryBody(builder, lIs, rr, IMAGE, csvfile, value);
 							} else {
 								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 							}
@@ -942,6 +945,28 @@ public class Loader {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "social:changeAvatar"));
 
+					// Appending the path to the user profile to the target location
+					String userJson = doGet(hostname, port,
+							"/libs/granite/security/currentuser.json",
+							getUserName(record.get(0)), getPassword(record.get(0), adminPassword),
+							null);
+
+					userHome = "";
+					if (userJson!=null) {
+
+						try {
+
+							// Fetching the home property
+							userHome = new JSONObject(userJson).getString("home");
+							
+						} catch (Exception e) {
+							
+							logger.warn("Couldn't figure out home folder for user " + record.get(0));
+							
+						}
+						
+					}
+					
 				}
 
 				// Joins a user (posting the request) to a Community Group (path)
@@ -1148,7 +1173,7 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
+						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
 					} else {
 						nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
 					}
@@ -1186,7 +1211,7 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
+						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
 					}
 
 					// Building the learning path fragment
@@ -1236,7 +1261,7 @@ public class Loader {
 
 						// Let's see if we have a cover image
 						if (record.size()>CALENDAR_INDEX_THUMBNAIL && record.get(CALENDAR_INDEX_THUMBNAIL).length()>0) {
-							addBinaryBody(builder, rr, "coverimage", csvfile, record.get(CALENDAR_INDEX_THUMBNAIL));
+							addBinaryBody(builder, lIs, rr, "coverimage", csvfile, record.get(CALENDAR_INDEX_THUMBNAIL));
 						}
 
 					} else {
@@ -1277,7 +1302,7 @@ public class Loader {
 						componentType.equals(FORUM) ||
 						(componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
 
-					addBinaryBody(builder, rr, "file", csvfile, record.get(ASSET_INDEX_NAME));
+					addBinaryBody(builder, lIs, rr, "file", csvfile, record.get(ASSET_INDEX_NAME));
 				}
 
 				// If it's a resource or a learning path, we need the path to the resource for subsequent publishing
@@ -1298,8 +1323,8 @@ public class Loader {
 				}
 
 				// This call generally returns the path to the content fragment that was just created
-				int returnCode = Loader.doPost(hostname, port, url[urlLevel], userName, password, builder.build(), elements, null);
-
+				int returnCode = Loader.doPost(hostname, port, url[urlLevel] + (componentType.equals(AVATAR)?userHome+"/profile":""), userName, password, builder.build(), elements, null);
+				
 				// Again, Assets being a particular case
 				if (!(componentType.equals(ASSET) || componentType.equals(AVATAR))) {
 					location = elements.get(jsonElement);
@@ -1454,6 +1479,17 @@ public class Loader {
 					}
 
 				}
+				
+				// Closing all the input streams where applicable
+				for (InputStream is : lIs) {
+					
+					try {
+						is.close();
+					} catch (IOException e) {
+						//Omitted
+					}
+					
+				}
 
 			}
 
@@ -1466,7 +1502,7 @@ public class Loader {
 	}
 
 	// This method adds a binary file to the future POST
-	private static void addBinaryBody(MultipartEntityBuilder builder, ResourceResolver rr, String field, String csvfile, String value) {
+	private static void addBinaryBody(MultipartEntityBuilder builder, LinkedList<InputStream> lIs, ResourceResolver rr, String field, String csvfile, String value) {
 		if (rr==null) {
 			File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + value);
 			// Check for file existence
@@ -1480,8 +1516,9 @@ public class Loader {
 			Resource res = rr.getResource(csvfile + "/attachments/" + value + "/jcr:content");
 			if (res!=null) {
 				logger.debug("Adding resource named " + value + " to POST");
-				InputStream stream = res.adaptTo(InputStream.class);
-				builder.addBinaryBody(field, stream, getContentType(value), value);
+				InputStream is = res.adaptTo(InputStream.class);
+				lIs.add(is);
+				builder.addBinaryBody(field, is, getContentType(value), value);			
 			} else {
 				logger.error("A non existent resource named " + value + " was referenced");
 			}
@@ -1547,7 +1584,7 @@ public class Loader {
 	}
 
 	// This method POSTs a file to be used as a thumbnail later on
-	private static String doThumbnail(ResourceResolver rr, String hostname, String port, String adminPassword, String csvfile, String filename, String sitename) {
+	private static String doThumbnail(ResourceResolver rr, LinkedList<InputStream> lIs, String hostname, String port, String adminPassword, String csvfile, String filename, String sitename) {
 
 		if (filename==null || filename.equals("")) return null;
 
@@ -1556,7 +1593,7 @@ public class Loader {
 		MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 		builder.setCharset(MIME.UTF8_CHARSET);
 		builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
-		addBinaryBody(builder, rr, "file", csvfile, filename);
+		addBinaryBody(builder, lIs, rr, "file", csvfile, filename);
 		builder.addTextBody("fileName", filename, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 		logger.debug("Adding file for thumbnails with name: " + filename);
@@ -1618,7 +1655,7 @@ public class Loader {
 		// Getting the JSON view of the resource
 		String resourceJson = Loader.doGet(hostname, altport,
 				location + ".social.json",
-				"admin","admin",
+				"admin", adminPassword,
 				null);
 
 		// Generating random ratings and comments for the resource for each of the enrolled users
@@ -1630,12 +1667,10 @@ public class Loader {
 			String resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint")  + ".social.json";
 			String resourceID = resourceJsonObject.getString("id");
 			String resourceType = resourceJsonObject.getJSONObject("assetProperties").getString("type");
-			String referer = "http://localhost:" + altport + rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/en" + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + ".resource.html" + resourceID; 
+			String referer = "http://" + hostname + ":" + altport + rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/en" + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + ".resource.html" + resourceID; 
 
 			logger.debug("Resource Ratings Endpoint: " + resourceRatingsEndpoint);
 			logger.debug("Resource Comments Endpoint: " + resourceCommentsEndpoint);
-			logger.debug("Resource Type: " + resourceType);
-			logger.debug("Resource ID: " + resourceID);
 			logger.debug("Referer: " + referer);
 
 			// Looking for the list of enrolled users
@@ -1832,7 +1867,16 @@ public class Loader {
 
 				logger.error(ex.getMessage());
 
-			}		
+			} finally {
+				
+				try {
+					input.close();
+					printout.close();					
+				} catch (Exception e) {
+					// Omitted
+				}
+				
+			}
 
 		}
 
@@ -1849,7 +1893,7 @@ public class Loader {
 			ratingNameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
 			int randomRating = (int) Math.ceil(Math.random()*5);
 			logger.debug("Randomly Generated Rating: " + randomRating);
-			logger.debug("Referrer for Rating: " + referer);
+			logger.debug("Referer for Rating: " + referer);
 			ratingNameValuePairs.add(new BasicNameValuePair("referer", referer));
 			ratingNameValuePairs.add(new BasicNameValuePair("response", String.valueOf(randomRating)));
 			doPost(hostname, altport,
@@ -1880,7 +1924,7 @@ public class Loader {
 			commentNameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
 			commentNameValuePairs.add(new BasicNameValuePair("message", comments[randomComment-1]));
 			commentNameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-			logger.debug("Referrer for Commenting: " + referer);
+			logger.debug("Referer for Commenting: " + referer);
 			doPost(hostname, altport,
 					resourceCommentsEndpoint,
 					key, getPassword(key, adminPassword),
@@ -1975,14 +2019,14 @@ public class Loader {
 										if (jsonArray.length() == 1) {
 											JSONObject jsonObject = jsonArray.getJSONObject(0);
 											jsonElement = jsonObject.getString(lookup.substring(1 + separatorIndex));
-											logger.debug("JSON value (jsonArray) returned is " + jsonElement);
+											//logger.debug("JSON value (jsonArray) returned is " + jsonElement);
 										}
 
 									} else if (object instanceof JSONObject) {
 
 										JSONObject jsonobject = (JSONObject) object;
 										jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));
-										logger.debug("JSON value (jsonObject) returned is " + jsonElement);
+										//logger.debug("JSON value (jsonObject) returned is " + jsonElement);
 
 									}
 								}
@@ -1990,7 +2034,7 @@ public class Loader {
 							} else {
 								// Grabbing element at the top of the JSON response
 								jsonElement = new JSONObject(responseString).getString(lookup);
-								logger.debug("JSON (top) value returned is " + jsonElement);
+								//logger.debug("JSON (top) value returned is " + jsonElement);
 							}
 						}
 						elements.put(lookup, jsonElement);
@@ -2058,7 +2102,6 @@ public class Loader {
 	private static String doWait(String hostname, String port, String user, String password, String group) {
 
 		String groupList = doWait(hostname, port, user, password, group, MAXRETRIES);
-		logger.debug("returning GroupList" + groupList);
 		return groupList;
 
 	}
