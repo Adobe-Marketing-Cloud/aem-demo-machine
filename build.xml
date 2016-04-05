@@ -2357,6 +2357,9 @@
 		<antcall target="social_cloudpage">
 			<param name="port" value="${port}"/>
 		</antcall>
+		<antcall target="communities_languages">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<antcall target="demo_cloudservices">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2600,6 +2603,21 @@
 			</then>
 		</if>
 	</target>
+	<!-- AEM Communities: configuring shared language store for UGC -->
+	<target name="communities_languages" if="aem61orlater" depends="version">
+		<if>
+			<equals arg1="${demo.communities.languages.sharing}" arg2="true" casesensitive="false"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_communities_languages.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./ugcPath='${demo.communities.languages.locale}'"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/translation/default_geometrixx_outdoors/jcr:content"/>
+				</exec>
+			</then>
+		</if>
+	</target>
 	<!-- Adobe Analytics: posting username, password and secret key for encryption wiht local instance keys -->
 	<target name="analytics">
 		<if>
@@ -2619,6 +2637,14 @@
 					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
 					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_analytics_reportsuite.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--data-urlencode './reportsuite=${AdobeAnalytics.reportsuite}'"/>
+					<arg line="--data-urlencode './reportsuites=${AdobeAnalytics.reportsuite};publish'"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/demomachine/jcr:content/public"/>
 				</exec>
 				<antcall target="assets_insights"/>
 			</then>
@@ -3861,11 +3887,18 @@
 					<param name="port" value="${demomachine.authorport}"/>
 					<param name="path" value="/content/sites/communities/en/jcr:content"/>
 				</antcall>
+				<antcall target="cloudservices">
+					<param name="port" value="${demomachine.authorport}"/>
+					<param name="path" value="/content/sites/communities/fr/jcr:content"/>
+				</antcall>
 				<if>
 					<socket server="${demo.host}" port="${demomachine.publishport}"/>
 					<then>
 						<antcall target="community_publish">
 							<param name="path" value="/content/sites/communities/en"/>
+						</antcall>
+						<antcall target="community_publish">
+							<param name="path" value="/content/sites/communities/fr"/>
 						</antcall>
 					</then>
 				</if>
@@ -3912,7 +3945,7 @@
 	</target>
 	<!-- Target for publishing a community site -->
 	<target name="community_publish">
-		<echo message="Publishing a Community site"/>
+		<echo message="Publishing a Community site at ${path}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_publish.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>

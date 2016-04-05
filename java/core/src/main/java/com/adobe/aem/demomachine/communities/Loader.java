@@ -584,7 +584,7 @@ public class Loader {
 							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 							// If the template is already there, let's not try to create it
-							if (name.equals("templateName") && isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + value.replaceAll(" ","-").toLowerCase())) {
+							if (name.equals("templateName") && isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + value.replaceAll(" ","_").toLowerCase())) {
 								logger.warn("Template " + value + " is already there");
 								isValid=false;
 							}
