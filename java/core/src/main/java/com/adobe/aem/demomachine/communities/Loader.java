@@ -96,6 +96,7 @@ public class Loader {
 	private static final String FILES = "Files";
 	private static final String IMAGE = "file";
 	private static final String AVATAR = "Avatar";
+	private static final String ACTIVATE = "Activate";
 	private static final String QNA = "QnA";
 	private static final String ACTIVITIES = "Activities";
 	private static final String SLINGPOST = "SlingPost";
@@ -502,6 +503,27 @@ public class Loader {
 
 				}
 
+				// Let's see if we need to activate a tree
+				if (record.get(0).equals(ACTIVATE) && record.get(1)!=null) {
+
+					if (!port.equals(altport)) {
+
+						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+						nameValuePairs.add(new BasicNameValuePair("cmd", "activate"));
+						nameValuePairs.add(new BasicNameValuePair("ignoreactivated", "true"));
+						nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
+
+						doPost(hostname, port,
+								"/etc/replication/treeactivation.html",
+								"admin", adminPassword,
+								new UrlEncodedFormEntity(nameValuePairs),
+								null);
+					}
+					
+					continue;
+
+				}
+				
 				// Let's see if we need to create a new Tag
 				if (record.get(0).equals(TAG)) {
 
@@ -2348,10 +2370,15 @@ public class Loader {
 				// We have multiple values to pass to the POST servlet, e.g. for a String[]
 				int multiple = value.indexOf("|");
 				if (multiple>0) {
-					List<String> values = Arrays.asList(value.split("\\|", -1));
+					List<String> values = null;
+					if (value.indexOf("~")>0) { 
+						values = Arrays.asList(value.split("~", -1));
+					} else {
+						values = Arrays.asList(value.split("\\|", -1));
+					}
 					for (String currentValue : values) {
 						nameValuePairs.add(new BasicNameValuePair(name, currentValue));	
-						logger.debug(name + " " + currentValue);
+						logger.debug("Multiple List" + name + " " + currentValue);
 					}
 				} else {					            		
 					nameValuePairs.add(new BasicNameValuePair(name, value));					            							            		

@@ -26,6 +26,7 @@ maven-eclipse.xml
 *.iws
 .DS_Store
 *.jar
+pom.xml.versionsBackup
 
 cq5dam.*
 generated
