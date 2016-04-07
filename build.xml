@@ -1815,6 +1815,42 @@
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
 	</target>
+	<!-- Target for downloading latest Advancec Scoring and Badging Packagss -->
+	<target name="download_communities_advanced">
+		<echo message="Downloading latest advanced scoring and badging packages"/>
+		<antcall target="download_communities_advanced_scoring"/>
+		<antcall target="download_communities_advanced_badging"/>
+	</target>
+	<target name="download_communities_advanced_scoring">
+		<echo message="Downloading latest advanced scoring package"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scoring-advanced-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/nexus.xml"/>
+		<echo message="Downloading cq-social-badging-scoring-pkg-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-scoring-adv.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scoring-advanced-pkg/${metadata.versioning.release}/cq-social-scoring-advanced-pkg-${metadata.versioning.release}.zip"/>
+		</exec>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<target name="download_communities_advanced_badging">
+		<echo message="Downloading latest advanced badging packages"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-badging-advanced-pkg/maven-metadata.xml"/>
+		</exec>
+		<xmlproperty file="${dist}/downloads/nexus.xml"/>
+		<echo message="Downloading cq-social-badging-advanced-pkg-${metadata.versioning.release}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-badging-adv.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-badging-advanced-pkg/${metadata.versioning.release}/cq-social-badging-advanced-pkg-${metadata.versioning.release}.zip"/>
+		</exec>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
 	<!-- Target for downloading latest Livefyre feature pack -->
 	<target name="download_livefyre_packages">
 		<echo message="Downloading latest Livefyre feature pack"/>
@@ -3528,6 +3564,41 @@
 		<echo message="Waiting 10 more seconds..."/>
 		<sleep seconds="10"/>
 	</target>
+	<!-- Target for installing the Advanced scoring bundles for Communities -->
+	<target name="community_advanced">
+		<antcall target="community_advanced_instance">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<antcall target="community_advanced_instance">
+			<param name="port" value="${demomachine.publishport}"/>
+		</antcall>
+		<antcall target="community_advanced_instance">
+			<param name="port" value="${demomachine.farmport}"/>
+		</antcall>
+	</target>
+	<target name="community_advanced_instance">
+		<if>
+			<and>
+				<equals arg1="${demo.communities.advancedscoring}" arg2="true" casesensitive="false"/>
+				<socket server="${demo.host}" port="${port}"/>
+				<resourceexists>
+					<file file="${dist}/downloads/communities-badging-adv.zip"/>
+				</resourceexists>
+				<resourceexists>
+					<file file="${dist}/downloads/communities-scoring-adv.zip"/>
+				</resourceexists>
+			</and>
+			<then>
+				<echo message="Installing Advanced Scoring and Badging bundles on ${port}"/>
+				<antcall target="package">
+					<param name="package" value="${dist}/downloads/communities-badging-adv.zip"/>
+				</antcall>
+				<antcall target="package">
+					<param name="package" value="${dist}/downloads/communities-scoring-adv.zip"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
 	<!-- Target for installing the Scorm bundle for Communities -->
 	<target name="community_scorm_bundle">
 		<sleep seconds="10"/>
@@ -3808,6 +3879,7 @@
 			</then>
 		</if>
 		<antcall target="community_upgrade"/>
+		<antcall target="community_advanced"/>
 		<antcall target="community_tunnel"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
