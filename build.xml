@@ -4274,6 +4274,20 @@
 					<arg line="-d ./asipath=/content/usergenerated/asi/cloud"/>
 					<arg line="http://${demo.host}:${port}/etc/socialconfig/srpc/defaultconfiguration"/>
 				</exec>
+				<if>
+					<socket server="${demo.host}" port="${demomachine.authorport}"/>
+					<then>
+						<echo message="Removing all ASRP content..."/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_asrp_cleanup.html'"/>
+							<arg line="--globoff"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d path=/content/usergenerated/asi/cloud"/>
+							<arg line="http://${demo.host}:${port}/services/social/srp/cleanup"/>
+						</exec>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
