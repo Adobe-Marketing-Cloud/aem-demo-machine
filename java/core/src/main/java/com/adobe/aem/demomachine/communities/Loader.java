@@ -1201,9 +1201,9 @@ public class Loader {
 					}
 
 					// Building the asset fragment
-					String coverPath = "/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
+					String coverPath = "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
 					String coverSource = "dam";
-					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/" + record.get(RESOURCE_INDEX_SITE) + "/resource-assets/" + record.get(2) + "\"}]";
+					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "\"}]";
 					nameValuePairs.add(new BasicNameValuePair("assets", assets));
 
 				}
@@ -1610,7 +1610,7 @@ public class Loader {
 
 		if (filename==null || filename.equals("")) return null;
 
-		String pathToFile = "/content/dam/communities/resource-thumbnails/" + sitename + "/" + filename;
+		String pathToFile = "/content/dam/resources/resource-thumbnails/" + sitename + "/" + filename;
 
 		MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 		builder.setCharset(MIME.UTF8_CHARSET);
