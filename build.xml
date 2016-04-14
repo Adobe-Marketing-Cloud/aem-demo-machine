@@ -3259,7 +3259,11 @@
 			<fileset dir="${demo.github.weretail.path}">
 				<include name="ui.content/target/*.zip"/>
 				<include name="ui.apps/target/*.zip"/>
-				<include name="../aem-sample-we-retail-commons/ui.content/target/*.zip"/>
+			</fileset>
+		</copy>
+		<copy todir="${dist}/we-retail" overwrite="true" flatten="true">
+			<fileset dir="${demo.github.weretail.path}/../aem-sample-we-retail-commons">
+				<include name="ui.content/target/*.zip"/>
 			</fileset>
 		</copy>
 	</target>
@@ -4698,7 +4702,10 @@
 		<if>
 			<and>
 				<equals arg1="${ant.java.version}" arg2="1.8" casesensitive="false"/>
-				<equals arg1="${demo.packages}" arg2="cq56" casesensitive="false"/>
+				<or>
+					<equals arg1="${demo.packages}" arg2="aem60" casesensitive="false"/>
+					<equals arg1="${demo.packages}" arg2="cq56" casesensitive="false"/>
+				</or>
 			</and>
 			<then>
 				<fail message="CQ 5.6.x cannot run with Java8 - please install a Java6 JDK"/>
