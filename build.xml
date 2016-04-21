@@ -1480,9 +1480,6 @@
 		<exec executable="curl">
 			<arg line="-L -s -k -o '${dist}/downloads/we.retail.all-${demo.download.weretail.all}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail/releases/download/${demo.download.weretail.all}/we.retail.all-${demo.download.weretail.all}.zip"/>
 		</exec>
-		<exec executable="curl">
-			<arg line="-L -s -k -o '${dist}/downloads/we.retail.commons.content-${demo.download.weretail.commons}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail-commons/releases/download/${demo.download.weretail.commons}/we.retail.commons.content-${demo.download.weretail.commons}.zip"/>
-		</exec>
 	    <move todir="${dist}/we-retail">
 	       <fileset dir="${dist}/downloads">
 	         <include name="**/we.retail.*.zip"/>
