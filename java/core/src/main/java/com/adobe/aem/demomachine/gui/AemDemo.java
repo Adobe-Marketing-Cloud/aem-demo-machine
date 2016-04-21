@@ -30,6 +30,9 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -58,6 +61,8 @@ import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 public class AemDemo {
 
@@ -70,6 +75,7 @@ public class AemDemo {
 	private JList<String> listDemoMachines;
 	private boolean buildInProgress = false;
 	private boolean downloadInProgress = false;
+	private static String aemDemoMachineVersion = "Unknown";
 
 	public static void main(String[] args) {
 
@@ -88,6 +94,27 @@ public class AemDemo {
 		} catch (ParseException ex) {
 
 			logger.error(ex.getMessage());
+
+		}
+
+		// Let's grab the version number for the core Maven file
+		String mavenFilePath = (demoMachineRootFolder!=null?demoMachineRootFolder:System.getProperty("user.dir")) + File.separator + "java" + File.separator + "core" + File.separator + "pom.xml";
+		File mavenFile = new File(mavenFilePath);
+		if (mavenFile.exists() && !mavenFile.isDirectory()) {
+
+			try {
+				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder builder = factory.newDocumentBuilder();
+				Document document;
+				document = builder.parse(mavenFile);
+				NodeList list = document.getElementsByTagName("version");
+				if (list != null && list.getLength() > 0) {
+					aemDemoMachineVersion = list.item(0).getFirstChild().getNodeValue();
+				}
+
+			} catch (Exception e) {
+				logger.error("Can't parse Maven pom.xml file");
+			}
 
 		}
 
@@ -428,7 +455,7 @@ public class AemDemo {
 			}
 		});
 		mnLivefyre.add(mntmAemCommunitiesLivefyre);
-		
+
 		mnLivefyre.addSeparator();
 
 		JMenuItem mntmAemLivefyreAddOn = new JMenuItem("Install on running AEM instance(s)");
@@ -439,6 +466,29 @@ public class AemDemo {
 		});
 		mnLivefyre.add(mntmAemLivefyreAddOn);
 
+		// WeRetail Add-on
+		JMenu mnWeRetail = new JMenu("We-Retail");
+		mnUpdate.add(mnWeRetail);
+
+		JMenuItem mnWeRetailAddon = new JMenuItem("Download Demo Add-on");
+		mnWeRetailAddon.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_weretail");
+			}
+		});
+		mnWeRetail.add(mnWeRetailAddon);
+
+		mnWeRetail.addSeparator();
+
+		JMenuItem mnWeRetailAddonInstall = new JMenuItem("Install on running AEM instance(s)");
+		mnWeRetailAddonInstall.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "weretail");
+			}
+		});
+		mnWeRetail.add(mnWeRetailAddonInstall);
+
+		// Download all section
 		mnUpdate.addSeparator();
 
 		JMenuItem mntmAemDownloadAll = new JMenuItem("Download All Add-ons");
@@ -858,6 +908,9 @@ public class AemDemo {
 			FileReader fileReader = new FileReader(buildFile.getParentFile().getAbsolutePath() + File.separator + "README.md");
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
 			while((line = bufferedReader.readLine()) != null) {
+				if (line.indexOf("AEM Demo Machine!")>0) {
+					line = line + " (version: " + aemDemoMachineVersion + ")";
+				}
 				if (!line.startsWith("Double"))
 					System.out.println(line);
 			}   
