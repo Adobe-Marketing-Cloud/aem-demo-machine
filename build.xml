@@ -1825,6 +1825,16 @@
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/communities-aem62-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.9.${latest19}/cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
 		</exec>
+		<propertyregex property="latest110" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.10\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem62-latest.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.10.${latest110}/cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
+		</exec>
+		<propertyregex property="latest111" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.11\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem63-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.11.${latest111}/cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
+		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -4212,6 +4222,10 @@
 					<arg line="-d propertylist=enable,agent.configuration,disabled.cipher.suites,enabled.cipher.suites"/>
 					<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.user.impl.transport.HttpToPublisher"/>
 				</exec>
+				<sleep seconds="5"/>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+				</waitfor>
 			</then>
 		</if>
 	</target>

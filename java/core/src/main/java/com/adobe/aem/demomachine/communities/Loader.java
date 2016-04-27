@@ -519,11 +519,11 @@ public class Loader {
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
 					}
-					
+
 					continue;
 
 				}
-				
+
 				// Let's see if we need to create a new Tag
 				if (record.get(0).equals(TAG)) {
 
@@ -876,6 +876,14 @@ public class Loader {
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
+						// If the Sling POST touches the system console, then we need to make sure the system is open for business again before we proceed
+						if (record.get(1).indexOf("system/console")>0) {
+							doSleep(10000, "Waiting after a bundle change/restart");
+							doWait(hostname, port,
+									"admin", adminPassword,
+									"administrators"
+									);
+						}
 					}
 
 					// We're done with this line, moving on to the next line in the CSV file
@@ -980,15 +988,15 @@ public class Loader {
 
 							// Fetching the home property
 							userHome = new JSONObject(userJson).getString("home");
-							
+
 						} catch (Exception e) {
-							
+
 							logger.warn("Couldn't figure out home folder for user " + record.get(0));
-							
+
 						}
-						
+
 					}
-					
+
 				}
 
 				// Joins a user (posting the request) to a Community Group (path)
@@ -1346,7 +1354,7 @@ public class Loader {
 
 				// This call generally returns the path to the content fragment that was just created
 				int returnCode = Loader.doPost(hostname, port, url[urlLevel] + (componentType.equals(AVATAR)?userHome+"/profile":""), userName, password, builder.build(), elements, null);
-				
+
 				// Again, Assets being a particular case
 				if (!(componentType.equals(ASSET) || componentType.equals(AVATAR))) {
 					location = elements.get(jsonElement);
@@ -1501,16 +1509,16 @@ public class Loader {
 					}
 
 				}
-				
+
 				// Closing all the input streams where applicable
 				for (InputStream is : lIs) {
-					
+
 					try {
 						is.close();
 					} catch (IOException e) {
 						//Omitted
 					}
-					
+
 				}
 
 			}
@@ -1890,14 +1898,14 @@ public class Loader {
 				logger.error(ex.getMessage());
 
 			} finally {
-				
+
 				try {
 					input.close();
 					printout.close();					
 				} catch (Exception e) {
 					// Omitted
 				}
-				
+
 			}
 
 		}
@@ -2248,7 +2256,6 @@ public class Loader {
 	private static String doGet(String hostname, String port, String url, String user, String password, List<NameValuePair> params) {
 
 		String rawResponse = null;
-		logger.debug("Getting path: " + url + " as " + user);
 		try {
 
 			HttpHost target = new HttpHost(hostname, Integer.parseInt(port), "http");
