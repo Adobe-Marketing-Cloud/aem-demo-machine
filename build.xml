@@ -3423,7 +3423,7 @@
 		<antcall target="stepbystep"/>
 	</target>
 	<!-- Target for configuring the We.Retail Community subsite -->
-	<target name="weretail" if="aem62orlater" depends="version">
+	<target name="weretail" if="aem62orlater" depends="version,configuration">
 		<echo message="Loading We.Retail Demo Packages on Author"/>
 		<foreach target="package_author" param="package">
 			<path id="weretail.packages">
