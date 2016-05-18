@@ -1227,7 +1227,6 @@
 		<if>
 			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
 			<then>
-				<!-- This is for WebSphere Commerce only -->
 				<exec executable="curl">
 					<arg line="--output '${logs}/${demomachine.authorport}_targetforms.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -1257,6 +1256,22 @@
 				</antcall>
 			</then>
 		</if>
+		<!-- Changing the Sling main servlet to handle more than 1000 nested requests -->
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_mainsling.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d sling.max.calls=2000"/>
+			<arg line="-d propertylist=sling.max.calls"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/org.apache.sling.engine.impl.SlingMainServlet"/>
+		</exec>
+		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		</waitfor>
 	</target>
 	<!-- Target for installing the Sites demo -->
 	<target name="sites" depends="version,configuration">
@@ -1571,6 +1586,10 @@
 					<arg line="-d package=${packagename}"/>
 					<arg line="https://www.adobeaemcloud.com/apps/cloudmgr/content/packages/user.json"/>
 				</exec>
+				<mkdir dir="${dist}/downloads"/>
+				<exec executable="curl">
+					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageShareFileName}.zip' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
+				</exec>
 				<if>
 					<and>
 						<isset property="${packageshare.filename}"/>
@@ -1580,14 +1599,10 @@
 					</and>
 					<then>
 						<propertycopy property="filename" from="${packageshare.filename}"/>
-						<exec executable="curl">
-							<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${packageshare.target}/${fileversion}/${filename}' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
-						</exec>
+						<move file="${dist}/downloads/${packageShareFileName}.zip" tofile="${packageshare.target}/${fileversion}/${filename}" overwrite="true"/>
 					</then>
 					<else>
-						<exec executable="curl">
-							<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${packageshare.target}/${fileversion}/${packageShareFileName}.zip' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
-						</exec>
+						<move file="${dist}/downloads/${packageShareFileName}.zip" tofile="${packageshare.target}/${fileversion}/${packageShareFileName}.zip" overwrite="true"/>
 					</else>
 				</if>
 			</else>
