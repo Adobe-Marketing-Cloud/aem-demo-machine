@@ -76,7 +76,7 @@ public class Updates {
 
 		List<String[]> listPaths = Arrays.asList(AemDemoConstants.demoPaths);
 		for (String[] path:listPaths) {
-			if (path.length==4) {
+			if (path.length==5) {
 				logger.debug(path[1]);
 				File pathFolder = new File(rootFolder + (path[1].length()>0?(File.separator + path[1]):""));
 				if (pathFolder.exists()) {

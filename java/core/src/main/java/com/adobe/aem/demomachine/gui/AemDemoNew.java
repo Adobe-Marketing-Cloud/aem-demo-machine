@@ -15,13 +15,16 @@
  ******************************************************************************/
 package com.adobe.aem.demomachine.gui;
 
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Properties;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -32,6 +35,7 @@ import javax.swing.JList;
 import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.text.Position;
 
@@ -92,17 +96,23 @@ public class AemDemoNew extends JDialog {
 			contentPanel.setLayout(null);
 
 			// Label for demo configs
-			JLabel lblSelectADemo = new JLabel("Select a demo config");
+			JLabel lblSelectADemo = new JLabel("Select demo add-on(s)");
 			lblSelectADemo.setBounds(20, 20, 148, 16);
 			contentPanel.add(lblSelectADemo);
+			JLabel lblSelectMultiple = new JLabel("Use Command/CTRL key for multiple add-ons. (*) indicates that the add-on needs to be downloaded.");
+			lblSelectMultiple.setFont(new Font("Serif", Font.ITALIC, 10));
+			lblSelectMultiple.setBounds(20, 20, 600, 416);
+			contentPanel.add(lblSelectMultiple);
 
 			// List of demo configs
 			JScrollPane scrollConfigs = new JScrollPane();
 			scrollConfigs.setBounds(20, 45, 140, 175);
 			contentPanel.add(scrollConfigs);
-			AemDemoProperty[] aemConfigs = AemDemoUtils.listDemoConfigs(aemDemo.getBuildFile());
+			AemDemoProperty[] aemConfigs = AemDemoUtils.listDemoAddons(aemDemo.getBuildFile());
 			listConfigs = new JList(aemConfigs);
-			listConfigs.setSelectedIndex(AemDemoUtils.getSelectedIndex(listConfigs,aemDemo.getDefaultProperties(), aemDemo.getPersonalProperties(),AemDemoConstants.OPTIONS_DEMOCONFIGS_DEFAULT));
+			listConfigs.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            listConfigs.setSelectedIndices(AemDemoUtils.getDemoAddons(aemDemo.getBuildFile()));
+
 			scrollConfigs.setViewportView(listConfigs);
 
 			// Label for topologies
@@ -116,6 +126,7 @@ public class AemDemoNew extends JDialog {
 			contentPanel.add(scrollTopologies);		
 			AemDemoProperty[] aemTopologies = AemDemoUtils.listTopologies(aemDemo.getBuildFile());
 			listTopologies = new JList(aemTopologies);
+			listTopologies.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			listTopologies.setSelectedIndex(AemDemoUtils.getSelectedIndex(listTopologies,aemDemo.getDefaultProperties(), aemDemo.getPersonalProperties(),AemDemoConstants.OPTIONS_TOPOLOGIES_DEFAULT));
 			scrollTopologies.setViewportView(listTopologies);
 
@@ -129,6 +140,7 @@ public class AemDemoNew extends JDialog {
 			scrollAemJars.setBounds(330, 45, 140, 175);
 			contentPanel.add(scrollAemJars);	
 			listAemJars = new JList(aemJars);
+			listAemJars.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			listAemJars.setSelectedIndex(AemDemoUtils.getSelectedIndex(listAemJars,aemDemo.getDefaultProperties(), aemDemo.getPersonalProperties(),AemDemoConstants.OPTIONS_JAR_DEFAULT));
 			scrollAemJars.setViewportView(listAemJars);
 
@@ -143,6 +155,7 @@ public class AemDemoNew extends JDialog {
 			contentPanel.add(scrollMK);	
 			AemDemoProperty[] aemMKs = AemDemoUtils.listMKs(aemDemo.getBuildFile());
 			listMK = new JList(aemMKs);
+			listMK.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			listMK.setSelectedIndex(AemDemoUtils.getSelectedIndex(listMK,aemDemo.getDefaultProperties(), aemDemo.getPersonalProperties(),AemDemoConstants.OPTIONS_STORES_DEFAULT));
 			scrollMK.setViewportView(listMK);
 
@@ -157,6 +170,7 @@ public class AemDemoNew extends JDialog {
 			contentPanel.add(scrollSRP);
 			AemDemoProperty[] aemSRPs = AemDemoUtils.listSRPs(aemDemo.getBuildFile());
 			listSRP = new JList(aemSRPs);
+			listSRP.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			listSRP.setSelectedIndex(AemDemoUtils.getSelectedIndex(listSRP,aemDemo.getDefaultProperties(), aemDemo.getPersonalProperties(),AemDemoConstants.OPTIONS_SRPS_DEFAULT));
 			scrollSRP.setViewportView(listSRP);
 
@@ -178,9 +192,9 @@ public class AemDemoNew extends JDialog {
 
 					AemDemoProperty selectedSRP  = (AemDemoProperty) listSRP.getModel().getElementAt(listSRP.getSelectedIndex());
 					AemDemoProperty selectedMK  = (AemDemoProperty) listMK.getModel().getElementAt(listMK.getSelectedIndex());
-					AemDemoProperty selectedConfig  = (AemDemoProperty) listConfigs.getModel().getElementAt(listConfigs.getSelectedIndex());
 					AemDemoProperty selectedTopology  = (AemDemoProperty) listTopologies.getModel().getElementAt(listTopologies.getSelectedIndex());
 					AemDemoProperty selectedJar  = (AemDemoProperty) listAemJars.getModel().getElementAt(listAemJars.getSelectedIndex());
+					List<AemDemoProperty> selectedAddOns  = listConfigs.getSelectedValuesList();
 
 					// Input validation
 					if (!demoBuildName.getText().matches("[a-zA-Z0-9]+")) {
@@ -201,7 +215,7 @@ public class AemDemoNew extends JDialog {
 							}
 						}	
 					}
-					
+
 					// New ANT project
 					AemDemoProject p = new AemDemoProject(aemDemo);
 
@@ -210,8 +224,24 @@ public class AemDemoNew extends JDialog {
 					p.setUserProperty("demo.srp", selectedSRP.getValue());
 					p.setUserProperty("demo.store", selectedMK.getValue());
 					p.setUserProperty("demo.type", selectedTopology.getValue());
-					p.setUserProperty("demo.scenario", selectedConfig.getValue());
 					p.setUserProperty("demo.build", demoBuildName.getText());
+
+					// Overriding the demo add-on options with the current selection
+					Properties defaultProps = AemDemoUtils.loadProperties(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "build.properties");
+					Enumeration<?> props = defaultProps.keys();
+					while (props.hasMoreElements()) {
+						String key = (String) props.nextElement();
+						if (key.startsWith("demo.addons.") & !(key.endsWith("help") || key.endsWith("label"))) {
+							String addon = key.substring(1 + key.lastIndexOf("."));
+							AemDemoProperty currentAddon = new AemDemoProperty(addon, defaultProps.getProperty(key + ".label"));							
+							if (selectedAddOns.contains(currentAddon)) {
+								p.setUserProperty(key,"true");
+							} else {
+								p.setUserProperty(key,"false");
+							}
+							
+						}
+					}
 
 					// Make sure host name is there
 					try {
@@ -219,7 +249,7 @@ public class AemDemoNew extends JDialog {
 					} catch (UnknownHostException ex) {
 						logger.error(ex.getMessage());
 					}
-					
+
 					p.init();
 
 					ProjectHelper helper = ProjectHelper.getProjectHelper();
@@ -228,7 +258,7 @@ public class AemDemoNew extends JDialog {
 
 					// Running the target name as a new Thread
 					System.out.println("Building a new " + selectedTopology.getValue() + " demo named " + demoBuildName.getText());
-					Thread t = new Thread(new AemDemoRunnable(aemDemo, p, selectedConfig.getValue()));
+					Thread t = new Thread(new AemDemoRunnable(aemDemo, p, AemDemoConstants.BUILD_ACTION));
 					t.start();
 
 					// Closing the dialog

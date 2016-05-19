@@ -37,4 +37,21 @@ public class AemDemoProperty {
     public String toString() {
         return label;
     }
+    
+    @Override
+    public boolean equals(Object object)
+    {
+        boolean sameSame = false;
+
+        if (object != null && object instanceof AemDemoProperty)
+        {
+        	boolean sameSame1 = this.value.equals(((AemDemoProperty) object).value);
+        	boolean sameSame2 = this.label.equals(((AemDemoProperty) object).label);
+        	sameSame = sameSame1 && sameSame2;
+
+        }
+
+        return sameSame;
+    }
+    
 }

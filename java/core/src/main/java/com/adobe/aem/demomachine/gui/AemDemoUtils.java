@@ -32,9 +32,12 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
+import java.util.TreeSet;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -99,10 +102,90 @@ public class AemDemoUtils {
 
 	}
 
-	// Retrieves the list of Demo Configs from build.properties
-	public static AemDemoProperty[] listDemoConfigs(File buildFile) {
+	// Retrieves the list of Demo Addons from build.properties
+	public static int[] getDemoAddons(File buildFile) {
 
-		return listOptions(buildFile,AemDemoConstants.OPTIONS_DEMOCONFIGS);
+		List<Integer> listIndices = new ArrayList<Integer>();
+		
+		Properties defaultProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "build.properties");
+		Properties personalProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");
+
+		@SuppressWarnings("serial")
+		Properties sortedProps = new Properties() {
+			@Override
+			public synchronized Enumeration<Object> keys() {
+				return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+			}
+		};
+		sortedProps.putAll(defaultProps);
+
+		// Looping through all possible options
+		Enumeration<?> e = sortedProps.keys();
+		
+		int currentIndice = 0;
+		while (e.hasMoreElements()) {
+			String key = (String) e.nextElement();
+			if (key.startsWith("demo.addons.") & !(key.endsWith("help") || key.endsWith("label"))) {
+				String value = sortedProps.getProperty(key);
+				if (personalProps.containsKey(key)) {
+					value = personalProps.getProperty(key);
+				}
+				if (value.equals("true")) {
+					listIndices.add(currentIndice);
+				}
+				currentIndice = currentIndice + 1;
+			}
+		}
+		int[] array = new int[listIndices.size()];
+		for(int i = 0; i < listIndices.size(); i++) array[i] = listIndices.get(i);
+		return array;
+
+	}
+
+	
+	// Retrieves the list of Demo Addons from build.properties
+	public static AemDemoProperty[] listDemoAddons(File buildFile) {
+
+		List<AemDemoProperty> addons = new ArrayList<AemDemoProperty>();	
+		Properties defaultProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "build.properties");
+
+		@SuppressWarnings("serial")
+		Properties sortedProps = new Properties() {
+			@Override
+			public synchronized Enumeration<Object> keys() {
+				return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+			}
+		};
+		sortedProps.putAll(defaultProps);
+
+		// Looping through all possible options
+		Enumeration<?> e = sortedProps.keys();
+		
+		// List of paths to demo packages
+		List<String[]> listPaths = Arrays.asList(AemDemoConstants.demoPaths);
+
+		while (e.hasMoreElements()) {
+			String key = (String) e.nextElement();
+			if (key.startsWith("demo.addons.") & !(key.endsWith("help") || key.endsWith("label"))) {
+				String newKey = key.substring(1 + key.lastIndexOf("."));
+				
+				// Check if downloads are required
+				boolean downloadRequired = false;
+				for (String[] path:listPaths) {
+					if (path.length==5 && path[4]!=null && path[4].equals(newKey)) {
+						File pathFolder = new File(buildFile.getParentFile().getAbsolutePath() + (path[1].length()>0?(File.separator + path[1]):""));
+						if (!pathFolder.exists()) {
+							downloadRequired=true;
+						}
+					}
+				}
+				addons.add(new AemDemoProperty(newKey, sortedProps.getProperty(key + ".label") + (downloadRequired?" (*)":"")));
+			}
+		}
+
+		AemDemoProperty[] aemPropertyArray = new AemDemoProperty[ addons.size() ];
+		addons.toArray( aemPropertyArray );
+		return aemPropertyArray;
 
 	}
 
@@ -226,7 +309,7 @@ public class AemDemoUtils {
 			} catch (UnknownHostException ex) {
 				logger.error(ex.getMessage());
 			}
-			
+
 			p.init();
 
 			ProjectHelper helper = ProjectHelper.getProjectHelper();
@@ -299,7 +382,7 @@ public class AemDemoUtils {
 		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
 		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
 	}
-	
+
 	public static String calcMD5HashForDir(File dirToHash, boolean includeSubFolders, boolean includeHiddenFiles) {
 
 		assert (dirToHash.isDirectory());

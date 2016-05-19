@@ -28,6 +28,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.text.DateFormat;
+import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -848,11 +850,6 @@ public class Loader {
 					url[0] = record.get(1);
 					urlLevel=0;
 
-					if(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))
-					{
-						sitePagePath = url[0].substring(0, url[0].indexOf("/en") + 3);
-					}
-
 					if (!componentType.equals(SLINGPOST) && reset) {
 
 						int pos = record.get(1).indexOf("/jcr:content");
@@ -916,6 +913,17 @@ public class Loader {
 
 				nameValuePairs.add(new BasicNameValuePair("_charset_", "UTF-8"));
 
+				if(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))
+				{
+					sitePagePath = url[0].substring(0, url[0].indexOf("/en") + 3);
+				}
+
+				if(urlLevel==0 && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR)))
+				{					
+					// Generating a unique hashkey
+					nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
+				}
+				
 				// Setting some specific fields depending on the content type
 				if (componentType.equals(COMMENTS)) {
 
@@ -2440,6 +2448,14 @@ public class Loader {
 
 		return null;
 
+	}
+	
+	// Creating normalized and fixed URLs for the UGC posts
+	public static String slugify(String input) {
+	    return Normalizer.normalize(input, Normalizer.Form.NFD)
+	            .replaceAll("[^\\p{ASCII}]", "")
+	            .replaceAll("[^ \\w]", "").trim()
+	            .replaceAll("\\s+", "-").toLowerCase(Locale.ENGLISH);
 	}
 
 }
