@@ -26,36 +26,41 @@ public class AemDemoDownload implements Runnable {
 
 	private AemDemo aemDemo;
 	private long currentSize;
-	
-    public AemDemoDownload( AemDemo aemDemo ) {
 
-       this.aemDemo = aemDemo;
+	public AemDemoDownload( AemDemo aemDemo ) {
 
-    }
+		this.aemDemo = aemDemo;
+
+	}
 
 	public void run() {
-    	
+
 		if (aemDemo.getDownloadInProgress()) {
 
-		    File theNewestFile = null;
-		    File dir = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "dist" + File.separator + "downloads");
-		    FileFilter fileFilter = new WildcardFileFilter("*.*");
-		    File[] files = dir.listFiles(fileFilter);
+			File theNewestFile = null;
+			File dir = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "dist" + File.separator + "downloads");
+			
+			// Folder might have not been created yet
+			if (dir!=null && dir.exists()) {
+				FileFilter fileFilter = new WildcardFileFilter("*.*");
+				File[] files = dir.listFiles(fileFilter);
 
-		    if (files.length > 0) {
-		        /** The newest file comes first **/
-		        Arrays.sort(files, LastModifiedFileComparator.LASTMODIFIED_REVERSE);
-		        theNewestFile = files[0];
-		        long newSize = theNewestFile.length();
-		        if (newSize!=currentSize && (theNewestFile.getName().indexOf("xml")<0) && (theNewestFile.getName().indexOf("html")<0) && (theNewestFile.lastModified() > (System.currentTimeMillis() - 5000 ))) {
-		        	System.out.println("     [echo] " + theNewestFile.getName() + " (" + AemDemoUtils.humanReadableByteCount(theNewestFile.length(),true) +")");
-		        	currentSize = newSize;
-		        }
-		        
-		    }
+				if (files.length > 0) {
+					/** The newest file comes first **/
+					Arrays.sort(files, LastModifiedFileComparator.LASTMODIFIED_REVERSE);
+					theNewestFile = files[0];
+					long newSize = theNewestFile.length();
+					if (newSize!=currentSize && (theNewestFile.getName().indexOf("xml")<0) && (theNewestFile.getName().indexOf("html")<0) && (theNewestFile.lastModified() > (System.currentTimeMillis() - 5000 ))) {
+						System.out.println("     [echo] " + theNewestFile.getName() + " (" + AemDemoUtils.humanReadableByteCount(theNewestFile.length(),true) +")");
+						currentSize = newSize;
+					}
+
+				}
+
+			}
 
 		}    
-		
+
 	}
 
 }

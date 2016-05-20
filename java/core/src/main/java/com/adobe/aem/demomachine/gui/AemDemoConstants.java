@@ -58,6 +58,7 @@ public class AemDemoConstants {
 			  { "10", "dist/hotfixes", "AEM Hotfixes", "true", "hotfixes" },
 			  { "11", "dist/we-retail", "AEM We-Retail", "true", "weretail" },
 			  { "12", "dist/livefyre", "AEM Livefyre", "true", "livefyre" },
+			  { "13", "dist/commerce", "AEM Commerce", "false", "commerce" },
 			};
 	
 }
