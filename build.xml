@@ -1243,6 +1243,15 @@
 	<!-- Target for installing the Assets demo -->
 	<target name="assets" depends="version,configuration">
 		<antcall target="demomachine_analytics_assets"/>
+		<antcall target="dynamic_media">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<antcall target="assets_homepage">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<antcall target="assets_versions">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 		<foreach target="package_author" param="package">
 			<path id="assets.packages">
 				<fileset dir="${dist}" casesensitive="yes">
@@ -1253,6 +1262,9 @@
 				</fileset>
 			</path>
 		</foreach>
+		<antcall target="assets_smarttags">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 	</target>
 	<!-- Target for installing the Forms demo -->
 	<target name="forms" depends="version,configuration">
@@ -2550,15 +2562,6 @@
 				<antcall target="scene7_registration">
 					<param name="port" value="${port}"/>
 				</antcall>
-				<antcall target="dynamic_media">
-					<param name="port" value="${port}"/>
-				</antcall>
-				<antcall target="assets_homepage">
-					<param name="port" value="${port}"/>
-				</antcall>
-				<antcall target="assets_versions">
-					<param name="port" value="${port}"/>
-				</antcall>
 				<antcall target="dps">
 					<param name="port" value="${port}"/>
 				</antcall>
@@ -3074,6 +3077,102 @@
 			<arg line="-d cq.dam.webdav.version.linking.staging.timeout=10"/>
 			<arg line="-d propertylist=cq.dam.webdav.version.linking.enable,cq.dam.webdav.version.linking.scheduler.period,cq.dam.webdav.version.linking.staging.timeout"/>
 			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.dam.webdav.impl.io.DamWebdavVersionLinkingJob"/>
+		</exec>
+	</target>
+	<!-- Adobe AEM Assets: enabling smart tags -->
+	<target name="assets_smarttags" if="aem62orlater">
+		<if>
+			<equals arg1="${demo.assets.smarttags.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring AEM Assets Smart Tags"/>
+				<!-- Reindexing the Lucene OAK index for assets -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetsindex.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d reindex=true"/>
+					<arg line="http://${demo.host}:${port}/oak:index/damAssetLucene"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetsfeatureflag.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d feature.flag.active.status=true"/>
+					<arg line="-d feature.flag.active.status=false"/>
+					<arg line="-d propertylist=feature.flag.active.status"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.similaritysearch.internal.impl.AutoTagAssetFeatureFlag"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetstaggingservice.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d index.server.url=${demo.assets.smarttags.url}"/>
+					<arg line="-d indexed.rendition=cq5dam.thumbnail.319.319.png"/>
+					<arg line="-d max.tags=${demo.assets.smarttags.maxtags}"/>
+					<arg line="-d min.tag.confidence=${demo.assets.smarttags.minconfidence}"/>
+					<arg line="-d propertylist=index.server.url,indexed.rendition,max.tags,min.tag.confidence"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.similaritysearch.internal.impl.SimilaritySearchServiceImpl"/>
+				</exec>
+				<!-- Inserting the Smart Tag extraction task to the DAM update workflow -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetsworkflowinserttask.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d ./jcr:description='This process will add smart tags to assets.'"/>
+					<arg line="-d ./jcr:title='Smart Tag Asset Process'"/>
+					<arg line="-d ./PROCESS_AUTO_ADVANCE=true"/>
+					<arg line="-d ./PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
+					<arg line="-d _charset_=utf-8"/>
+					<arg line="-d ./sling:resourceType=dam/components/workflow/autotagassetprocess"/>
+					<arg line="-d :nameHint=autotagassetprocess"/>
+					<arg line="-d parentResourceType=cq/flow/components/parsys"/>
+					<arg line="-d :order='before commandlineprocess'"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetsworkflowupdatetask.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--globoff"/>
+					<arg line="-d _charset_=utf-8"/>
+					<arg line="-d ./PROCESS_AUTO_ADVANCE@Delete="/>
+					<arg line="-d ./metaData/PROCESS_AUTO_ADVANCE=true"/>
+					<arg line="-d ./PROCESS@Delete="/>
+					<arg line="-d ./metaData/PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/autotagassetprocess"/>
+				</exec>
+				<!-- Saving the workflow model -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_assetsworkflowsave.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content.generate.json"/>
+				</exec>
+				<!-- For each folder where we need to set the Smart Tag property -->
+				<propertyselector property="folders" match="demo.assets.smarttags.folders\.([^\.]*)" select="\1" casesensitive="false"/>
+				<foreach list="${folders}" target="assetsfolder" param="myparam"/>
+			</then>
+		</if>
+	</target>
+	<target name="assetsfolder">
+		<propertycopy property="folder" from="demo.assets.smarttags.folders.${myparam}"/>
+		<echo message="Enabling Smart Tagging on folder ${folder}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_assetsfolder_${myparam}'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d autotag=true"/>
+			<arg line="http://${demo.host}:${port}${folder}/jcr:content"/>
 		</exec>
 	</target>
 	<!-- Adobe AEM Apps: setting "allow empty" to true for PhoneGap Enterprise App -->

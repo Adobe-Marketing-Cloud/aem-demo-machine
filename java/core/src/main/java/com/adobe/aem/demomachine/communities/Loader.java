@@ -922,6 +922,7 @@ public class Loader {
 				{					
 					// Generating a unique hashkey
 					nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
+					logger.debug("URL Normalized to " + slugify(record.get(2)));
 				}
 				
 				// Setting some specific fields depending on the content type
