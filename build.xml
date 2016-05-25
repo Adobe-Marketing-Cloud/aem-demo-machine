@@ -1334,19 +1334,6 @@
 				</antcall>
 			</then>
 		</if>
-		<!-- Changing the Sling main servlet to handle more than 1000 nested requests -->
-		<exec executable="curl">
-			<arg line="--output '${logs}/${demomachine.authorport}_mainsling.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-X POST"/>
-			<arg line="--globoff"/>
-			<arg line="-d apply=true"/>
-			<arg line="-d action=ajaxConfigManager"/>
-			<arg line="-d $location="/>
-			<arg line="-d sling.max.calls=2000"/>
-			<arg line="-d propertylist=sling.max.calls"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/org.apache.sling.engine.impl.SlingMainServlet"/>
-		</exec>
 		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 			<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 		</waitfor>
@@ -2583,6 +2570,29 @@
 		<antcall target="externalizer">
 			<param name="port" value="${port}"/>
 		</antcall>
+		<antcall target="slingconfig">
+			<param name="port" value="${port}"/>
+		</antcall>
+	</target>
+	<!-- Target for updading Sling settings -->
+	<target name="slingconfig">
+		<!-- Changing the Sling main servlet to handle more than 1000 nested requests -->
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_mainsling.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d sling.max.calls=2000"/>
+			<arg line="-d propertylist=sling.max.calls"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.engine.impl.SlingMainServlet"/>
+		</exec>
+		<sleep seconds="5"/>
+		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		</waitfor>
 	</target>
 	<!-- Target for loading a package on the AUTHOR instance -->
 	<target name="package_author" depends="configuration">
