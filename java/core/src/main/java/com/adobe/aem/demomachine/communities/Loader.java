@@ -141,6 +141,7 @@ public class Loader {
 	private static final String BANNER = "pagebanner";
 	private static final String THUMBNAIL = "pagethumbnail";
 	private static final String LANGUAGE = "baseLanguage";
+	private static final String LANGUAGES = "initialLanguages";
 	private static final String ROOT = "siteRoot";
 	private static final String CSS = "pagecss";
 	private static final int MAXRETRIES=10;
@@ -267,6 +268,7 @@ public class Loader {
 			Version vBundleCommunitiesCalendar = getVersion(bundlesList, "com.adobe.cq.social.cq-social-calendar");
 			Version vBundleCommunitiesNotifications = getVersion(bundlesList, "com.adobe.cq.social.cq-social-notifications-impl");
 			Version vBundleCommunitiesSCORM = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scorm-dam");
+			Version vBundleCommunitiesSCF = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scf-impl");
 
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			for (CSVRecord record : records) {
@@ -320,7 +322,6 @@ public class Loader {
 							if (value.equals("TRUE")) { value = "true"; }
 							if (value.equals("FALSE")) { value = "false"; }	
 							if (name.equals("urlName")) { urlName = value; }
-							if (name.equals(LANGUAGE)) { language = value; }
 							if (name.equals(ROOT)) {
 								rootPath = value;
 								logger.debug("Rootpath for subsequent processing is: " + rootPath);
@@ -331,8 +332,19 @@ public class Loader {
 								addBinaryBody(builder, lIs, rr, THUMBNAIL, csvfile, value);
 							} else if (name.equals(CSS)) {
 								addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
+							} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
+								
+								language = value;
+								
+								// Starting with 6.1 FP5, we can create multiple languages at once
+								if (vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version("1.2.2"))>0) {
+									builder.addTextBody(LANGUAGES, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+								} else {
+									builder.addTextBody(LANGUAGE, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+								}
+								
 							} else {
-
+								
 								// For cloud services, we verify that they are actually available
 								if ((name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
 
@@ -359,18 +371,33 @@ public class Loader {
 							}
 						}
 					}
-
-					Map<String, String> elements = new HashMap<String, String>();
-					elements.put("response/siteId", "");
-					elements.put("response/sitePagePath", "");
+					
 					// Site creation
-					doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), elements,
+					doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
 							null);
-					String siteId = elements.get("response/siteId");
-					sitePagePath = elements.get("response/sitePagePath");
+
+					// Getting the newly created site ID and page path
+					String siteConfig = doGet(hostname, port,
+							rootPath + "/" + urlName + "/" + language + "/configuration.social.json",
+							"admin",adminPassword,
+							null);
+
+					String siteId = null;
+					sitePagePath = null;
+
+					try {
+
+						siteId = new JSONObject(siteConfig).getString("siteId");
+						sitePagePath = new JSONObject(siteConfig).getString("sitePagePath");
+
+					} catch (Exception e) {
+
+						logger.error("ERROR:" + e.getMessage());
+
+					}
 
 					// No need to keep going if these settings are not properly returned for any reason
-					if (sitePagePath==null || sitePagePath.equals("")) {
+					if (siteId==null || siteId.equals("") || sitePagePath==null || sitePagePath.equals("")) {
 						logger.error("ERROR: Community Site not created properly");
 						return;
 					}
@@ -922,7 +949,6 @@ public class Loader {
 				{					
 					// Generating a unique hashkey
 					nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
-					logger.debug("URL Normalized to " + slugify(record.get(2)));
 				}
 				
 				// Setting some specific fields depending on the content type

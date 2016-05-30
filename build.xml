@@ -4131,6 +4131,7 @@
 		<antcall target="community_upgrade"/>
 		<antcall target="community_advanced"/>
 		<antcall target="community_tunnel"/>
+		<antcall target="community_fragment"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
 		<!-- Load all the sample content -->
@@ -4436,6 +4437,43 @@
 				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 				</waitfor>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the Communities content fragment creation service -->
+	<target name="community_fragment" if="aem62orlater">
+		<echo message="Configuring AEM Communities Content Fragment creation service on port ${demomachine.authorport}..."/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_fragment.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d cq.social.moderation.services.fragments.enabled=true"/>
+			<arg line="-d cq.social.moderation.services.fragments.enabled=false"/>
+			<arg line="-d propertylist=cq.social.moderation.services.fragments.enabled"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.moderation.services.impl.CommunitiesFragmentCreationServiceImpl"/>
+		</exec>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<echo message="Configuring AEM Communities Content Fragment creation service on port ${demomachine.publishport}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${demomachine.publishport}_fragment.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d cq.social.moderation.services.fragments.enabled=true"/>
+					<arg line="-d cq.social.moderation.services.fragments.enabled=false"/>
+					<arg line="-d propertylist=cq.social.moderation.services.fragments.enabled"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.moderation.services.impl.CommunitiesFragmentCreationServiceImpl"/>
+				</exec>
+				<sleep seconds="5"/>
 			</then>
 		</if>
 	</target>
