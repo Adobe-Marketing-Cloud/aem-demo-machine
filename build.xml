@@ -4135,7 +4135,12 @@
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
 		<!-- Load all the sample content -->
-		<antcall target="community_loader_content"/>
+		<if>
+			<equals arg1="${demo.communities.samples.geometrixx}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_content"/>
+			</then>
+		</if>
 		<!-- Check if we need to install the reference site -->
 		<if>
 			<equals arg1="${demo.communities.samples.communities}" arg2="true" casesensitive="false"/>

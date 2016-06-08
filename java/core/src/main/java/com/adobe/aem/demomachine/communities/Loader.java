@@ -266,6 +266,9 @@ public class Loader {
 			// Some steps are specific to the version number of the Enablement add-on
 			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
 			Version vBundleCommunitiesCalendar = getVersion(bundlesList, "com.adobe.cq.social.cq-social-calendar");
+			if (vBundleCommunitiesCalendar==null) {
+				vBundleCommunitiesCalendar = getVersion(bundlesList, "com.adobe.cq.social.cq-social-calendar-impl");				
+			}
 			Version vBundleCommunitiesNotifications = getVersion(bundlesList, "com.adobe.cq.social.cq-social-notifications-impl");
 			Version vBundleCommunitiesSCORM = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scorm-dam");
 			Version vBundleCommunitiesSCF = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scf-impl");
@@ -333,18 +336,18 @@ public class Loader {
 							} else if (name.equals(CSS)) {
 								addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
 							} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
-								
+
 								language = value;
-								
+
 								// Starting with 6.1 FP5, we can create multiple languages at once
 								if (vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version("1.2.2"))>0) {
 									builder.addTextBody(LANGUAGES, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 								} else {
 									builder.addTextBody(LANGUAGE, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 								}
-								
+
 							} else {
-								
+
 								// For cloud services, we verify that they are actually available
 								if ((name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
 
@@ -371,7 +374,7 @@ public class Loader {
 							}
 						}
 					}
-					
+
 					// Site creation
 					doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
 							null);
@@ -950,7 +953,7 @@ public class Loader {
 					// Generating a unique hashkey
 					nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
 				}
-				
+
 				// Setting some specific fields depending on the content type
 				if (componentType.equals(COMMENTS)) {
 
@@ -1486,7 +1489,7 @@ public class Loader {
 
 					// If we are dealing with a SCORM asset, we wait a little bit before publishing the resource to that the SCORM workflow is completed 
 					if (record.get(2).indexOf(".zip")>0) {
-						doSleep(10000, "SCORM Resource, waiting for workflow to complete");
+						doSleep(20000, "SCORM Resource, waiting for workflow to complete");
 					}
 
 					// Publishing the resource 
@@ -2476,13 +2479,13 @@ public class Loader {
 		return null;
 
 	}
-	
+
 	// Creating normalized and fixed URLs for the UGC posts
 	public static String slugify(String input) {
-	    return Normalizer.normalize(input, Normalizer.Form.NFD)
-	            .replaceAll("[^\\p{ASCII}]", "")
-	            .replaceAll("[^ \\w]", "").trim()
-	            .replaceAll("\\s+", "-").toLowerCase(Locale.ENGLISH);
+		return Normalizer.normalize(input, Normalizer.Form.NFD)
+				.replaceAll("[^\\p{ASCII}]", "")
+				.replaceAll("[^ \\w]", "").trim()
+				.replaceAll("\\s+", "-").toLowerCase(Locale.ENGLISH);
 	}
 
 }
