@@ -1486,7 +1486,7 @@
 		<echo message="Downloading AEM 6.2"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/aem62.jar' ${demo.download.aem.62}"/>
+			<arg line="-s -L -o '${dist}/downloads/aem62.jar' ${demo.download.aem.62}"/>
 		</exec>
 		<echo message="AEM 6.2 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem62.jar" todir="${dist}/bin"/>
@@ -1495,7 +1495,7 @@
 		<echo message="Downloading AEM 6.1"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/aem61.jar' ${demo.download.aem.61}"/>
+			<arg line="-s -L -o '${dist}/downloads/aem61.jar' ${demo.download.aem.61}"/>
 		</exec>
 		<echo message="AEM 6.1 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem61.jar" todir="${dist}/bin"/>
@@ -1504,7 +1504,7 @@
 		<echo message="Downloading AEM 6.0"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/aem60.jar' ${demo.download.aem.60}"/>
+			<arg line="-s -L -o '${dist}/downloads/aem60.jar' ${demo.download.aem.60}"/>
 		</exec>
 		<echo message="AEM 6.0 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem60.jar" todir="${dist}/bin"/>
@@ -1513,7 +1513,7 @@
 		<echo message="Downloading CQ 5.6.1"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq561.jar' ${demo.download.aem.561}"/>
+			<arg line="-s -L -o '${dist}/downloads/cq561.jar' ${demo.download.aem.561}"/>
 		</exec>
 		<echo message="CQ 5.6.1 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/cq561.jar" todir="${dist}/bin"/>
@@ -1522,7 +1522,7 @@
 		<echo message="Downloading CQ 5.6"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq56.jar' ${demo.download.aem.56}"/>
+			<arg line="-s -L -o '${dist}/downloads/cq56.jar' ${demo.download.aem.56}"/>
 		</exec>
 		<echo message="CQ 5.6 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/cq56.jar" todir="${dist}/bin"/>
