@@ -996,8 +996,12 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updatesubscriptions"));
 						nameValuePairs.add(new BasicNameValuePair("types", "following"));
 						nameValuePairs.add(new BasicNameValuePair("types", "notification"));
+						if (vBundleCommunitiesNotifications.compareTo(new Version("1.1.0"))>0)
+							nameValuePairs.add(new BasicNameValuePair("types", "subscription"));
 						nameValuePairs.add(new BasicNameValuePair("states", record.get(2).toLowerCase()));
 						nameValuePairs.add(new BasicNameValuePair("states", record.get(3).toLowerCase()));
+						if (vBundleCommunitiesNotifications.compareTo(new Version("1.1.0"))>0)
+							nameValuePairs.add(new BasicNameValuePair("states", record.get(4).toLowerCase()));
 						nameValuePairs.add(new BasicNameValuePair("subscribedId", record.get(5)));
 
 					} else {
