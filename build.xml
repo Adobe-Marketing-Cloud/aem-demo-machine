@@ -1935,6 +1935,10 @@
 			<param name="packageshare.capability" value="scorm"/>
 			<param name="packageshare.target" value="${dist}/community/scorm"/>
 		</antcall>
+		<antcall target="download_packageshare">
+			<param name="packageshare.capability" value="advancedscoring"/>
+			<param name="packageshare.target" value="${dist}/community/advancedscoring"/>
+		</antcall>
 	</target>
 	<!-- Target for downloading the Hotfixes -->
 	<target name="download_hotfixes_packages">
@@ -1943,8 +1947,14 @@
 			<param name="packageshare.target" value="${dist}/hotfixes"/>
 		</antcall>
 	</target>
-	<!-- Target for downloading latest Communities uber -->
+	<!-- Target for downloading latest Communities packages -->
 	<target name="download_communities">
+		<antcall target="download_communities_bundles"/>
+		<antcall target="download_communities_advanced"/>
+		<antcall target="download_communities_scorm"/>
+	</target>
+	<!-- Target for downloading latest Communities bundles -->
+	<target name="download_communities_bundles">
 		<echo message="Downloading latest Communities bundles for various versions (service packs and feature packs)"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
@@ -1980,41 +1990,18 @@
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
 	</target>
-	<!-- Target for downloading latest Advancec Scoring and Badging Packagss -->
+	<!-- Target for downloading latest Advanced Scoring and Badging Packages -->
 	<target name="download_communities_advanced">
-		<echo message="Downloading latest advanced scoring and badging packages"/>
-		<antcall target="download_communities_advanced_scoring"/>
-		<antcall target="download_communities_advanced_badging"/>
-	</target>
-	<target name="download_communities_advanced_scoring">
 		<echo message="Downloading latest advanced scoring package"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scoring-advanced-pkg/maven-metadata.xml"/>
+			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-expert-identification-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
-		<echo message="Downloading cq-social-badging-scoring-pkg-${metadata.versioning.release}.zip"/>
+		<echo message="Downloading cq-social-expert-identification-pkg-${metadata.versioning.release}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-scoring-adv.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scoring-advanced-pkg/${metadata.versioning.release}/cq-social-scoring-advanced-pkg-${metadata.versioning.release}.zip"/>
+			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-expert-identification-pkg/${metadata.versioning.release}/cq-social-expert-identification-pkg-${metadata.versioning.release}.zip"/>
 		</exec>
-		<delete>
-			<fileset dir="${dist}/downloads" includes="*.xml"/>
-		</delete>
-	</target>
-	<target name="download_communities_advanced_badging">
-		<echo message="Downloading latest advanced badging packages"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-badging-advanced-pkg/maven-metadata.xml"/>
-		</exec>
-		<xmlproperty file="${dist}/downloads/nexus.xml"/>
-		<echo message="Downloading cq-social-badging-advanced-pkg-${metadata.versioning.release}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-badging-adv.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-badging-advanced-pkg/${metadata.versioning.release}/cq-social-badging-advanced-pkg-${metadata.versioning.release}.zip"/>
-		</exec>
-		<delete>
-			<fileset dir="${dist}/downloads" includes="*.xml"/>
-		</delete>
 	</target>
 	<!-- Target for downloading latest Livefyre feature pack -->
 	<target name="download_livefyre_packages">
@@ -2024,13 +2011,8 @@
 			<param name="packageshare.target" value="${dist}/livefyre"/>
 		</antcall>
 	</target>
-	<!-- Target for downloading latest Communities bundles -->
-	<target name="download_communities_bundles">
-		<antcall target="download_communities"/>
-		<antcall target="download_scorm"/>
-	</target>
 	<!-- Target for downloading latest Scorm bundle -->
-	<target name="download_scorm">
+	<target name="download_communities_scorm">
 		<echo message="Downloading latest SCORM bundle"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
@@ -3838,21 +3820,36 @@
 			<and>
 				<equals arg1="${demo.communities.advancedscoring}" arg2="true" casesensitive="false"/>
 				<socket server="${demo.host}" port="${port}"/>
-				<resourceexists>
-					<file file="${dist}/downloads/communities-badging-adv.zip"/>
-				</resourceexists>
-				<resourceexists>
-					<file file="${dist}/downloads/communities-scoring-adv.zip"/>
-				</resourceexists>
 			</and>
 			<then>
-				<echo message="Installing Advanced Scoring and Badging bundles on ${port}"/>
-				<antcall target="package">
-					<param name="package" value="${dist}/downloads/communities-badging-adv.zip"/>
-				</antcall>
-				<antcall target="package">
-					<param name="package" value="${dist}/downloads/communities-scoring-adv.zip"/>
-				</antcall>
+				<if>
+					<and>
+						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+						<resourceexists>
+							<file file="${dist}/downloads/cq-social-expert-identification-pkg.zip"/>
+						</resourceexists>
+					</and>
+					<then>
+						<echo message="Installing latest Advanced Scoring bundle on ${port}"/>
+						<antcall target="package">
+							<param name="package" value="${dist}/downloads/cq-social-expert-identification-pkg.zip"/>
+						</antcall>
+					</then>
+				</if>
+				<if>
+					<and>
+						<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+						<resourceexists>
+							<file file="${dist}/community/advancedscoring/all/cq-social-expert-identification-pkg.zip"/>
+						</resourceexists>
+					</and>
+					<then>
+						<echo message="Installing released Advanced Scoring bundle on ${port}"/>
+						<antcall target="package">
+							<param name="package" value="${dist}/community/advancedscoring/all/cq-social-expert-identification-pkg.zip"/>
+						</antcall>
+					</then>
+				</if>
 			</then>
 		</if>
 	</target>
