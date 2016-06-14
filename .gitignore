@@ -13,6 +13,8 @@ target
 # Ignore downloaded feature packs for Communities
 aem61-fp*
 aem62-fp*
+cq-social-expert-identification-pkg*
+cq-social-scorm-pkg*
 
 # Ignore IDE and Operating System artifacts
 .idea
