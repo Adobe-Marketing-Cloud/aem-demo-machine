@@ -695,10 +695,14 @@ public class Loader {
 							"response/memberGroupId");
 
 					// Wait for group to be available on Publish, if available
-					logger.debug("Waiting for completion of Community Group creation");
-					doWait(hostname, port,
-							"admin", adminPassword,
-							memberGroupId);
+					if (memberGroupId!=null && memberGroupId.length()>0) {
+						logger.debug("Waiting for completion of Community Group creation");
+						doWait(hostname, port,
+								"admin", adminPassword,
+								memberGroupId);
+					} else {
+						logger.warn("Member Group ID was not returned, hence not waiting for group creation");
+					}
 
 					continue;
 

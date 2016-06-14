@@ -1237,6 +1237,13 @@
 				<delete dir="${solr}/example/solr/${demo.build}/data"/>
 			</then>
 		</if>
+		<!-- check if we need to clean up the associated MySQL database -->
+		<if>
+			<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="mysql_stop"/>
+			</then>
+		</if>
 		<delete dir="${demos}/${demo.build}" failonerror="false"/>
 		<delete dir="${logs}" failonerror="false"/>
 		<delete dir="./logs/build" failonerror="false"/>
