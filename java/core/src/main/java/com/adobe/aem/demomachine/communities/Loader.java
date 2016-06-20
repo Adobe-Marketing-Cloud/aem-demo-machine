@@ -2033,6 +2033,11 @@ public class Loader {
 			HttpEntity entity, Map<String, String> elements, String referer) {
 		String jsonElement = null;
 
+		if (hostname==null || port==null || url==null || user==null || password==null) {
+			logger.error("Can't POST with requested parameters, one is null");
+			return 500;
+		}
+		
 		int returnCode = 404;
 
 		try {
