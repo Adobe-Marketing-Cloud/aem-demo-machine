@@ -148,6 +148,8 @@ public class Loader {
 	private static final int REPORTINGDAYS=-21;
 	private static final String ENABLEMENT61FP2 = "1.0.135";
 	private static final String ENABLEMENT61FP3 = "1.0.148";
+	private static final String ENABLEMENT61FP4 = "1.0.164";
+	private static final String ENABLEMENT62 = "1.1.0";
 
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
 
@@ -272,6 +274,7 @@ public class Loader {
 			Version vBundleCommunitiesNotifications = getVersion(bundlesList, "com.adobe.cq.social.cq-social-notifications-impl");
 			Version vBundleCommunitiesSCORM = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scorm-dam");
 			Version vBundleCommunitiesSCF = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scf-impl");
+			Version vBundleCommunitiesAdvancedScoring = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scoring-advanced-impl");
 
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			for (CSVRecord record : records) {
@@ -589,35 +592,46 @@ public class Loader {
 				if (record.get(0).equals(BADGE)) {
 
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
-						logger.warn("Badging operations not available with this version of AEM");	
+						logger.warn("Badging operations not available with this version of AEM");
+						continue;
 					}
 
-					// Building the form entity to be posted
-					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody(":operation", "social:assignBadge", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+					List<NameValuePair> nameValuePairs = buildNVP(record, 2);
+					if (nameValuePairs.size()>2) {
 
-					for (int i=2;i<record.size()-1;i=i+2) {
+						// Checking the type of badging operation
+						if (record.get(1).startsWith("/home")) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:assignBadge"));
+						}
 
-						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0 && record.get(i+1).length()>0) {
+						for (int i=0;i<nameValuePairs.size();i=i+1) {
 
-							String name = record.get(i).trim();
-							String value = record.get(i+1).trim();
-							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							String name = nameValuePairs.get(i).getName();
+							String value = nameValuePairs.get(i).getValue();
+
+							// Special case to accommodate re-factoring of badging images
+							if ((name.equals("badgeContentPath") || name.startsWith("thresholds")) && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+								value = value.replaceAll("/jcr:content", "");
+								nameValuePairs.set(i, new BasicNameValuePair(name, value));
+							}
+
+							// Special case for accommodate advanced scoring being installed or not
+							if (name.endsWith("Rules") && value.contains("adv-") && vBundleCommunitiesAdvancedScoring==null) {
+								nameValuePairs.remove(i--);
+							}
 
 						}
 					}
 
-					// Badge assignment
+					// Badge operation
 					doPost(hostname, port,
 							record.get(1),
 							"admin", adminPassword,
-							builder.build(),
+							new UrlEncodedFormEntity(nameValuePairs),
 							null);
 
 					continue;
 				}
-
 
 				// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
 				if (record.get(0).equals(SITETEMPLATE)) {
@@ -900,12 +914,16 @@ public class Loader {
 						String configurePath = getConfigurePath(record.get(1));
 
 						List<NameValuePair> nameValuePairs = buildNVP(record, 2);
-						if (nameValuePairs.size()>2)    // Only do this when really have configuration settings
+						if (nameValuePairs.size()>2) {
+
+							// Only do this when really have configuration settings
 							doPost(hostname, port,
 									configurePath,
 									"admin", adminPassword,
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
+
+						}
 
 						// If the Sling POST touches the system console, then we need to make sure the system is open for business again before we proceed
 						if (record.get(1).indexOf("system/console")>0) {
@@ -915,6 +933,9 @@ public class Loader {
 									"administrators"
 									);
 						}
+
+
+
 					}
 
 					// We're done with this line, moving on to the next line in the CSV file
@@ -2037,7 +2058,7 @@ public class Loader {
 			logger.error("Can't POST with requested parameters, one is null");
 			return 500;
 		}
-		
+
 		int returnCode = 404;
 
 		try {
@@ -2410,7 +2431,7 @@ public class Loader {
 
 			if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
 
-				// We have a non String hint to pass to the POST servlet
+				// We have a non String hint to pass to the POST Servlet
 				String name = record.get(i);
 				String value = record.get(i+1);
 				if (value.equals("TRUE")) { value = "true"; }
@@ -2418,7 +2439,6 @@ public class Loader {
 
 				int hint = name.indexOf("@");
 				if (hint>0) {
-					logger.debug(name.substring(0,hint) + "@TypeHint:" + name.substring(1+hint));
 					nameValuePairs.add(new BasicNameValuePair(name.substring(0,hint) + "@TypeHint", name.substring(1+hint)));					            		
 					name = name.substring(0,hint);
 				} else {
@@ -2436,7 +2456,6 @@ public class Loader {
 					}
 					for (String currentValue : values) {
 						nameValuePairs.add(new BasicNameValuePair(name, currentValue));	
-						logger.debug("Multiple List" + name + " " + currentValue);
 					}
 				} else {					            		
 					nameValuePairs.add(new BasicNameValuePair(name, value));					            							            		
