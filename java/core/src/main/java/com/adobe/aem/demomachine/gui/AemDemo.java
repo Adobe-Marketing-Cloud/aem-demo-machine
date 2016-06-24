@@ -820,6 +820,31 @@ public class AemDemo {
 		btnInfo.setBounds(250, 59, 117, 29);
 		frameMain.getContentPane().add(btnInfo);
 
+		// Rebuild action
+		JButton btnRebuild = new JButton("Rebuild");
+		btnRebuild.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+
+				if (AemDemo.this.getBuildInProgress()) {
+
+					JOptionPane.showMessageDialog(null, "A Demo Environment is currently being built. Please wait until it is finished.");
+
+				} else {
+
+					final AemDemoRebuild dialogRebuild = new AemDemoRebuild(AemDemo.this);
+					dialogRebuild.setModal(true);
+					dialogRebuild.setVisible(true);
+					dialogRebuild.getDemoBuildName().requestFocus();;
+
+				}
+
+			}
+		});
+
+		btnRebuild.setBounds(250, 89, 117, 29);
+		frameMain.getContentPane().add(btnRebuild);
+
+		// Stop action 
 		JButton btnStop = new JButton("Stop");
 		btnStop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -969,6 +994,10 @@ public class AemDemo {
 
 	public JList<String> getListDemoMachines() {
 		return this.listDemoMachines;
+	}	
+
+	public String getSelectedDemoMachine() {
+		return this.listDemoMachines.getSelectedValue();
 	}	
 
 }

@@ -33,7 +33,7 @@ import org.apache.log4j.Logger;
 import com.adobe.aem.demomachine.gui.AemDemoConstants;
 import com.adobe.aem.demomachine.gui.AemDemoUtils;
 
-// This file will generate checksums for 
+// This method will generate checksums for a list of demo machine folders with add-ons/packages
 public class Checksums {
 
 	static Logger logger = Logger.getLogger(Checksums.class);

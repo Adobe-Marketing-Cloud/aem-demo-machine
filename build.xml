@@ -256,6 +256,8 @@
 			<entry key="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
 		</propertyfile>
 		<property file="${demos}/${demo.build}/demomachine.properties"/>
+		<echo message="Persisting build options in demobuild.properties"/>
+		<echoproperties destfile="${demos}/${demo.build}/demobuild.properties"/>
 		<property name="demo.spfile" value="${dist}/bin/${demo.jar}-sp.zip"/>
 		<echo message="AEM JAR to use: ${demo.jar}.jar"/>
 		<if>

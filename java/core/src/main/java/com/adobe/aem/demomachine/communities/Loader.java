@@ -110,6 +110,7 @@ public class Loader {
 	private static final String SITEUPDATE = "SiteUpdate";
 	private static final String SITEPUBLISH = "SitePublish";
 	private static final String SITETEMPLATE = "SiteTemplate";
+	private static final String GROUPTEMPLATE = "GroupTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
 	private static final String SITEMEMBERS = "SiteMembers";
 	private static final String GROUP = "Group";
@@ -634,12 +635,12 @@ public class Loader {
 				}
 
 				// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
-				if (record.get(0).equals(SITETEMPLATE)) {
+				if (record.get(0).equals(SITETEMPLATE) || record.get(0).equals(GROUPTEMPLATE)) {
 
 					// Building the form entity to be posted
 					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody(":operation", "social:createSiteTemplate", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+					builder.addTextBody(":operation", "social:create" + record.get(0), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 					boolean isValid=true;
@@ -697,6 +698,10 @@ public class Loader {
 								addBinaryBody(builder, lIs, rr, IMAGE, csvfile, value);
 							} else {
 								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							}
+							if (name.equals("siteRoot")) {
+								// Some content root has been provided for the Group. It might result from previous actions and might not be there yet - let's wait for it
+								doWaitPath(hostname, port, adminPassword, value, "cq:Page");
 							}
 						}
 					}
