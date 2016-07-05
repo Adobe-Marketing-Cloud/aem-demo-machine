@@ -18,6 +18,7 @@ package com.adobe.aem.demomachine.communities;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +42,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -112,6 +116,7 @@ public class Loader {
 	private static final String SITETEMPLATE = "SiteTemplate";
 	private static final String GROUPTEMPLATE = "GroupTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
+	private static final String GROUPPUBLISH = "GroupPublish";
 	private static final String SITEMEMBERS = "SiteMembers";
 	private static final String GROUP = "Group";
 	private static final String JOIN = "Join";
@@ -121,12 +126,16 @@ public class Loader {
 	private static final String MESSAGE = "Message";
 	private static final String RESOURCE = "Resource";
 	private static final String BADGE = "Badge";
+	private static final String BADGEIMAGE = "BadgeImage";
+	private static final String BADGEASSIGN = "BadgeAssign";
 	private static final String OPTION_ANALYTICS = "enableAnalytics";
 	private static final String OPTION_FACEBOOK = "allowFacebook";
 	private static final String OPTION_TWITTER = "allowTwitter";
+	private static final String OPTION_TRANSLATION = "allowMachineTranslation";
 	private static final String CLOUDSERVICE_ANALYTICS = "analyticsCloudConfigPath";
 	private static final String CLOUDSERVICE_FACEBOOK = "fbconnectoauthid";
 	private static final String CLOUDSERVICE_TWITTER = "twitterconnectoauthid";
+	private static final String CLOUDSERVICE_TRANSLATION = "translationProviderConfig";
 	private static final int RESOURCE_INDEX_PATH = 5;
 	private static final int RESOURCE_INDEX_THUMBNAIL = 3;
 	private static final int CALENDAR_INDEX_THUMBNAIL = 8;
@@ -230,9 +239,36 @@ public class Loader {
 
 		try {
 
-			// Reading and processing the CSV file
-			Reader in = new FileReader(csvfile);
-			processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, csvfile);
+			// Reading and processing the CSV file, stand alone or as part of a ZIP file
+			if (csvfile!=null && csvfile.toLowerCase().endsWith(".zip")) {
+
+				ZipFile zipFile = new ZipFile(csvfile);
+				ZipInputStream stream = new ZipInputStream(new FileInputStream(csvfile));
+				ZipEntry zipEntry;
+				while((zipEntry = stream.getNextEntry())!=null)
+				{
+					if (!zipEntry.isDirectory() && zipEntry.getName().toLowerCase().endsWith(".csv")) {
+
+						InputStream is = zipFile.getInputStream(zipEntry);
+						BufferedReader in = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, csvfile);
+
+					}
+				}
+				
+			    try {
+					stream.close();
+					zipFile.close();
+			    } catch (IOException ioex) {
+			        //omitted.
+			    }
+
+			} else if (csvfile.toLowerCase().endsWith(".csv")) {
+
+				Reader in = new FileReader(csvfile);
+				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, csvfile);
+
+			}
 
 		} catch (IOException e) {
 
@@ -353,12 +389,12 @@ public class Loader {
 							} else {
 
 								// For cloud services, we verify that they are actually available
-								if ((name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
+								if ((name.equals(OPTION_TRANSLATION) || name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
 
 									String cloudName = record.get(i+2).trim();
 									String cloudValue = record.get(i+3).trim();
 
-									if ((cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
+									if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
 										builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 										logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
 									} else {	
@@ -406,7 +442,6 @@ public class Loader {
 					// No need to keep going if these settings are not properly returned for any reason
 					if (siteId==null || siteId.equals("") || sitePagePath==null || sitePagePath.equals("")) {
 						logger.error("ERROR: Community Site not created properly");
-						return;
 					}
 
 					// Site publishing, if there's a publish instance to publish to
@@ -526,10 +561,33 @@ public class Loader {
 						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
+						nameValuePairs.add(new BasicNameValuePair("nestedActivation", "true"));
 						nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
 
 						doPost(hostname, port,
 								"/communities/sites.html",
+								"admin", adminPassword,
+								new UrlEncodedFormEntity(nameValuePairs),
+								null);
+					}
+
+					continue;
+
+				}
+
+				// Let's see if we need to publish a group
+				if (record.get(0).equals(GROUPPUBLISH) && record.get(1)!=null) {
+
+					if (!port.equals(altport)) {
+
+						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishCommunityGroup"));
+						nameValuePairs.add(new BasicNameValuePair("nestedActivation", "true"));
+						nameValuePairs.add(new BasicNameValuePair("path", record.get(1) + "/" + record.get(2)));
+
+						doPost(hostname, port,
+								"/communities/communitygroups.html/" + record.get(1),
 								"admin", adminPassword,
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
@@ -600,11 +658,6 @@ public class Loader {
 					List<NameValuePair> nameValuePairs = buildNVP(record, 2);
 					if (nameValuePairs.size()>2) {
 
-						// Checking the type of badging operation
-						if (record.get(1).startsWith("/home")) {
-							nameValuePairs.add(new BasicNameValuePair(":operation", "social:assignBadge"));
-						}
-
 						for (int i=0;i<nameValuePairs.size();i=i+1) {
 
 							String name = nameValuePairs.get(i).getName();
@@ -624,7 +677,7 @@ public class Loader {
 						}
 					}
 
-					// Badge operation
+					// Badge rules operation
 					doPost(hostname, port,
 							record.get(1),
 							"admin", adminPassword,
@@ -893,6 +946,8 @@ public class Loader {
 						|| record.get(0).equals(AVATAR) 
 						|| record.get(0).equals(RESOURCE) 
 						|| record.get(0).equals(FOLDER) 
+						|| record.get(0).equals(BADGEIMAGE) 
+						|| record.get(0).equals(BADGEASSIGN) 
 						|| record.get(0).equals(FRAGMENT) 
 						|| record.get(0).equals(LEARNING) 
 						|| record.get(0).equals(QNA) 
@@ -1070,6 +1125,47 @@ public class Loader {
 					}
 
 				}
+
+				// Assigning badge to user
+				if (componentType.equals(BADGEASSIGN)) {
+
+					nameValuePairs.add(new BasicNameValuePair(":operation", "social:assignBadge"));
+					nameValuePairs.add(new BasicNameValuePair("badgeContentPath", record.get(3)));
+
+					// Appending the path to the user profile to the target location
+					String userJson = doGet(hostname, port,
+							"/libs/granite/security/currentuser.json",
+							getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
+							null);
+
+					userHome = "";
+					if (userJson!=null) {
+
+						try {
+
+							// Fetching the home property
+							userHome = new JSONObject(userJson).getString("home");
+
+						} catch (Exception e) {
+
+							logger.warn("Couldn't figure out home folder for user " + record.get(2));
+
+						}
+
+					}
+
+				}
+
+				// Uploading Badge image
+				if (componentType.equals(BADGEIMAGE)) {
+
+					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createBadge"));
+					nameValuePairs.add(new BasicNameValuePair("jcr:title", record.get(2)));
+					nameValuePairs.add(new BasicNameValuePair("badgeDisplayName", record.get(3)));
+					nameValuePairs.add(new BasicNameValuePair("badgeDescription", record.get(5)));
+					addBinaryBody(builder, lIs, rr, "badgeImage", csvfile, record.get(ASSET_INDEX_NAME));
+
+				}				
 
 				// Joins a user (posting the request) to a Community Group (path)
 				if (componentType.equals(JOIN)) {
@@ -1425,7 +1521,7 @@ public class Loader {
 				}
 
 				// This call generally returns the path to the content fragment that was just created
-				int returnCode = Loader.doPost(hostname, port, url[urlLevel] + (componentType.equals(AVATAR)?userHome+"/profile":""), userName, password, builder.build(), elements, null);
+				int returnCode = Loader.doPost(hostname, port, getPostURL(componentType, url[urlLevel], userHome), userName, password, builder.build(), elements, null);
 
 				// Again, Assets being a particular case
 				if (!(componentType.equals(ASSET) || componentType.equals(AVATAR))) {
@@ -1489,7 +1585,7 @@ public class Loader {
 
 					// Publishing the learning path 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-					publishNameValuePairs.add(new BasicNameValuePair(":operation","se:publishEnablementContent"));
+					publishNameValuePairs.add(new BasicNameValuePair(":operation",vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))>0?"social:publishEnablementContent":"se:publishEnablementContent"));
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
 					logger.debug("Publishing a learning path from: " + location);					
 					Loader.doPost(hostname, port,
@@ -1625,6 +1721,23 @@ public class Loader {
 				logger.error("A non existent resource named " + value + " was referenced");
 			}
 		}
+	}
+
+	// This method evaluates where to make the POST
+	private static String getPostURL(String componentType, String urlLevel, String userHome) {
+
+		String postURL = urlLevel;
+
+		if (componentType.equals(AVATAR)) {
+			postURL = urlLevel + userHome + "/profile";
+		}
+
+		if (componentType.equals(BADGEASSIGN)) {
+			postURL = userHome + "/profile.social.json";
+		}
+
+		return postURL;
+
 	}
 
 	// This method extracts the user name for a record

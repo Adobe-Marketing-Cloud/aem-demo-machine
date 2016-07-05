@@ -1967,33 +1967,33 @@
 		<echo message="Downloading latest Communities bundles for various versions (service packs and feature packs)"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/maven-metadata.xml"/>
+			<arg line="-s -o '${dist}/downloads/nexus.xml' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
 		<propertyregex property="latest17" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.7\.)([0-9]*)(\,1\.^7\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem61-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.7.${latest17}/cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
+			<arg line="-s -o '${dist}/downloads/communities-aem61-release.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.7.${latest17}/cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
 		</exec>
 		<propertyregex property="latest18" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.8\.)([0-9]*)(\,1\.^8\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem61-latest.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.8.${latest18}/cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
+			<arg line="-s -o '${dist}/downloads/communities-aem61-latest.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.8.${latest18}/cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
 		</exec>
 		<propertyregex property="latest19" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.9\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem62-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.9.${latest19}/cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
+			<arg line="-s -o '${dist}/downloads/communities-aem62-release.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.9.${latest19}/cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
 		</exec>
 		<propertyregex property="latest110" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.10\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem62-latest.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.10.${latest110}/cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
+			<arg line="-s -o '${dist}/downloads/communities-aem62-latest.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.10.${latest110}/cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
 		</exec>
 		<propertyregex property="latest111" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.11\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem63-release.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-socialcommunities-pkg/1.11.${latest111}/cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
+			<arg line="-s -o '${dist}/downloads/communities-aem63-release.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.11.${latest111}/cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
@@ -2004,12 +2004,12 @@
 		<echo message="Downloading latest advanced scoring package"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-expert-identification-pkg/maven-metadata.xml"/>
+			<arg line="-s -o '${dist}/downloads/nexus.xml' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
 		<echo message="Downloading cq-social-expert-identification-pkg-${metadata.versioning.release}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-expert-identification-pkg/${metadata.versioning.release}/cq-social-expert-identification-pkg-${metadata.versioning.release}.zip"/>
+			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/${metadata.versioning.release}/cq-social-expert-identification-pkg-${metadata.versioning.release}.zip"/>
 		</exec>
 	</target>
 	<!-- Target for downloading latest Livefyre feature pack -->
@@ -2025,12 +2025,12 @@
 		<echo message="Downloading latest SCORM bundle"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scorm-pkg/maven-metadata.xml"/>
+			<arg line="-s -o '${dist}/downloads/nexus.xml' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
 		<echo message="Downloading cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg.zip' http://sjnexus.corp.adobe.com/nexus/content/repositories/releases/com/adobe/cq/social/cq-social-scorm-pkg/${metadata.versioning.release}/cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/${metadata.versioning.release}/cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>

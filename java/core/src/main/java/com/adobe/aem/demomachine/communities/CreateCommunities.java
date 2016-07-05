@@ -57,7 +57,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		String coralVersion = "3";
 		Resource resCoral = resourceResolver.getResource("/etc/clientlibs/granite/coralui3.js");
 		if (resCoral==null) coralVersion = "2";
-		
+
 		out.println("<html><head>");
 		out.println("<link rel=\"stylesheet\" href=\"/etc/clientlibs/granite/coralui" + coralVersion + ".css\" type=\"text/css\">");
 		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/typekit.js\"></script>");
@@ -107,7 +107,7 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 			out.println("<coral-alert-content>Using an AEM Publish instance is strongly recommended. All UGC is now being posted against this Author instance, which might fail if the demo members are not granted appropriate permissions on Author.</coral-alert-content>");
 			out.println("</coral-alert></div>");
 		}
-		
+
 		// Checking if we have a return URL
 		String returnURL = (String) request.getParameter("returnURL");
 
@@ -134,8 +134,10 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 
 				Resource resConfigFiles = resourceResolver.getResource(csvPath);
 				for (Resource resConfigFile: resConfigFiles.getChildren()) {
-					if (resConfigFile!=null && resConfigFile.getName().startsWith(configOption.replace("setup-", "")) && resConfigFile.getName().endsWith(".csv")) {
+					if (resConfigFile!=null && resConfigFile.getName().startsWith(configOption.replace("setup-", "")) && (resConfigFile.getName().toLowerCase().endsWith(".csv"))) {
+
 						InputStream stream = resConfigFile.adaptTo(InputStream.class);		
+
 						Reader in = new InputStreamReader(stream);
 						out.println("<p>Processing: " + resConfigFile.getName() + "</p>");
 						response.flushBuffer();;
@@ -145,13 +147,12 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 							Loader.processLoading(resourceResolver, in, hostname, port, port, password, analytics, false, true, csvPath);
 						}
 
-					    try {
-					        in.close();
-					    	stream.close();
-					    } catch (IOException ioex) {
-					        //omitted.
-					    }
-					    
+						try {
+							in.close();
+							stream.close();
+						} catch (IOException ioex) {
+							//omitted.
+						}
 					}
 
 				}
@@ -170,13 +171,13 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 				out.println(line);
 			}
 
-		    try {
+			try {
 				in.close();
-		        stream.close();
-		    } catch (IOException ioex) {
-		        //omitted.
-		    }
-		    
+				stream.close();
+			} catch (IOException ioex) {
+				//omitted.
+			}
+
 		}
 
 		out.println("<p>Process completed!</p>");
