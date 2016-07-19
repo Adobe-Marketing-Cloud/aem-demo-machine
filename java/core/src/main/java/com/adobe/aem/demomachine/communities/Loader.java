@@ -255,13 +255,13 @@ public class Loader {
 
 					}
 				}
-				
-			    try {
+
+				try {
 					stream.close();
 					zipFile.close();
-			    } catch (IOException ioex) {
-			        //omitted.
-			    }
+				} catch (IOException ioex) {
+					//omitted.
+				}
 
 			} else if (csvfile.toLowerCase().endsWith(".csv")) {
 
@@ -655,7 +655,7 @@ public class Loader {
 						continue;
 					}
 
-					List<NameValuePair> nameValuePairs = buildNVP(record, 2);
+					List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
 					if (nameValuePairs.size()>2) {
 
 						for (int i=0;i<nameValuePairs.size();i=i+1) {
@@ -840,7 +840,7 @@ public class Loader {
 								builder.setCharset(MIME.UTF8_CHARSET);
 								builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
 
-								List<NameValuePair> groupNameValuePairs = buildNVP(record, 2);
+								List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
 								for (NameValuePair nameValuePair : groupNameValuePairs) {
 									builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 								}
@@ -888,7 +888,7 @@ public class Loader {
 							}
 
 							// Now we can post all the preferences or the profile
-							List<NameValuePair> nameValuePairs = buildNVP(record, 3);
+							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3);
 							doPost(hostname, port,
 									home,
 									"admin", adminPassword,
@@ -973,7 +973,7 @@ public class Loader {
 
 						String configurePath = getConfigurePath(record.get(1));
 
-						List<NameValuePair> nameValuePairs = buildNVP(record, 2);
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, configurePath, record, 2);
 						if (nameValuePairs.size()>2) {
 
 							// Only do this when really have configuration settings
@@ -1344,7 +1344,7 @@ public class Loader {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0?"social:createResource":"se:createResource"));
 
-					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
+					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
 
 					// Special processing of lists with multiple users, need to split a String into multiple entries
@@ -1389,7 +1389,7 @@ public class Loader {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"social:editLearningPath":"se:editLearningPath"));
 
-					List<NameValuePair> otherNameValuePairs = buildNVP(record, RESOURCE_INDEX_PROPERTIES);
+					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
 
 					// Special processing of lists with multiple users, need to split a String into multiple entries
@@ -1413,9 +1413,10 @@ public class Loader {
 					}
 
 					// Building the learning path fragment
-					StringBuffer assets = new StringBuffer("[\"");
+					StringBuffer assets = new StringBuffer("[");
 					if (learningpaths.get(record.get(2)) != null) {
 
+						assets.append("\"");
 						ArrayList<String> paths = learningpaths.get(record.get(2));
 						int i=0;
 						for (String path : paths) {
@@ -1424,11 +1425,13 @@ public class Loader {
 							assets.append("\\\"}");
 							if (i++<paths.size()-1) { assets.append("\",\""); }
 						}						
+						assets.append("\"");
 
 					} else {						
 						logger.warn("No asset for this learning path");
 					}
-					assets.append("\"]");
+
+					assets.append("]");
 					nameValuePairs.add(new BasicNameValuePair("learningpath-items", assets.toString()));
 
 				}
@@ -1585,7 +1588,7 @@ public class Loader {
 
 					// Publishing the learning path 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-					publishNameValuePairs.add(new BasicNameValuePair(":operation",vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))>0?"social:publishEnablementContent":"se:publishEnablementContent"));
+					publishNameValuePairs.add(new BasicNameValuePair(":operation",vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))>0?"se:publishEnablementContent":"se:publishEnablementContent"));
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
 					logger.debug("Publishing a learning path from: " + location);					
 					Loader.doPost(hostname, port,
@@ -1596,7 +1599,7 @@ public class Loader {
 
 					// Waiting for the learning path to be published
 					doWaitPath(hostname, altport, adminPassword, location, "nt:unstructured");
-
+					
 					// Decorate the resources within the learning path with comments and ratings, randomly generated
 					ArrayList<String> paths = learningpaths.get(record.get(2));
 					for (String path : paths) {
@@ -2540,9 +2543,11 @@ public class Loader {
 	}
 
 	// This method builds a list of NVP for a subsequent Sling post
-	private static List<NameValuePair> buildNVP(CSVRecord record, int start) {
+	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start) {
 
 		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		List<String> alreadyLoaded = new ArrayList<String>();
+
 		nameValuePairs.add(new BasicNameValuePair("_charset_", "UTF-8"));
 
 		for (int i=start;i<record.size()-1;i=i+2) {
@@ -2563,6 +2568,37 @@ public class Loader {
 					nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
 				}
 
+				// We need to add to a property with multiple values
+				int addition = name.indexOf("+");
+				if (addition>0 && path!=null) {
+
+					name = name.substring(0, addition);
+
+					if (!alreadyLoaded.contains(name)) {
+						alreadyLoaded.add(name);
+						// Getting the existing value
+						String existingValues = doGet(hostname, port, path + ".json", "admin", adminPassword, null);
+						try {
+							JSONObject propertyJson = new JSONObject(existingValues.trim());
+							Iterator<?> keys = propertyJson.keys();
+
+							while( keys.hasNext() ) {
+								String key = (String)keys.next();
+								if (name.startsWith(key)) {
+									JSONArray propertyList = (JSONArray) propertyJson.get(key);
+									for (int j=0;j<propertyList.length();j++) {
+										String propertyValue = (String) propertyList.get(j);
+										nameValuePairs.add(new BasicNameValuePair(name, propertyValue));
+									}
+								}
+							}
+
+						} catch (Exception e) {
+						}
+					}
+
+				}
+
 				// We have multiple values to pass to the POST servlet, e.g. for a String[]
 				int multiple = value.indexOf("|");
 				if (multiple>0) {
@@ -2575,7 +2611,7 @@ public class Loader {
 					for (String currentValue : values) {
 						nameValuePairs.add(new BasicNameValuePair(name, currentValue));	
 					}
-				} else {					            		
+				} else {	
 					nameValuePairs.add(new BasicNameValuePair(name, value));					            							            		
 				}
 
