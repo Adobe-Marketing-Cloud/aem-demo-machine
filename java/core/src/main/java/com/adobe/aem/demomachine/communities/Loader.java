@@ -1130,7 +1130,14 @@ public class Loader {
 				if (componentType.equals(BADGEASSIGN)) {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "social:assignBadge"));
-					nameValuePairs.add(new BasicNameValuePair("badgeContentPath", record.get(3)));
+
+					// Special case to accommodate re-factoring of badging images
+					String value = record.get(3);
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) {
+						value = value.replaceAll("/jcr:content", "");
+					}
+
+					nameValuePairs.add(new BasicNameValuePair("badgeContentPath", value));
 
 					// Appending the path to the user profile to the target location
 					String userJson = doGet(hostname, port,

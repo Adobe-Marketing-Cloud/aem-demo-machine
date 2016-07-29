@@ -437,6 +437,7 @@
 		</if>
 		<antcall target="hotfix_instance"/>
 		<antcall target="community_instance"/>
+		<antcall target="email_instance"/>
 	</target>
 	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
 	<target name="start" depends="version,configuration,details">
@@ -3915,8 +3916,35 @@
 			</then>
 		</if>
 	</target>
+	<!-- Target for bootstrapping AEM with the email settings -->
+	<target name="email_instance">
+		<if>
+			<equals arg1="${demo.emailserver}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring connectivity to the email server on ${demo.mode}"/>
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" overwrite="true">
+					<fileset dir="${dist}/email/${demo.mode}">
+						<include name="**/*"/>
+					</fileset>
+				</copy>
+				<replace dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" token="##DEMO.EMAILSERVER.HOSTNAME##" value="${demo.emailserver.hostname}">
+					<include name="*.config"/>
+				</replace>
+				<replace dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" token="##DEMO.EMAILSERVER.PASSWORD##" value="${demo.emailserver.password}">
+					<include name="*.config"/>
+				</replace>
+				<replace dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" token="##DEMO.EMAILSERVER.SMTP##" value="${demo.emailserver.smtp}">
+					<include name="*.config"/>
+				</replace>
+				<replace dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" token="##DEMO.EMAILSERVER.NOREPLY##" value="${demo.emailserver.noreply}">
+					<include name="*.config"/>
+				</replace>
+			</then>
+		</if>
+	</target>
 	<!-- Target for bootstrapping AEM with the latest Community uber -->
 	<target name="community_instance" depends="version,configuration" if="aem61orlater">
+		<!-- Booting up with latest available Commnities-uber -->
 		<if>
 			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			<then>
@@ -4454,7 +4482,7 @@
 		</if>
 	</target>
 	<!-- Target for configuring the Communities Email importer for Email subscriptions -->
-	<target name="community_email_importer">
+	<target name="community_email_importer" depends="configuration">
 		<if>
 			<and>
 				<socket server="${demo.host}" port="${demomachine.publishport}"/>
@@ -4462,7 +4490,19 @@
 			</and>
 			<then>
 				<echo message="Configuring AEM Communities Email Importer on port ${demomachine.publishport}..."/>
-				<!-- Reconfiguring minimum importer interval  -->
+				<!-- Reconfiguring email importer protocol -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${demomachine.publishport}_importer_protocol.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-v -u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d connectProtocol=pop3"/>
+					<arg line="--data-binary 'propertylist=connectProtocol'"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyImporter"/>
+				</exec>
+				<!-- Reconfiguring minimum importer interval -->
 				<exec executable="curl">
 					<arg line="--output '${logs}/${demomachine.publishport}_importer_interval.html'"/>
 					<arg line="--globoff"/>
@@ -4504,58 +4544,102 @@
 				</exec>
 				<loadfile property="subscription.list" srcFile="${logs}/${demomachine.publishport}_components.json"/>
 				<propertyregex property="subscription.id" input="${subscription.list}" regexp="EmailReplyConfigurationImpl.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
-				<!-- Reconfiguring email subscriptions -->
+				<!-- Loading up the first component configuration -->
 				<exec executable="curl">
-					<arg line="--output '${logs}/${demomachine.publishport}_email_subcribe.html'"/>
-					<arg line="--globoff"/>
-					<arg line="-v -u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="-d apply=true"/>
-					<arg line="-d factoryPid=com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl"/>
-					<arg line="-d action=ajaxConfigManager"/>
-					<arg line="--data-urlencode 'email.name=subscriptions-email'"/>
-					<arg line="-d email.createPostFromReply=true"/>
-					<arg line="-d email.createPostFromReply=false"/>
-					<arg line="-d email.addCommentIdTo=subject"/>
-					<arg line="-d email.subjectMaximumLength=200"/>
-					<arg line="--data-urlencode 'email.from=${demo.emailserver.subscriptions}'"/>
-					<arg line="--data-urlencode 'email.replyToDelimiter=+'"/>
-					<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
-					<arg line="-d email.asHTML=true"/>
-					<arg line="-d email.asHTML=false"/>
-					<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
-					<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/subscriptions-email'"/>
-					<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.from%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
-					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${subscription.id}"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-o '${logs}/${demomachine.publishport}_components_email1.json' http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${subscription.id}.json"/>
 				</exec>
+				<!-- Fixing up first configuration component -->
+				<if>
+					<resourcecontains resource="${logs}/${demomachine.publishport}_components_email1.json" substring="&quot;value&quot;:&quot;email&quot;"/>
+					<then>
+						<antcall target="community_email_importer_notification">
+							<param name="component.id" value="${subscription.id}"/>
+						</antcall>
+					</then>
+					<else>
+						<antcall target="community_email_importer_subscription">
+							<param name="component.id" value="${subscription.id}"/>
+						</antcall>
+					</else>
+				</if>
 				<replace file="${logs}/${demomachine.publishport}_components.json" token=".${subscription.id}" value=""/>
 				<loadfile property="email.list" srcFile="${logs}/${demomachine.publishport}_components.json"/>
 				<propertyregex property="email.id" input="${email.list}" regexp="EmailReplyConfigurationImpl.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
-				<!-- Reconfiguring email notifications -->
+				<!-- Loading up the second component configuration -->
 				<exec executable="curl">
-					<arg line="--output '${logs}/${demomachine.publishport}_email_notifications.html'"/>
-					<arg line="--globoff"/>
-					<arg line="-v -u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="-d apply=true"/>
-					<arg line="-d factoryPid=com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl"/>
-					<arg line="-d action=ajaxConfigManager"/>
-					<arg line="-d email.name=email"/>
-					<arg line="-d email.createPostFromReply=false"/>
-					<arg line="-d email.addCommentIdTo=replyTo"/>
-					<arg line="-d email.subjectMaximumLength=200"/>
-					<arg line="--data-urlencode 'email.from=${demo.emailserver.noreply}'"/>
-					<arg line="--data-urlencode 'email.replyToDelimiter=+'"/>
-					<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
-					<arg line="-d email.asHTML=true"/>
-					<arg line="-d email.asHTML=false"/>
-					<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
-					<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/email'"/>
-					<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.from%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
-					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${email.id}"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-o '${logs}/${demomachine.publishport}_components_email2.json' http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${email.id}.json"/>
 				</exec>
+				<!-- Fixing up second configuration component -->
+				<if>
+					<resourcecontains resource="${logs}/${demomachine.publishport}_components_email2.json" substring="&quot;value&quot;:&quot;email&quot;"/>
+					<then>
+						<antcall target="community_email_importer_notification">
+							<param name="component.id" value="${email.id}"/>
+						</antcall>
+					</then>
+					<else>
+						<antcall target="community_email_importer_subscription">
+							<param name="component.id" value="${email.id}"/>
+						</antcall>
+					</else>
+				</if>
 			</then>
 		</if>
+	</target>
+	<target name="community_email_importer_subscription">
+		<!-- Reconfiguring email subscriptions -->
+		<echo message="Setting email subscription settings"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.publishport}_email_subcribe.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="--data-urlencode 'email.name=subscriptions-email'"/>
+			<arg line="-d email.createPostFromReply=true"/>
+			<arg line="-d email.createPostFromReply=false"/>
+			<arg line="-d email.addCommentIdTo=subject"/>
+			<arg line="-d email.subjectMaximumLength=200"/>
+			<arg line="--data-urlencode 'email.from=${demo.emailserver.subscriptions}'"/>
+			<arg line="--data-urlencode 'email.replyToDelimiter=+'"/>
+			<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
+			<arg line="-d email.asHTML=true"/>
+			<arg line="-d email.asHTML=false"/>
+			<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
+			<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/subscriptions-email'"/>
+			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.from%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
+			<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${component.id}"/>
+		</exec>
+	</target>
+	<target name="community_email_importer_notification">
+		<!-- Reconfiguring email notifications -->
+		<echo message="Setting email notification settings"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.publishport}_email_notifications.html'"/>
+			<arg line="--globoff"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d email.name=email"/>
+			<arg line="-d email.createPostFromReply=false"/>
+			<arg line="-d email.addCommentIdTo=replyTo"/>
+			<arg line="-d email.subjectMaximumLength=200"/>
+			<arg line="--data-urlencode 'email.from=${demo.emailserver.noreply}'"/>
+			<arg line="--data-urlencode 'email.replyToDelimiter=+'"/>
+			<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
+			<arg line="-d email.asHTML=true"/>
+			<arg line="-d email.asHTML=false"/>
+			<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
+			<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/email'"/>
+			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.from%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
+			<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${component.id}"/>
+		</exec>
 	</target>
 	<!-- Target for configuring the Communities content fragment creation service -->
 	<target name="community_fragment" if="aem62orlater">
