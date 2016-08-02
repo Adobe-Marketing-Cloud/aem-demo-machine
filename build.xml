@@ -3746,6 +3746,58 @@
 			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on${demo.loader.analytics}"/>
 		</exec>
 	</target>
+	<!-- Target for loading the extra demo sites for AEM Communities -->
+	<target name="community_loader_extra" depends="version,configuration,community_loader_flag">
+		<echo message="Loading AEM Communities Scoring Demo Package"/>
+		<foreach target="package_author" param="package">
+			<path id="community.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="extra/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<foreach target="package_publish" param="package">
+					<path id="community.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="extra/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+		<!-- Waiting for the bundles to be available -->
+		<sleep seconds="10"/>
+		<echo message="Configuring AEM Communities Extra Demo Sites"/>
+		<foreach target="community_loader_extra_curl" param="extrademo">
+			<path id="community.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="extra/*.txt"/>
+				</fileset>
+			</path>
+		</foreach>
+	</target>
+	<target name="community_loader_extra_curl" depends="version,configuration">
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
+			</then>
+			<else>
+				<property name="demo.loader.publish" value=""/>
+			</else>
+		</if>
+		<loadfile property="extrademocurl" srcFile="${extrademo}"/>
+		<basename property="extrademoname" file="${extrademo}"/>
+		<echo message="Configuring demo site ${extrademoname}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${demomachine.authorport}_extra_${extrademoname}.html'"/>
+			<arg line="-v -u admin:${demo.admin.password}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;${extrademocurl}"/>
+		</exec>
+	</target>
 	<!-- Target for loading the scoring demo site for AEM Communities -->
 	<target name="community_loader_scoring" depends="community_loader_flag">
 		<echo message="Loading AEM Communities Scoring Demo Package"/>
@@ -4203,6 +4255,13 @@
 				<antcall target="community_loader_scoring_cloudservices"/>
 			</then>
 		</if>
+		<!-- Check if we need to install the extra demo sites site -->
+		<if>
+			<equals arg1="${demo.communities.samples.extra}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="community_loader_extra"/>
+			</then>
+		</if>
 		<antcall target="stepbystep"/>
 		<antcall target="community_analytics"/>
 		<antcall target="community_warmup"/>
@@ -4528,7 +4587,7 @@
 					<arg line="-d feedType=emailreply"/>
 					<arg line="--data-binary 'feedUrl=//${demo.emailserver.hostname}:${demo.emailserver.pop}/INBOX?username=${demo.emailserver.subscriptions}%26password=${demo.emailserver.password}'"/>
 					<arg line="-d target=/content/usergenerated/mailFolder/postEmails"/>
-					<arg line="-d interval=10"/>
+					<arg line="-d interval=11"/>
 					<arg line="-d login="/>
 					<arg line="-d password="/>
 					<arg line="-d password@encrypted="/>

@@ -706,7 +706,7 @@ public class Loader {
 							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 							// If the template is already there, let's not try to create it
-							if (name.equals("templateName") && isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + value.replaceAll(" ","_").toLowerCase())) {
+							if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + value.replaceAll(" ","_").toLowerCase()) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + value.replaceAll(" ","_").toLowerCase()))) {
 								logger.warn("Template " + value + " is already there");
 								isValid=false;
 							}
@@ -714,6 +714,12 @@ public class Loader {
 							// If the template includes some of the enablement features, then it won't work for 6.1 GA
 							if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
 								logger.warn("Template " + record.get(3) + " is not compatible with this version of AEM");
+								isValid=false;
+							}
+
+							// If the group template includes the nested group features, then it won't work until 6.2 FP1
+							if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0) {
+								logger.warn("Group template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
 
@@ -774,6 +780,7 @@ public class Loader {
 								memberGroupId);
 					} else {
 						logger.warn("Member Group ID was not returned, hence not waiting for group creation");
+						doSleep(10000, "Waiting for 10 seconds so that Community Group can be created properly");
 					}
 
 					continue;
