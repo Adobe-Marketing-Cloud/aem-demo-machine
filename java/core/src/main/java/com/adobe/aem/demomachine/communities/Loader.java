@@ -80,6 +80,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -154,7 +155,7 @@ public class Loader {
 	private static final String LANGUAGES = "initialLanguages";
 	private static final String ROOT = "siteRoot";
 	private static final String CSS = "pagecss";
-	private static final int MAXRETRIES=10;
+	private static final int MAXRETRIES=20;
 	private static final int REPORTINGDAYS=-21;
 	private static final String ENABLEMENT61FP2 = "1.0.135";
 	private static final String ENABLEMENT61FP3 = "1.0.148";
@@ -419,31 +420,9 @@ public class Loader {
 					doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
 							null);
 
-					// Getting the newly created site ID and page path
-					String siteConfig = doGet(hostname, port,
-							rootPath + "/" + urlName + "/" + language + "/configuration.social.json",
-							"admin",adminPassword,
-							null);
-
-					String siteId = null;
-					sitePagePath = null;
-
-					try {
-
-						siteId = new JSONObject(siteConfig).getString("siteId");
-						sitePagePath = new JSONObject(siteConfig).getString("sitePagePath");
-
-					} catch (Exception e) {
-
-						logger.error("ERROR:" + e.getMessage());
-
-					}
-
-					// No need to keep going if these settings are not properly returned for any reason
-					if (siteId==null || siteId.equals("") || sitePagePath==null || sitePagePath.equals("")) {
-						logger.error("ERROR: Community Site not created properly");
-					}
-
+					// Waiting for site creation to be complete
+					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + "/" + language);
+					
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
 
@@ -458,10 +437,8 @@ public class Loader {
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
 
-						// Wait for site to be available on Publish
-						doWait(hostname, altport,
-								"admin", adminPassword,
-								"community-" + (siteId!=null?siteId:urlName) + "-groupadministrators");
+						doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + "/" + language);
+						
 					}
 
 					continue;
@@ -514,7 +491,6 @@ public class Loader {
 
 							String name = record.get(i).trim();
 							String value = record.get(i+1).trim();
-							logger.debug("Overidding + " + name + " with value " + value );
 							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 							// If the template includes some of the enablement features, then it won't work for 6.1 GA
@@ -548,6 +524,9 @@ public class Loader {
 								"admin", adminPassword,
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
+
+						doWaitPath(hostname, altport, adminPassword, rootPath + "/" + record.get(1) + "/" + record.get(2));
+
 					}
 
 					continue;
@@ -569,6 +548,9 @@ public class Loader {
 								"admin", adminPassword,
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
+
+						doWaitPath(hostname, altport, adminPassword, record.get(1));
+
 					}
 
 					continue;
@@ -745,6 +727,7 @@ public class Loader {
 					builder.addTextBody(":operation", "social:createCommunityGroup", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
+					String urlName=null;
 					for (int i=3;i<record.size()-1;i=i+2) {
 
 						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
@@ -758,29 +741,28 @@ public class Loader {
 							} else {
 								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 							}
+							if (name.equals("urlName")) {
+								urlName = value;
+							}
 							if (name.equals("siteRoot")) {
 								// Some content root has been provided for the Group. It might result from previous actions and might not be there yet - let's wait for it
-								doWaitPath(hostname, port, adminPassword, value, "cq:Page");
+								doWaitPath(hostname, port, adminPassword, value);
 							}
 						}
 					}
 
 					// Group creation
-					String memberGroupId = doPost(hostname, port,
+					doPost(hostname, port,
 							record.get(1),
 							getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
 							builder.build(),
-							"response/memberGroupId");
+							null);
 
-					// Wait for group to be available on Publish, if available
-					if (memberGroupId!=null && memberGroupId.length()>0) {
-						logger.debug("Waiting for completion of Community Group creation");
-						doWait(hostname, port,
-								"admin", adminPassword,
-								memberGroupId);
-					} else {
-						logger.warn("Member Group ID was not returned, hence not waiting for group creation");
-						doSleep(10000, "Waiting for 10 seconds so that Community Group can be created properly");
+					// Waiting for group to be available if group creation was initiated from the publish side and creation nugget reverse replicated to author
+					if (port.equals(altport) && urlName!=null && record.get(1).indexOf("/jcr:content")>0) {
+
+						doWaitPath(hostname, altport, adminPassword, record.get(1).substring(0, record.get(1).indexOf("/jcr:content")) + "/" + urlName);
+
 					}
 
 					continue;
@@ -802,12 +784,17 @@ public class Loader {
 				if ((record.get(0).equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
 
 					// Checking if we have a member group for this site
-					String groupName = record.get(GROUP_INDEX_NAME);
+					String groupName = null;
 					if (record.get(0).equals(SITEMEMBERS)) {
 
+						String configurationPath = record.get(GROUP_INDEX_NAME);
+
+						// Let's make sure the configuration .json is there
+						doWaitPath(hostname, port, adminPassword, configurationPath);
+						
 						// Let's fetch the siteId for this Community Site Url
 						String siteConfig = doGet(hostname, port,
-								groupName,
+								configurationPath,
 								"admin",adminPassword,
 								null);
 
@@ -819,11 +806,20 @@ public class Loader {
 
 						} catch (Exception e) {
 
-							logger.error(e.getMessage());
+							logger.error("Impossible to retrieve the site admin groupname");
 
 						}
 
 					}
+					
+					if (record.get(0).equals(GROUPMEMBERS)) {
+						
+						groupName = record.get(GROUP_INDEX_NAME);	
+						
+					}
+					
+					// We can't proceed if the group name wasn't retrieved from the configuration
+					if (groupName==null) continue;
 
 					// Pause until the group can found
 					String groupList = doWait(hostname, port,
@@ -1530,7 +1526,7 @@ public class Loader {
 				if (componentType.equals(LEARNING) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<=0) {
 					jsonElement = "path";
 				}
-				if (!(componentType.equals(ASSET) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
+				if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
 					// Creating an asset doesn't return a JSON string
 					elements.put(jsonElement, "");
 					elements.put("response/resourceType", "");
@@ -1554,7 +1550,7 @@ public class Loader {
 				if (componentType.equals(ASSET) && returnCode<400) {
 					int pathIndex = url[urlLevel].lastIndexOf(".createasset.html");
 					if (pathIndex>0)
-						doWaitPath(hostname, port, adminPassword, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions", "nt:file");
+						doWaitPath(hostname, port, adminPassword, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions");
 				}
 
 				// If we are loading a content fragment, we need to post the actual content next
@@ -1612,8 +1608,8 @@ public class Loader {
 							null);
 
 					// Waiting for the learning path to be published
-					doWaitPath(hostname, altport, adminPassword, location, "nt:unstructured");
-					
+					doWaitPath(hostname, altport, adminPassword, location);
+
 					// Decorate the resources within the learning path with comments and ratings, randomly generated
 					ArrayList<String> paths = learningpaths.get(record.get(2));
 					for (String path : paths) {
@@ -1632,7 +1628,7 @@ public class Loader {
 				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
 
 					// Wait for the data to be fully copied
-					doWaitPath(hostname, port, adminPassword, location + "/assets/asset", "nt:file");
+					doWaitPath(hostname, port, adminPassword, location + "/assets/asset");
 
 					// If we are dealing with a SCORM asset, we wait a little bit before publishing the resource to that the SCORM workflow is completed 
 					if (record.get(2).indexOf(".zip")>0) {
@@ -1651,7 +1647,7 @@ public class Loader {
 							null);
 
 					// Waiting for the resource to be published
-					doWaitPath(hostname, altport, adminPassword, location, "nt:unstructured");
+					doWaitPath(hostname, altport, adminPassword, location);
 
 					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
 					DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -1828,7 +1824,7 @@ public class Loader {
 		addBinaryBody(builder, lIs, rr, "file", csvfile, filename);
 		builder.addTextBody("fileName", filename, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-		logger.debug("Adding file for thumbnails with name: " + filename);
+		logger.debug("Posting file for thumbnails with name: " + filename);
 
 		Loader.doPost(hostname, port,
 				pathToFile,
@@ -1836,7 +1832,7 @@ public class Loader {
 				builder.build(),
 				null);
 
-		logger.debug("Path to thumbnail: " + pathToFile + "/file");
+		doWaitPath(hostname, port, adminPassword, pathToFile + "/file");
 
 		return pathToFile + "/file";
 
@@ -2177,11 +2173,13 @@ public class Loader {
 	// This method POSTs a request to the server, returning the location JSON attribute, when available
 	private static String doPost(String hostname, String port, String url, String user, String password,
 			HttpEntity entity, String lookup) {
-
+		
+		String returnedString = null;
 		Map<String, String> elements = new HashMap<String, String>();
-		elements.put(lookup, "");
+		if (lookup!=null) elements.put(lookup, "");
 		doPost(hostname, port, url, user, password, entity, elements, null);
-		return elements.get(lookup);
+		if (lookup!=null) return elements.get(lookup);
+		return returnedString;
 
 	}
 
@@ -2238,8 +2236,13 @@ public class Loader {
 					logger.debug("POST return code: " + returnCode);
 					if (returnCode>=500) {
 						logger.fatal("Server error" + responseString);
+						return returnCode;
 					}
 					Set<String> keys = elements.keySet();
+					if (!isJSONValid(responseString) && keys.size()>0) {
+						logger.warn("POST operation didn't return a JSON string, hence cannot extract requested value");
+						return returnCode;
+					}
 					for (String lookup : keys) {
 						if (lookup != null) {
 							int separatorIndex = lookup.indexOf("/");
@@ -2397,6 +2400,7 @@ public class Loader {
 	}
 
 	// This method runs a QUERY against an AEM instance
+	@SuppressWarnings("unused")
 	private static String doQuery(String hostname, String port, String adminPassword, String path, String type) {
 
 		String query = null;
@@ -2418,28 +2422,20 @@ public class Loader {
 	}
 
 	// This method WAITS for a node to be available
-	private static void doWaitPath(String hostname, String port, String adminPassword, String path, String type) {
+	private static void doWaitPath(String hostname, String port, String adminPassword, String path) {
 
 		int retries = 0;
 		while (retries++ < MAXRETRIES) {
 
-			String nodeList = doQuery(hostname, port, adminPassword, path, type);
-			try {            
-				JSONObject nodeListJson = new JSONObject(nodeList);
-				int results = nodeListJson.getInt("results");
-				if (results>0) {
+			if (isResourceAvailable(hostname, port, adminPassword, path)) {
 
-					logger.debug("Node was found for: " + path);
-					break;
+				logger.debug("Node was found for: " + path + " on port: " + port);
+				break;
 
-				} else {
+			} else {
 
-					doSleep(2000,"Node not found yet, repeating " + retries);
-
-				}
-
-			} catch (Exception ex) {
-				logger.error(ex.getMessage());
+				doSleep(2000,"Node not found yet, repeating " + retries);
+				
 			}
 
 		}
@@ -2451,7 +2447,7 @@ public class Loader {
 
 		boolean isAvailable = false;
 
-		String json = doGet(hostname, port, path.replace("/jcr:content", "") + ".json", "admin", password, null);
+		String json = doGet(hostname, port, path + ".json", "admin", password, null);
 
 		if (json!=null) isAvailable = true;
 
@@ -2688,4 +2684,17 @@ public class Loader {
 				.replaceAll("\\s+", "-").toLowerCase(Locale.ENGLISH);
 	}
 
+	// Checking if a string is valid JSON
+	public static boolean isJSONValid(String test) {
+	    try {
+	        new JSONObject(test);
+	    } catch (JSONException ex) {
+	        try {
+	            new JSONArray(test);
+	        } catch (JSONException ex1) {
+	            return false;
+	        }
+	    }
+	    return true;
+	}
 }
