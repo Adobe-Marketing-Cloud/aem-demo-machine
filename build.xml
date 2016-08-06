@@ -97,12 +97,6 @@
 				<antcall target="weretail"/>
 			</then>
 		</if>
-		<if>
-			<equals arg1="${demo.addons.9.livefyre}" arg2="true" casesensitive="false"/>
-			<then>
-				<antcall target="livefyre"/>
-			</then>
-		</if>
 	</target>
 	<!-- Target for installing then configuring a new baseline demo -->
 	<target name="demo">
@@ -2013,14 +2007,6 @@
 			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/${metadata.versioning.release}/cq-social-expert-identification-pkg-${metadata.versioning.release}.zip"/>
 		</exec>
 	</target>
-	<!-- Target for downloading latest Livefyre feature pack -->
-	<target name="download_livefyre_packages">
-		<echo message="Downloading latest Livefyre feature pack"/>
-		<antcall target="download_packageshare">
-			<param name="packageshare.capability" value="livefyre"/>
-			<param name="packageshare.target" value="${dist}/livefyre"/>
-		</antcall>
-	</target>
 	<!-- Target for downloading latest Scorm bundle -->
 	<target name="download_communities_scorm">
 		<echo message="Downloading latest SCORM bundle"/>
@@ -2144,14 +2130,11 @@
 				</resourceexists>
 			</and>
 			<then>
-				<echo message="Installing the livefyre FP on running instances"/>
-				<antcall target="package">
-					<param name="package" value="${dist}/livefyre/${demo.packages}/Livefyre.zip"/>
-				</antcall>
+				<echo message="Adding the Livefyre componetns to the Component Guide"/>
 				<antcall target="package">
 					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
 				</antcall>
-				<echo message="Creating Livefyre Cloud service for domain ${Livefyre.networkdomain} and site ${Livefyre.siteid}"/>
+				<echo message="Creating Livefyre cloud service"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_livefyre_cloudservice.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -2165,7 +2148,7 @@
 					<arg line="-d template=/libs/social/integrations/livefyre/cloudconfig/pagetemplate"/>
 					<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
 				</exec>
-				<echo message="Configuring Livefyre Cloud service for domain ${Livefyre.networkdomain} and site ${Livefyre.siteid}"/>
+				<echo message="Configuring Livefyre cloud service for domain ${Livefyre.networkdomain} and site ${Livefyre.siteid}"/>
 				<exec executable="curl" output="${logs}/${port}_livefyre_settingscurl.html">
 					<arg line="--output '${logs}/${port}_livefyre_settings.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -4264,7 +4247,17 @@
 		</if>
 		<antcall target="stepbystep"/>
 		<antcall target="community_analytics"/>
+		<antcall target="community_livefyre"/>
 		<antcall target="community_warmup"/>
+	</target>
+	<!-- Target for configuring the Livefyre cloud service -->
+	<target name="community_livefyre">
+		<if>
+			<equals arg1="${Livefyre.install}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="livefyre"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the Analytics import process -->
 	<target name="community_analytics">

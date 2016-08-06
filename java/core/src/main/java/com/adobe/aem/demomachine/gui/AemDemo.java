@@ -444,28 +444,6 @@ public class AemDemo {
 		});
 		mnCommerce.add(mntmAemCommerceAddOn);
 
-		// Livefyre Add-on
-		JMenu mnLivefyre = new JMenu("Livefyre");
-		mnUpdate.add(mnLivefyre);
-
-		JMenuItem mntmAemCommunitiesLivefyre = new JMenuItem("Download Livefyre Integration (PackageShare)");
-		mntmAemCommunitiesLivefyre.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_livefyre_packages");
-			}
-		});
-		mnLivefyre.add(mntmAemCommunitiesLivefyre);
-
-		mnLivefyre.addSeparator();
-
-		JMenuItem mntmAemLivefyreAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmAemLivefyreAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "livefyre");
-			}
-		});
-		mnLivefyre.add(mntmAemLivefyreAddOn);
-
 		// WeRetail Add-on
 		JMenu mnWeRetail = new JMenu("We-Retail");
 		mnUpdate.add(mnWeRetail);
