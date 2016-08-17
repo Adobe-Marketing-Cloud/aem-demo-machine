@@ -758,11 +758,12 @@ public class Loader {
 							builder.build(),
 							null);
 
-					// Waiting for group to be available if group creation was initiated from the publish side and creation nugget reverse replicated to author
-					if (port.equals(altport) && urlName!=null && record.get(1).indexOf("/jcr:content")>0) {
-
-						doWaitPath(hostname, altport, adminPassword, record.get(1).substring(0, record.get(1).indexOf("/jcr:content")) + "/" + urlName);
-
+					// Waiting for group to be available either on publish or author
+					int i = (record.get(1).indexOf("/jcr:content")>0)?record.get(1).indexOf("/jcr:content"):record.get(1).indexOf(".social.json");
+					if (urlName!=null && i>0) {
+						doWaitPath(hostname, port, adminPassword, record.get(1).substring(0, i) + "/" + urlName);
+					} else {
+						logger.warn("Not waiting for Group to be fully available");
 					}
 
 					continue;
@@ -2429,12 +2430,12 @@ public class Loader {
 
 			if (isResourceAvailable(hostname, port, adminPassword, path)) {
 
-				logger.debug("Node was found for: " + path + " on port: " + port);
+				logger.debug("Node is found for: " + path + " on port: " + port);
 				break;
 
 			} else {
 
-				doSleep(2000,"Node not found yet, repeating " + retries);
+				doSleep(2000, "Node not found for: " + path + " on port: " + port + " attempt " + retries);
 				
 			}
 
