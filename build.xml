@@ -587,7 +587,7 @@
 			<equals arg1="${demomachine.jvmdebug}" arg2="true" casesensitive="false"/>
 			<then>
 				<property name="jvmdebug" value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${demo.portdebug}"/>
-				<echo message="Setting JVM debug settings on port ${debug.portdebug}"/>
+				<echo message="Setting JVM debug settings on port ${demo.portdebug}"/>
 			</then>
 			<else>
 				<property name="jvmdebug" value="-Dadobe.aem.demo=nodebug"/>
