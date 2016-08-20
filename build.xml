@@ -2130,7 +2130,7 @@
 				</resourceexists>
 			</and>
 			<then>
-				<echo message="Adding the Livefyre componetns to the Component Guide"/>
+				<echo message="Adding the Livefyre components to the Component Guide"/>
 				<antcall target="package">
 					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
 				</antcall>
@@ -3643,6 +3643,15 @@
 				</foreach>
 			</then>
 		</if>
+		<!-- Then we create the We.Retail demo environment -->
+		<if>
+			<and>
+				<equals arg1="${demo.communities.samples.weretail}" arg2="true" casesensitive="false"/>
+			</and>
+			<then>
+				<antcall target="community_loader_weretail"/>
+			</then>
+		</if>
 		<!-- Associating Cloud Service on author and publishing... -->
 		<if>
 			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
@@ -3651,6 +3660,10 @@
 					<param name="port" value="${demomachine.authorport}"/>
 					<param name="path" value="/content/we-retail/jcr:content"/>
 				</antcall>
+				<antcall target="cloudservices">
+					<param name="port" value="${demomachine.authorport}"/>
+					<param name="path" value="/content/we-retail/community/en/jcr:content"/>
+				</antcall>
 				<if>
 					<socket server="${demo.host}" port="${demomachine.publishport}"/>
 					<then>
@@ -3658,26 +3671,25 @@
 							<param name="port" value="${demomachine.publishport}"/>
 							<param name="path" value="/content/we-retail/jcr:content"/>
 						</antcall>
+						<antcall target="cloudservices">
+							<param name="port" value="${demomachine.publishport}"/>
+							<param name="path" value="/content/we-retail/community/en/jcr:content"/>
+						</antcall>
 					</then>
 				</if>
 				<if>
 					<socket server="${demo.host}" port="${demomachine.farmport}"/>
 					<then>
 						<antcall target="cloudservices">
-							<param name="port" value="${demomachine.publishport}"/>
+							<param name="port" value="${demomachine.farmport}"/>
 							<param name="path" value="/content/we-retail/jcr:content"/>
+						</antcall>
+						<antcall target="cloudservices">
+							<param name="port" value="${demomachine.farmport}"/>
+							<param name="path" value="/content/we-retail/community/en/jcr:content"/>
 						</antcall>
 					</then>
 				</if>
-			</then>
-		</if>
-		<!-- Then we create the We.Retail demo environment -->
-		<if>
-			<and>
-				<equals arg1="${demo.communities.samples.weretail}" arg2="true" casesensitive="false"/>
-			</and>
-			<then>
-				<antcall target="community_loader_weretail"/>
 			</then>
 		</if>
 	</target>
