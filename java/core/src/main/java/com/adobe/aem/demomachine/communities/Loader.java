@@ -281,7 +281,6 @@ public class Loader {
 
 	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, String csvfile) {
 
-		String language = "en";
 		String location = null;
 		String userHome = null;
 		String sitePagePath = null;
@@ -356,6 +355,7 @@ public class Loader {
 					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 					String urlName = null;
+					String[] initialLanguages = null;
 
 					for (int i=2;i<record.size()-1;i=i+2) {
 
@@ -378,13 +378,22 @@ public class Loader {
 								addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
 							} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 
-								language = value;
 
-								// Starting with 6.1 FP5, we can create multiple languages at once
+								// Starting with 6.1 FP5 and 6.2 FP1, we can create multiple languages at once
 								if (vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version("1.2.2"))>0) {
-									builder.addTextBody(LANGUAGES, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+									initialLanguages = value.split(",");
+									for (String initialLanguage : initialLanguages) {
+										builder.addTextBody(LANGUAGES, initialLanguage, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+									}
+
 								} else {
-									builder.addTextBody(LANGUAGE, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+									// Only keep the first language for pre 6.1 FP5 and 6.2 FP1
+									initialLanguages = new String[1];
+									initialLanguages[0] = value.split(",")[0];
+									builder.addTextBody(LANGUAGE, initialLanguages[0], ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
 								}
 
 							} else {
@@ -421,24 +430,30 @@ public class Loader {
 							null);
 
 					// Waiting for site creation to be complete
-					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + "/" + language);
-					
+					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + "/" + initialLanguages[0]);
+
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
 
-						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
-						nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + "/" + language));
+						for (String initialLanguage : initialLanguages) {
 
-						doPost(hostname, port,
-								"/communities/sites.html",
-								"admin", adminPassword,
-								new UrlEncodedFormEntity(nameValuePairs),
-								null);
+							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+							nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
+							nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + "/" + initialLanguage));
 
-						doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + "/" + language);
-						
+							logger.debug("Publishing site " + urlName + " for language " + initialLanguage);
+
+							doPost(hostname, port,
+									"/communities/sites.html",
+									"admin", adminPassword,
+									new UrlEncodedFormEntity(nameValuePairs),
+									null);
+
+							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + "/" + initialLanguage);
+
+						}
+
 					}
 
 					continue;
@@ -447,7 +462,12 @@ public class Loader {
 				// Let's see if we need to update an existing Community site
 				if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
 
-					logger.debug("Updating a Community Site " + record.get(1));
+					if (isResourceAvailable(hostname, port, adminPassword, rootPath + "/" + record.get(1) + "/" + record.get(2))) {
+						logger.debug("Updating a Community Site " + record.get(1));
+					} else {
+						logger.warn("Can't update a Community Site " + record.get(1));
+						continue;
+					}
 
 					// Let's fetch the theme for this Community Site Url
 					String siteConfig = doGet(hostname, port,
@@ -462,7 +482,7 @@ public class Loader {
 					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 					// Adding the mandatory values for being able to save a site via the JSON endpoint
-					List<String> props = Arrays.asList("urlName", "theme", "moderators", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid");
+					List<String> props = Arrays.asList("urlName", "theme", "moderators", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
 					try {
 						JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
 						for (String prop : props) {
@@ -534,6 +554,13 @@ public class Loader {
 
 				// Let's see if we need to publish a site
 				if (record.get(0).equals(SITEPUBLISH) && record.get(1)!=null) {
+
+					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
+						logger.debug("Publishing a Community Site " + record.get(1));
+					} else {
+						logger.warn("Can't publish a Community Site " + record.get(1));
+						continue;
+					}
 
 					if (!port.equals(altport)) {
 
@@ -792,7 +819,7 @@ public class Loader {
 
 						// Let's make sure the configuration .json is there
 						doWaitPath(hostname, port, adminPassword, configurationPath);
-						
+
 						// Let's fetch the siteId for this Community Site Url
 						String siteConfig = doGet(hostname, port,
 								configurationPath,
@@ -812,13 +839,13 @@ public class Loader {
 						}
 
 					}
-					
+
 					if (record.get(0).equals(GROUPMEMBERS)) {
-						
+
 						groupName = record.get(GROUP_INDEX_NAME);	
-						
+
 					}
-					
+
 					// We can't proceed if the group name wasn't retrieved from the configuration
 					if (groupName==null) continue;
 
@@ -1619,7 +1646,7 @@ public class Loader {
 
 				}
 
-				// If it's an Enablement Resource, a lot of things need to happen...
+				// If it's an Enablement Resource that is not part of a learning path, a lot of things need to happen...
 				// Step 1. If it's a SCORM resource, we wait for the SCORM metadata workflow to be complete before proceeding
 				// Step 2. We publish the resource
 				// Step 3. We set a new first published date on the resource (3 weeks earlier) so that reporting data is more meaningful
@@ -1636,19 +1663,30 @@ public class Loader {
 						doSleep(20000, "SCORM Resource, waiting for workflow to complete");
 					}
 
-					// Publishing the resource 
-					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-					publishNameValuePairs.add(new BasicNameValuePair(":operation","se:publishEnablementContent"));
-					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
-					logger.debug("Publishing a Resource from: " + location);					
-					Loader.doPost(hostname, port,
-							location,
-							userName, password,
-							new UrlEncodedFormEntity(publishNameValuePairs),
-							null);
+					// Publishing the resource if not part of a learning path (other wise publishing the learning path will take care of this)
 
-					// Waiting for the resource to be published
-					doWaitPath(hostname, altport, adminPassword, location);
+					if (record.get(RESOURCE_INDEX_PATH).length()>0) {
+
+						List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
+						publishNameValuePairs.add(new BasicNameValuePair(":operation","se:publishEnablementContent"));
+						publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
+						logger.debug("Publishing a Resource from: " + location);					
+						Loader.doPost(hostname, port,
+								location,
+								userName, password,
+								new UrlEncodedFormEntity(publishNameValuePairs),
+								null);
+
+						// Waiting for the resource to be published
+						doWaitPath(hostname, altport, adminPassword, location);
+
+						// Adding comments and ratings for this resource
+						logger.debug("Decorating the resource with comments and ratings");
+						doDecorate(hostname, altport, adminPassword, location, record, analytics, rootPath);
+
+					} else {
+						logger.debug("Resource belongs to a learning path, not publishing it yet");
+					}
 
 					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
 					DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -1656,16 +1694,12 @@ public class Loader {
 					cal.add(Calendar.DATE, REPORTINGDAYS);    
 					List<NameValuePair> publishDateNameValuePairs = new ArrayList<NameValuePair>();
 					publishDateNameValuePairs.add(new BasicNameValuePair("date-first-published", dateFormat.format(cal.getTime())));
-					logger.debug("Setting the publish date for a resource from: " + location);
+					logger.debug("Setting the publish date for a resource at: " + location);
 					doPost(hostname, port,
 							location,
 							userName, password,
 							new UrlEncodedFormEntity(publishDateNameValuePairs),
 							null);
-
-					// Adding comments and ratings for this resource
-					logger.debug("Decorating the resource with comments and ratings");
-					doDecorate(hostname, altport, adminPassword, location, record, analytics, rootPath);
 
 				}
 
@@ -1914,7 +1948,7 @@ public class Loader {
 						String key = (String) iter.next();
 						logger.debug("New Resource Enrollee: " + key);
 
-						// Getting information about this enrollee (user or group?)
+						// Getting information about this assignment (user or group?)
 						String isGroup = doWait(hostname, altport,"admin", adminPassword, key, 1);
 
 						if (isGroup==null) {
@@ -2174,7 +2208,7 @@ public class Loader {
 	// This method POSTs a request to the server, returning the location JSON attribute, when available
 	private static String doPost(String hostname, String port, String url, String user, String password,
 			HttpEntity entity, String lookup) {
-		
+
 		String returnedString = null;
 		Map<String, String> elements = new HashMap<String, String>();
 		if (lookup!=null) elements.put(lookup, "");
@@ -2436,7 +2470,7 @@ public class Loader {
 			} else {
 
 				doSleep(2000, "Node not found for: " + path + " on port: " + port + " attempt " + retries);
-				
+
 			}
 
 		}
@@ -2687,15 +2721,15 @@ public class Loader {
 
 	// Checking if a string is valid JSON
 	public static boolean isJSONValid(String test) {
-	    try {
-	        new JSONObject(test);
-	    } catch (JSONException ex) {
-	        try {
-	            new JSONArray(test);
-	        } catch (JSONException ex1) {
-	            return false;
-	        }
-	    }
-	    return true;
+		try {
+			new JSONObject(test);
+		} catch (JSONException ex) {
+			try {
+				new JSONArray(test);
+			} catch (JSONException ex1) {
+				return false;
+			}
+		}
+		return true;
 	}
 }
