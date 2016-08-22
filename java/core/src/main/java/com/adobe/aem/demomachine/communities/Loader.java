@@ -140,6 +140,7 @@ public class Loader {
 	private static final int RESOURCE_INDEX_PATH = 5;
 	private static final int RESOURCE_INDEX_THUMBNAIL = 3;
 	private static final int CALENDAR_INDEX_THUMBNAIL = 8;
+	private static final int CALENDAR_INDEX_TAGS = 9;
 	private static final int ASSET_INDEX_NAME = 4;
 	private static final int RESOURCE_INDEX_SITE = 7;
 	private static final int RESOURCE_INDEX_FUNCTION = 9;
@@ -1497,6 +1498,11 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
 						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
 						nameValuePairs.add(new BasicNameValuePair("end", endDate));	
+						
+						// Let's see if we have tags
+						if (record.size()>CALENDAR_INDEX_TAGS && record.get(CALENDAR_INDEX_TAGS).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair("tags", record.get(CALENDAR_INDEX_TAGS)));	
+						}
 
 						// Let's see if we have a cover image
 						if (record.size()>CALENDAR_INDEX_THUMBNAIL && record.get(CALENDAR_INDEX_THUMBNAIL).length()>0) {
@@ -1539,6 +1545,7 @@ public class Loader {
 				if ((componentType.equals(ASSET) || 
 						componentType.equals(AVATAR) ||
 						componentType.equals(FORUM) ||
+						componentType.equals(QNA) ||
 						(componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
 
 					addBinaryBody(builder, lIs, rr, "file", csvfile, record.get(ASSET_INDEX_NAME));
