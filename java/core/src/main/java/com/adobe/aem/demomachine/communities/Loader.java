@@ -666,6 +666,14 @@ public class Loader {
 					}
 
 					List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+
+					String badgePath = record.get(1);
+					if (badgePath.startsWith("/etc") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+						badgePath = badgePath.replaceAll("/jcr:content", "");
+						nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
+						nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
+					}
+					
 					if (nameValuePairs.size()>2) {
 
 						for (int i=0;i<nameValuePairs.size();i=i+1) {
@@ -674,9 +682,23 @@ public class Loader {
 							String value = nameValuePairs.get(i).getValue();
 
 							// Special case to accommodate re-factoring of badging images
-							if ((name.equals("badgeContentPath") || name.startsWith("thresholds")) && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+							if (name.equals("badgeContentPath") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
 								value = value.replaceAll("/jcr:content", "");
 								nameValuePairs.set(i, new BasicNameValuePair(name, value));
+							}
+
+							// Special case to accommodate re-factoring of badging images
+							if (name.startsWith("thresholds") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+								value = value.replaceAll("/jcr:content(.*)", "");
+								nameValuePairs.set(i, new BasicNameValuePair(name, value));
+							}
+
+							// Special case to accommodate re-factoring or scoring and badging resource types
+							if (name.equals("jcr:primaryType") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+								if (value.equals("cq:PageContent") || value.equals("cq:Page")) {
+									value = "nt:unstructured";
+									nameValuePairs.set(i, new BasicNameValuePair(name, value));
+								}
 							}
 
 							// Special case for accommodate advanced scoring being installed or not
@@ -689,7 +711,7 @@ public class Loader {
 
 					// Badge rules operation
 					doPost(hostname, port,
-							record.get(1),
+							badgePath,
 							"admin", adminPassword,
 							new UrlEncodedFormEntity(nameValuePairs),
 							null);
@@ -1580,12 +1602,10 @@ public class Loader {
 						resourceType = elements.get("response/resourceType");
 					}
 				}
-
-				// If we are loading a DAM asset, we are waiting for all renditions to be generated before proceeding
+				
+				// In case of Assets or Resources, we are waiting for all workflows to be completed
 				if (componentType.equals(ASSET) && returnCode<400) {
-					int pathIndex = url[urlLevel].lastIndexOf(".createasset.html");
-					if (pathIndex>0)
-						doWaitPath(hostname, port, adminPassword, url[urlLevel].substring(0, pathIndex) + "/" + record.get(ASSET_INDEX_NAME) + "/jcr:content/renditions");
+					doWaitWorkflows(hostname, port, adminPassword, "asset");
 				}
 
 				// If we are loading a content fragment, we need to post the actual content next
@@ -1665,9 +1685,9 @@ public class Loader {
 					// Wait for the data to be fully copied
 					doWaitPath(hostname, port, adminPassword, location + "/assets/asset");
 
-					// If we are dealing with a SCORM asset, we wait a little bit before publishing the resource to that the SCORM workflow is completed 
+					// If we are dealing with a SCORM asset, we wait for all workflows to be completed before publishing the resource
 					if (record.get(2).indexOf(".zip")>0) {
-						doSleep(20000, "SCORM Resource, waiting for workflow to complete");
+						doWaitWorkflows(hostname, port, adminPassword, "scorm");
 					}
 
 					// Publishing the resource if not part of a learning path (other wise publishing the learning path will take care of this)
@@ -1853,7 +1873,7 @@ public class Loader {
 
 	}
 
-	// This method POSTs a file to be used as a thumbnail later on
+	// This method POSTs a DAM file as an asset to be used as a thumbnail later on
 	private static String doThumbnail(ResourceResolver rr, LinkedList<InputStream> lIs, String hostname, String port, String adminPassword, String csvfile, String filename, String sitename) {
 
 		if (filename==null || filename.equals("")) return null;
@@ -1874,7 +1894,7 @@ public class Loader {
 				builder.build(),
 				null);
 
-		doWaitPath(hostname, port, adminPassword, pathToFile + "/file");
+		doWaitWorkflows(hostname, port, adminPassword, "thumbnail");
 
 		return pathToFile + "/file";
 
@@ -2339,6 +2359,67 @@ public class Loader {
 		}
 		return returnCode;
 	}
+	
+	// Simple POST returning the response as a string
+	private static String doPost(String hostname, String port, String url, String user, String password) {
+
+		String responseString = null;
+		if (hostname==null || port==null || url==null || user==null || password==null) {
+			logger.error("Can't POST with requested parameters, one is null");
+			return responseString;
+		}
+
+		try {
+
+			HttpHost target = new HttpHost(hostname, Integer.parseInt(port), "http");
+			CredentialsProvider credsProvider = new BasicCredentialsProvider();
+			credsProvider.setCredentials(new AuthScope(target.getHostName(), target.getPort()),
+					new UsernamePasswordCredentials(user, password));
+			CloseableHttpClient httpClient =
+					HttpClients.custom().setDefaultCredentialsProvider(credsProvider).build();
+
+			try {
+
+				// Adding the Basic Authentication data to the context for this command
+				AuthCache authCache = new BasicAuthCache();
+				BasicScheme basicAuth = new BasicScheme();
+				authCache.put(target, basicAuth);
+				HttpClientContext localContext = HttpClientContext.create();
+				localContext.setAuthCache(authCache);
+
+				// Composing the root URL for all subsequent requests
+				String postUrl = "http://" + hostname + ":" + port + url;
+
+				// Preparing a standard POST HTTP command
+				HttpPost request = new HttpPost(postUrl);
+
+				// Sending the HTTP POST command
+				CloseableHttpResponse response = httpClient.execute(target, request, localContext);
+				try {
+					int returnCode = response.getStatusLine().getStatusCode();
+					responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
+					if (returnCode>=500) {
+						logger.fatal("Server error" + responseString);
+					}
+
+				} catch (Exception ex) {
+					logger.error(ex.getMessage());
+				} finally {
+					response.close();
+				}
+
+			} catch (Exception ex) {
+				logger.error(ex.getMessage());
+			} finally {
+				httpClient.close();
+			}
+
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}
+		return responseString;
+	}
+
 
 	// This method DELETES a request to the server
 	private static void doDelete(String hostname, String port, String url, String user, String password) {
@@ -2461,6 +2542,23 @@ public class Loader {
 		}
 
 		return query;
+	}
+
+	// This method WAITS for all running workflows to be completed
+	private static void doWaitWorkflows(String hostname, String port, String adminPassword, String context) {
+
+		int retries = 0;
+		while (retries++ < MAXRETRIES) {
+
+			String runningWorkflows = doPost(hostname, port, "/system/console/jmx/com.adobe.granite.workflow%3Atype%3DMaintenance/op/listRunningWorkflowsPerModel/", "admin", adminPassword);
+			if (runningWorkflows!=null && runningWorkflows.indexOf("<td>1</td>")>0) {
+
+				doSleep(2000, "Running workflows for " + context + " were found, waiting for completion, attempt " + retries);
+
+			}
+
+		}
+
 	}
 
 	// This method WAITS for a node to be available
