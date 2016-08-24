@@ -673,7 +673,7 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
 						nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
 					}
-					
+
 					if (nameValuePairs.size()>2) {
 
 						for (int i=0;i<nameValuePairs.size();i=i+1) {
@@ -1520,7 +1520,7 @@ public class Loader {
 						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
 						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
 						nameValuePairs.add(new BasicNameValuePair("end", endDate));	
-						
+
 						// Let's see if we have tags
 						if (record.size()>CALENDAR_INDEX_TAGS && record.get(CALENDAR_INDEX_TAGS).length()>0) {
 							nameValuePairs.add(new BasicNameValuePair("tags", record.get(CALENDAR_INDEX_TAGS)));	
@@ -1602,7 +1602,7 @@ public class Loader {
 						resourceType = elements.get("response/resourceType");
 					}
 				}
-				
+
 				// In case of Assets or Resources, we are waiting for all workflows to be completed
 				if (componentType.equals(ASSET) && returnCode<400) {
 					doWaitWorkflows(hostname, port, adminPassword, "asset");
@@ -1959,10 +1959,6 @@ public class Loader {
 			String resourceType = resourceJsonObject.getJSONObject("assetProperties").getString("type");
 			String referer = "http://" + hostname + ":" + altport + rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/en" + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + ".resource.html" + resourceID; 
 
-			logger.debug("Resource Ratings Endpoint: " + resourceRatingsEndpoint);
-			logger.debug("Resource Comments Endpoint: " + resourceCommentsEndpoint);
-			logger.debug("Referer: " + referer);
-
 			// Looking for the list of enrolled users
 			for (int i=0;i<record.size()-1;i=i+1) {
 
@@ -1980,8 +1976,6 @@ public class Loader {
 
 						if (isGroup==null) {
 
-							logger.debug("Enrollee is a user: " + key);
-
 							// Always generating a page view event
 							if (Math.random() < 0.90) doAnalytics(analytics, "event11", referer, resourceID, resourceType);
 
@@ -1994,7 +1988,6 @@ public class Loader {
 
 						} else {
 
-							logger.debug("Enrollee is a group: " + key);
 							List<NameValuePair>  groupNameValuePairs = new ArrayList<NameValuePair>();
 							groupNameValuePairs.add(new BasicNameValuePair("groupId", key));
 							groupNameValuePairs.add(new BasicNameValuePair("includeSubGroups", "true"));
@@ -2007,7 +2000,6 @@ public class Loader {
 							for (int j=0; j<memberJsonArray.length();j++) {
 								JSONObject memberJsonObject = memberJsonArray.getJSONObject(j);
 								String email = memberJsonObject.getString("authorizableId");
-								logger.debug("New group member for decoration: " + email);
 								if (email!=null) {
 
 									// Always generating a page view event
@@ -2183,7 +2175,6 @@ public class Loader {
 			ratingNameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
 			int randomRating = (int) Math.ceil(Math.random()*5);
 			logger.debug("Randomly Generated Rating: " + randomRating);
-			logger.debug("Referer for Rating: " + referer);
 			ratingNameValuePairs.add(new BasicNameValuePair("referer", referer));
 			ratingNameValuePairs.add(new BasicNameValuePair("response", String.valueOf(randomRating)));
 			doPost(hostname, altport,
@@ -2214,7 +2205,6 @@ public class Loader {
 			commentNameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
 			commentNameValuePairs.add(new BasicNameValuePair("message", comments[randomComment-1]));
 			commentNameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-			logger.debug("Referer for Commenting: " + referer);
 			doPost(hostname, altport,
 					resourceCommentsEndpoint,
 					key, getPassword(key, adminPassword),
@@ -2295,7 +2285,9 @@ public class Loader {
 				try {
 					returnCode = response.getStatusLine().getStatusCode();
 					String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
-					logger.debug("POST return code: " + returnCode);
+					if (returnCode>=400) {
+						logger.debug("POST return code: " + returnCode);
+					}
 					if (returnCode>=500) {
 						logger.fatal("Server error" + responseString);
 						return returnCode;
@@ -2359,7 +2351,7 @@ public class Loader {
 		}
 		return returnCode;
 	}
-	
+
 	// Simple POST returning the response as a string
 	private static String doPost(String hostname, String port, String url, String user, String password) {
 
@@ -2570,7 +2562,7 @@ public class Loader {
 			if (isResourceAvailable(hostname, port, adminPassword, path)) {
 
 				logger.debug("Node is found for: " + path + " on port: " + port);
-				break;
+				return;
 
 			} else {
 
@@ -2580,14 +2572,16 @@ public class Loader {
 
 		}
 
+		logger.error("Node was never found - something is wrong!");
+
 	}
 
-	// This method verifies if a resource is available or not on the server
+	// This method verifies if a resource is available or not on the server by fetching the JSON selector for a given path
 	private static boolean isResourceAvailable(String hostname, String port, String password, String path) {
 
 		boolean isAvailable = false;
 
-		String json = doGet(hostname, port, path + ".json", "admin", password, null);
+		String json = doGet(hostname, port, path.indexOf(".json")>0?path:path + ".json", "admin", password, null);
 
 		if (json!=null) isAvailable = true;
 
@@ -2631,7 +2625,7 @@ public class Loader {
 				}
 
 				URI uri = uribuilder.build();
-				logger.debug("URI built as " + uri.toString());
+				logger.debug("Getting request at " + uri.toString());
 				HttpGet httpget = new HttpGet(uri);
 				CloseableHttpResponse response = httpClient.execute(httpget, localContext);
 				if (response.getStatusLine().getStatusCode()==200) {
@@ -2710,15 +2704,7 @@ public class Loader {
 				if (value.equals("TRUE")) { value = "true"; }
 				if (value.equals("FALSE")) { value = "false"; }		
 
-				int hint = name.indexOf("@");
-				if (hint>0) {
-					nameValuePairs.add(new BasicNameValuePair(name.substring(0,hint) + "@TypeHint", name.substring(1+hint)));					            		
-					name = name.substring(0,hint);
-				} else {
-					nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
-				}
-
-				// We need to add to a property with multiple values
+				// We are adding to an existing property supporting multiple values (might not exist yet)
 				int addition = name.indexOf("+");
 				if (addition>0 && path!=null) {
 
@@ -2726,13 +2712,13 @@ public class Loader {
 
 					if (!alreadyLoaded.contains(name)) {
 						alreadyLoaded.add(name);
-						// Getting the existing value
+						// Getting the existing values
 						String existingValues = doGet(hostname, port, path + ".json", "admin", adminPassword, null);
 						try {
 							JSONObject propertyJson = new JSONObject(existingValues.trim());
 							Iterator<?> keys = propertyJson.keys();
-
 							while( keys.hasNext() ) {
+
 								String key = (String)keys.next();
 								if (name.startsWith(key)) {
 									JSONArray propertyList = (JSONArray) propertyJson.get(key);
@@ -2741,12 +2727,36 @@ public class Loader {
 										nameValuePairs.add(new BasicNameValuePair(name, propertyValue));
 									}
 								}
+
 							}
 
 						} catch (Exception e) {
+							logger.error(e.getMessage());
 						}
 					}
 
+					// Indicating it's a property with multiple values
+					BasicNameValuePair bvHint = new BasicNameValuePair(name + "@TypeHint", "String[]");
+					if (!nameValuePairs.contains(bvHint)) {
+						nameValuePairs.add(bvHint);					            							            		
+					}
+
+					BasicNameValuePair bvOption = new BasicNameValuePair(name, value);
+					if (!nameValuePairs.contains(bvOption)) {
+						nameValuePairs.add(bvOption);					            							            		
+					}
+
+					continue;
+
+				}
+
+				// We default to String unless specified otherwise
+				int hint = name.indexOf("@");
+				if (hint>0) {
+					nameValuePairs.add(new BasicNameValuePair(name.substring(0,hint) + "@TypeHint", name.substring(1+hint)));					            		
+					name = name.substring(0,hint);
+				} else {
+					nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
 				}
 
 				// We have multiple values to pass to the POST servlet, e.g. for a String[]
