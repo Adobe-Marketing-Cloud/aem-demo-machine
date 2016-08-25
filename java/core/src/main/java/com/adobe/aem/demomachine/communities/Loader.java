@@ -460,7 +460,7 @@ public class Loader {
 					continue;
 				}
 
-				// Let's see if we need to update an existing Community site
+				// Let's see if we need to update an existing Community site (this doesn't include republishing the site!)
 				if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
 
 					if (isResourceAvailable(hostname, port, adminPassword, rootPath + "/" + record.get(1) + "/" + record.get(2))) {
@@ -530,25 +530,6 @@ public class Loader {
 								"admin", adminPassword,
 								builder.build(),
 								null);
-
-
-					// Site publishing, if there's a publish instance to publish to
-					if (isValid && !port.equals(altport)) {
-
-						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
-						nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + record.get(1) + "/" + record.get(2)));
-
-						doPost(hostname, port,
-								"/communities/sites.html",
-								"admin", adminPassword,
-								new UrlEncodedFormEntity(nameValuePairs),
-								null);
-
-						doWaitPath(hostname, altport, adminPassword, rootPath + "/" + record.get(1) + "/" + record.get(2));
-
-					}
 
 					continue;
 				}
@@ -2498,7 +2479,7 @@ public class Loader {
 
 					retries++;
 					if (retries < max)
-						doSleep(2000,"Group " + group + " not found yet, pausing");
+						doSleep(1000,"Group " + group + " not found yet, pausing");
 
 				}
 
@@ -2566,7 +2547,7 @@ public class Loader {
 
 			} else {
 
-				doSleep(2000, "Node not found for: " + path + " on port: " + port + " attempt " + retries);
+				doSleep(1000, "Node not found for: " + path + " on port: " + port + " attempt " + retries);
 
 			}
 

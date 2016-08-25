@@ -1257,6 +1257,9 @@
 		<antcall target="assets_versions">
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
+		<antcall target="assets_insights">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 		<foreach target="package_author" param="package">
 			<path id="assets.packages">
 				<fileset dir="${dist}" casesensitive="yes">
@@ -1468,6 +1471,12 @@
 	</target>
 	<!-- Target for installing the Apps demo -->
 	<target name="apps" depends="version,configuration">
+		<antcall target="mobileservices">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<antcall target="phonegapbuild">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 		<foreach target="package_author" param="package">
 			<path id="apps.packages">
 				<fileset dir="${dist}" casesensitive="yes">
@@ -2516,12 +2525,6 @@
 				<antcall target="users">
 					<param name="port" value="${port}"/>
 				</antcall>
-				<antcall target="mobileservices">
-					<param name="port" value="${port}"/>
-				</antcall>
-				<antcall target="phonegapbuild">
-					<param name="port" value="${port}"/>
-				</antcall>
 				<antcall target="scene7_registration">
 					<param name="port" value="${port}"/>
 				</antcall>
@@ -2791,7 +2794,6 @@
 					<arg line="--data-urlencode './reportsuites=${AdobeAnalytics.reportsuite};publish'"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/demomachine/jcr:content/public"/>
 				</exec>
-				<antcall target="assets_insights"/>
 			</then>
 		</if>
 	</target>
@@ -4304,18 +4306,11 @@
 					<param name="port" value="${demomachine.authorport}"/>
 					<param name="path" value="/content/sites/communities/en/jcr:content"/>
 				</antcall>
-				<antcall target="cloudservices">
-					<param name="port" value="${demomachine.authorport}"/>
-					<param name="path" value="/content/sites/communities/fr/jcr:content"/>
-				</antcall>
 				<if>
 					<socket server="${demo.host}" port="${demomachine.publishport}"/>
 					<then>
 						<antcall target="community_publish">
 							<param name="path" value="/content/sites/communities/en"/>
-						</antcall>
-						<antcall target="community_publish">
-							<param name="path" value="/content/sites/communities/fr"/>
 						</antcall>
 					</then>
 				</if>
