@@ -2233,6 +2233,9 @@
 			</else>
 		</if>
 		<!-- These conditions are used to run specitic targets only on certain releases -->
+		<condition property="aem63">
+			<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+		</condition>
 		<condition property="aem62">
 			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 		</condition>
@@ -2246,6 +2249,12 @@
 			<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
 		</condition>
 		<!-- This property determines where to load the demo packages from -->
+		<if>
+			<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem63"/>
+			</then>
+		</if>
 		<if>
 			<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 			<then>
@@ -2276,18 +2285,20 @@
 		</condition>
 		<condition property="aem62orlater">
 			<or>
-				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 			</or>
 		</condition>
 		<condition property="aem61orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 			</or>
 		</condition>
 		<condition property="aem60orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.0" casesensitive="false"/>
@@ -2295,6 +2306,7 @@
 		</condition>
 		<condition property="cq56orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.0" casesensitive="false"/>
