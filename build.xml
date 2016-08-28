@@ -321,7 +321,7 @@
 		<chmod dir="${bin}" perm="ugo+rx" includes="*.sh"/>
 	</target>
 	<!-- Target for deploying the hotfixes before the first startup -->
-	<target name="hotfix_instance" depends="version,configuration">
+	<target name="hotfix_package_instance" depends="version,configuration">
 		<if>
 			<and>
 				<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
@@ -343,6 +343,8 @@
 		</if>
 	</target>
 	<target name="hotfix_package">
+		<basename property="hotfixname" file="${package}"/>
+		<echo message="Adding hotfix package ${hotfixname} to ${demo.instance}"/>
 		<copy file="${package}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 	</target>
 	<!-- Target to install a new instance -->
@@ -429,8 +431,11 @@
 				</if>
 			</then>
 		</if>
-		<antcall target="hotfix_instance"/>
+		<antcall target="osgi_instance"/>
+		<antcall target="hotfix_osgi_instance"/>
+		<antcall target="hotfix_package_instance"/>
 		<antcall target="community_instance"/>
+		<antcall target="acs_instance"/>
 		<antcall target="email_instance"/>
 	</target>
 	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
@@ -1959,6 +1964,78 @@
 			<param name="packageshare.capability" value="hotfix"/>
 			<param name="packageshare.target" value="${dist}/hotfixes"/>
 		</antcall>
+		<antcall target="download_osgi"/>
+	</target>
+	<!-- Target for downloading the ACS commons and tools -->
+	<target name="download_acs">
+		<delete dir="${dist}/acs"/>
+		<mkdir dir="${dist}/acs"/>
+		<echo message="Downloading latest AEM ACS tools and commons"/>
+		<propertyselector property="constituents" match="demo.download.acs.([^\.]*).core" select="\1" casesensitive="false"/>
+		<if>
+			<and>
+				<isset property="constituents"/>
+				<not>
+					<equals arg1="${constituents}" arg2=""/>
+				</not>
+			</and>
+			<then>
+				<foreach list="${constituents}" target="download_acs_item" param="acs.id"/>
+			</then>
+		</if>
+	</target>
+	<target name="download_acs_item">
+		<antcall target="download_acs_file">
+			<param name="acs.filepath" value="demo.download.acs.${acs.id}.core"/>
+			<param name="acs.version" value="demo.download.acs.${acs.id}.version"/>
+		</antcall>
+	</target>
+	<target name="download_acs_file">
+		<propertycopy property="this.filepath" from="${acs.filepath}"/>
+		<propertycopy property="this.version" from="${acs.version}"/>
+		<mkdir dir="${dist}/acs/${this.version}"/>
+		<basename property="this.name" file="${this.filepath}"/>
+		<echo message="Downloading ${this.name}"/>
+		<exec executable="curl">
+			<arg line="--cookie '${logs}/acs.txt' -L -s -k -o '${dist}/acs/${this.version}/${this.name}' ${this.filepath}"/>
+		</exec>
+	</target>
+	<!-- Target for downloading the OSGI commons -->
+	<target name="download_osgi">
+		<delete dir="${dist}/osgi"/>
+		<mkdir dir="${dist}/osgi"/>
+		<echo message="Downloading latest OSGI hotfixes Apache mirrors"/>
+		<propertyselector property="constituents" match="demo.download.osgi.([^\.]*).core" select="\1" casesensitive="false"/>
+		<if>
+			<and>
+				<isset property="constituents"/>
+				<not>
+					<equals arg1="${constituents}" arg2=""/>
+				</not>
+			</and>
+			<then>
+				<foreach list="${constituents}" target="download_osgi_item" param="osgi.id"/>
+			</then>
+		</if>
+	</target>
+	<target name="download_osgi_item">
+		<antcall target="download_osgi_file">
+			<param name="osgi.filepath" value="demo.download.osgi.${osgi.id}.core"/>
+			<param name="osgi.version" value="demo.download.osgi.${osgi.id}.version"/>
+			<param name="osgi.startlevel" value="demo.download.osgi.${osgi.id}.startlevel"/>
+		</antcall>
+	</target>
+	<target name="download_osgi_file">
+		<propertycopy property="this.startlevel" from="${osgi.startlevel}"/>
+		<propertycopy property="this.filepath" from="${osgi.filepath}"/>
+		<propertycopy property="this.version" from="${osgi.version}"/>
+		<mkdir dir="${dist}/osgi/${this.version}"/>
+		<basename property="this.name" file="${this.filepath}"/>
+		<echo message="Downloading ${this.name}"/>
+		<exec executable="curl">
+			<arg line="--cookie '${logs}/osgi.txt' -L -s -k -o '${dist}/osgi/${this.version}/${this.name}' ${this.filepath}"/>
+		</exec>
+		<echo file="${dist}/osgi/${this.version}/${this.name}.properties" append="false">startlevel=${this.startlevel}</echo>
 	</target>
 	<!-- Target for downloading latest Communities packages -->
 	<target name="download_communities">
@@ -2524,9 +2601,6 @@
 		<antcall target="notifications">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="phonegap">
-			<param name="port" value="${port}"/>
-		</antcall>
 		<antcall target="community-moderators">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2561,29 +2635,6 @@
 		<antcall target="externalizer">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="slingconfig">
-			<param name="port" value="${port}"/>
-		</antcall>
-	</target>
-	<!-- Target for updading Sling settings -->
-	<target name="slingconfig">
-		<!-- Changing the Sling main servlet to handle more than 1000 nested requests -->
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_mainsling.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-X POST"/>
-			<arg line="--globoff"/>
-			<arg line="-d apply=true"/>
-			<arg line="-d action=ajaxConfigManager"/>
-			<arg line="-d $location="/>
-			<arg line="-d sling.max.calls=2000"/>
-			<arg line="-d propertylist=sling.max.calls"/>
-			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.engine.impl.SlingMainServlet"/>
-		</exec>
-		<sleep seconds="5"/>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
 	</target>
 	<!-- Target for loading a package on the AUTHOR instance -->
 	<target name="package_author" depends="configuration">
@@ -2651,18 +2702,86 @@
 		<echo message="Waiting for feature pack to be installed"/>
 		<sleep seconds="30"/>
 	</target>
-	<target name="osgi_deploy">
-		<echo message="Uploading additional OSGI bundles"/>
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_aemdemomachine_jcraccess.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-F action=install"/>
-			<arg line="-F bundlestart=start"/>
-			<arg line="-F bundlestartlevel=20"/>
-			<arg line="-F refreshPackages=refresh"/>
-			<arg line="-F 'bundlefile=@${java}/libs/sling/org.apache.sling.jcr.jackrabbit.accessmanager-2.1.2.jar'"/>
-			<arg line="http://${demo.host}:${port}/system/console/bundles"/>
-		</exec>
+	<!-- Targets for installing the ACS tools and commons before the first startup -->
+	<target name="acs_instance" depends="version,configuration">
+		<if>
+			<and>
+				<equals arg1="${demo.acs}" arg2="true" casesensitive="false"/>
+				<available file="${dist}/acs" type="dir"/>
+			</and>
+			<then>
+				<foreach target="acs_instance_item" param="acs">
+					<path id="standard.acs">
+						<fileset dir="${dist}/acs" casesensitive="yes">
+							<include name="all/*.zip"/>
+							<include name="${demo.packages}/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
+	<target name="acs_instance_item">
+		<basename property="acs.name" file="${acs}"/>
+		<copy file="${acs}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" overwrite="true"/>
+		<echo message="Adding ACS package ${acs.name} on instance ${demo.instance}"/>
+	</target>
+	<!-- Targets for installing the OSGI configuration settings before the first startup -->
+	<target name="osgi_instance" depends="version,configuration">
+		<if>
+			<and>
+				<equals arg1="${demo.osgi}" arg2="true" casesensitive="false"/>
+				<available file="${dist}/config" type="dir"/>
+			</and>
+			<then>
+				<foreach target="osgi_config_item" param="config">
+					<path id="standard.config">
+						<fileset dir="${dist}/config" casesensitive="yes">
+							<include name="all/all/**/*.config"/>
+							<include name="all/${demo.instance}/**/*.config"/>
+							<include name="${demo.packages}/all/**/*.config"/>
+							<include name="${demo.packages}/${demo.instance}/**/*.config"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
+	<target name="osgi_config_item">
+		<basename property="config.name" file="${config}"/>
+		<copy file="${config}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" overwrite="true"/>
+		<echo message="Adding OSGI configuration ${config.name} on instance ${demo.instance}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##demo.externalizer.publish##" value="${demo.externalizer.publish}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##demo.externalizer.author##" value="${demo.externalizer.author}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.authorport##" value="${AdobeAEM.authorport}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.publishport##" value="${AdobeAEM.publishport}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.farmport##" value="${AdobeAEM.farmport}"/>
+	</target>
+	<!-- Targets for installing the OSGI bundles hotfixes before the first startup -->
+	<target name="hotfix_osgi_instance" depends="version,configuration">
+		<if>
+			<and>
+				<equals arg1="${demo.hotfixes}" arg2="true" casesensitive="false"/>
+				<available file="${dist}/osgi" type="dir"/>
+			</and>
+			<then>
+				<foreach target="osgi_copy_item" param="package">
+					<path id="osgi.packages">
+						<fileset dir="${dist}/osgi" casesensitive="yes">
+							<include name="all/*.jar"/>
+							<include name="${demo.packages}/*.jar"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
+	<target name="osgi_copy_item">
+		<basename property="this.name" file="${package}"/>
+		<property file="${package}.properties"/>
+		<echo message="Adding OSGI hotfix ${this.name} on instance ${demo.instance} with start level ${startlevel}"/>
+		<mkdir dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/osgi/${startlevel}"/>
+		<copy file="${package}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/osgi/${startlevel}"/>
 	</target>
 	<!-- Adobe Social Communities - setting waiting time to 10s for notifications -->
 	<target name="notifications">
@@ -3174,33 +3293,6 @@
 			<arg line="-d autotag=true"/>
 			<arg line="http://${demo.host}:${port}${folder}/jcr:content"/>
 		</exec>
-	</target>
-	<!-- Adobe AEM Apps: setting "allow empty" to true for PhoneGap Enterprise App -->
-	<target name="phonegap" if="aem61orlater">
-		<if>
-			<equals arg1="${demo.phonegap}" arg2="true" casesensitive="false"/>
-			<then>
-				<echo message="Configuring Apache Sling Referrer filter"/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_phonegap.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="--globoff"/>
-					<arg line="-d apply=true"/>
-					<arg line="-d action=ajaxConfigManager"/>
-					<arg line="-d $location="/>
-					<arg line="-d allow.empty=true"/>
-					<arg line="-d allow.empty=false"/>
-					<arg line="-d allow.hosts="/>
-					<arg line="-d allow.hosts.regexp="/>
-					<arg line="-d filter.methods=POST"/>
-					<arg line="-d filter.methods=PUT"/>
-					<arg line="-d filter.methods=DELETE"/>
-					<arg line="-d propertylist=allow.empty,allow.hosts,allow.hosts.regexp,filter.methods"/>
-					<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.security.impl.ReferrerFilter"/>
-				</exec>
-			</then>
-		</if>
 	</target>
 	<!-- Brightedge Content Optimizer: posting password for encryption wiht local instance keys -->
 	<target name="brightedge" if="aem60orlater">
@@ -4553,7 +4645,7 @@
 		</if>
 	</target>
 	<!-- Target for configuring the Communities Email importer for Email subscriptions -->
-	<target name="community_email_importer" depends="configuration">
+	<target name="community_email_importer" depends="configuration" if="aem62orlater">
 		<if>
 			<and>
 				<socket server="${demo.host}" port="${demomachine.publishport}"/>
@@ -4661,7 +4753,7 @@
 	</target>
 	<target name="community_email_importer_subscription">
 		<!-- Reconfiguring email subscriptions -->
-		<echo message="Setting email subscription settings"/>
+		<echo message="Configuring AEM Communities Email subscriptions on port ${demomachine.publishport}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.publishport}_email_subcribe.html'"/>
 			<arg line="--globoff"/>
@@ -4688,7 +4780,7 @@
 	</target>
 	<target name="community_email_importer_notification">
 		<!-- Reconfiguring email notifications -->
-		<echo message="Setting email notification settings"/>
+		<echo message="Configuring AEM Communities Email notifications on port ${demomachine.publishport}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.publishport}_email_notifications.html'"/>
 			<arg line="--globoff"/>
@@ -4723,10 +4815,11 @@
 			<arg line="-d apply=true"/>
 			<arg line="-d action=ajaxConfigManager"/>
 			<arg line="-d $location="/>
-			<arg line="-d cq.social.moderation.services.fragments.enabled=true"/>
-			<arg line="-d cq.social.moderation.services.fragments.enabled=false"/>
-			<arg line="-d propertylist=cq.social.moderation.services.fragments.enabled"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.moderation.services.impl.CommunitiesFragmentCreationServiceImpl"/>
+			<arg line="-d cq.social.content.fragments.services.enabled=true"/>
+			<arg line="-d cq.social.content.fragments.services.enabled=false"/>
+			<arg line="-d cq.social.content.fragments.services.waitTimeSeconds=30"/>
+			<arg line="-d propertylist=cq.social.content.fragments.services.enabled,cq.social.content.fragments.services.waitTimeSeconds"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.content.fragments.services.impl.CommunitiesFragmentCreationServiceImpl"/>
 		</exec>
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
@@ -4740,10 +4833,11 @@
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
-					<arg line="-d cq.social.moderation.services.fragments.enabled=true"/>
-					<arg line="-d cq.social.moderation.services.fragments.enabled=false"/>
-					<arg line="-d propertylist=cq.social.moderation.services.fragments.enabled"/>
-					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.moderation.services.impl.CommunitiesFragmentCreationServiceImpl"/>
+					<arg line="-d cq.social.content.fragments.services.enabled=true"/>
+					<arg line="-d cq.social.content.fragments.services.enabled=false"/>
+					<arg line="-d cq.social.content.fragments.services.waitTimeSeconds=30"/>
+					<arg line="-d propertylist=cq.social.content.fragments.services.enabled,cq.social.content.fragments.services.waitTimeSeconds"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.content.fragments.services.impl.CommunitiesFragmentCreationServiceImpl"/>
 				</exec>
 				<sleep seconds="5"/>
 			</then>

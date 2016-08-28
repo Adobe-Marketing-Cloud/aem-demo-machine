@@ -736,6 +736,15 @@ public class AemDemo {
 		});
 		mnOther.add(mntmAemSnapshot);
 
+		JMenuItem mntmAemAcs = new JMenuItem("Download Latest ACS Commons and Tools");
+		mntmAemAcs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemAcs.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_acs");
+			}
+		});
+		mnOther.add(mntmAemAcs);
+		
 		JMenuItem mntmAemDemoMachine = new JMenuItem("Download Latest AEM Demo Machine");
 		mntmAemDemoMachine.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmAemDemoMachine.addActionListener(new ActionListener() {
