@@ -731,15 +731,21 @@ public class Loader {
 							}
 
 							// If the group template includes the nested group features, then it won't work until 6.2 FP1
-							if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0) {
+							if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
 								logger.warn("Group template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
-
+							
+							// If the group template includes the blogs or calendars, then it won't work with 6.1GA
+							if (name.equals("functions") && (value.indexOf("blog")>0 || value.indexOf("calendar")>0) && vBundleCommunitiesEnablement==null) {
+								logger.warn("Template " + record.get(3) + " is not compatible with this version of AEM");
+								isValid=false;
+							}
+							
 						}
 					}
-
-					// Site template creation
+					
+					// Site or Group template creation
 					if (isValid) doPost(hostname, port,
 							"/content.social.json",
 							"admin", adminPassword,
@@ -963,10 +969,10 @@ public class Loader {
 				}
 
 				// Let's see if we deal with a new block of content or just a new entry
-				if (record.get(0).equals(CALENDAR) 
+				if ((record.get(0).equals(CALENDAR) && vBundleCommunitiesEnablement!=null)
 						|| record.get(0).equals(SLINGPOST)
 						|| record.get(0).equals(RATINGS) 
-						|| record.get(0).equals(BLOG) 
+						|| (record.get(0).equals(BLOG) && vBundleCommunitiesEnablement!=null) 
 						|| record.get(0).equals(JOURNAL) 
 						|| record.get(0).equals(COMMENTS) 
 						|| record.get(0).equals(REVIEWS) 
@@ -979,12 +985,12 @@ public class Loader {
 						|| record.get(0).equals(MESSAGE) 
 						|| record.get(0).equals(ASSET) 
 						|| record.get(0).equals(AVATAR) 
-						|| record.get(0).equals(RESOURCE) 
 						|| record.get(0).equals(FOLDER) 
 						|| record.get(0).equals(BADGEIMAGE) 
 						|| record.get(0).equals(BADGEASSIGN) 
 						|| record.get(0).equals(FRAGMENT) 
-						|| record.get(0).equals(LEARNING) 
+						|| (record.get(0).equals(RESOURCE) && vBundleCommunitiesEnablement!=null)
+						|| (record.get(0).equals(LEARNING) && vBundleCommunitiesEnablement!=null) 
 						|| record.get(0).equals(QNA) 
 						|| record.get(0).equals(FORUM)) {
 

@@ -11,6 +11,7 @@
 	<property name="hotfixes" location="./dist/hotfixes"/>
 	<property name="demos" location="./demos"/>
 	<property name="logs" location="./logs/${demo.build}"/>
+	<property name="validation" location="./logs/validation"/>
 	<property name="infralogs" location="./logs"/>
 	<property name="mongodb" location="./mongodb"/>
 	<property name="mysql" location="./mysql"/>
@@ -315,6 +316,10 @@
 			</else>
 		</if>
 		<antcall target="start"/>
+		<!-- Installing the ACS tools and commons on Author only -->
+		<antcall target="acs_instance">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 	</target>
 	<!-- Target for setting permissions on bin folder -->
 	<target name="permissions">
@@ -435,7 +440,6 @@
 		<antcall target="hotfix_osgi_instance"/>
 		<antcall target="hotfix_package_instance"/>
 		<antcall target="community_instance"/>
-		<antcall target="acs_instance"/>
 		<antcall target="email_instance"/>
 	</target>
 	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
@@ -587,6 +591,34 @@
 				<fail message="The port ${demo.port} is already in use."/>
 			</then>
 		</if>
+		<!-- Compute the GUI and Browser settings for the installer -->
+		<if>
+			<and>
+				<isset property="demo.gui"/>
+				<equals arg1="${demo.gui}" arg2="false" casesensitive="false"/>
+			</and>
+			<then>
+				<property name="startup.options.gui" value=""/>
+				<echo message="Starting without -gui mode"/>
+			</then>
+			<else>
+				<property name="startup.options.gui" value="-gui"/>
+			</else>
+		</if>
+		<if>
+			<and>
+				<equals arg1="${demo.nobrowser}" arg2="true" casesensitive="false"/>
+				<isset property="demo.nobrowser"/>
+			</and>
+			<then>
+				<property name="startup.options.nobrowser" value="-nobrowser"/>
+				<echo message="Starting in -nobrowser mode"/>
+			</then>
+			<else>
+				<property name="startup.options.nobrowser" value=""/>
+			</else>
+		</if>
+		<property name="startup.options" value="${startup.options.nobrowser} ${startup.options.gui}"/>
 		<!-- Compute the JVM debug settings when necessary -->
 		<if>
 			<equals arg1="${demomachine.jvmdebug}" arg2="true" casesensitive="false"/>
@@ -632,17 +664,10 @@
 			<!-- AEM6.x MongoMK use case -->
 			<then>
 				<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using Mongo DB..."/>
-				<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
-					<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
-					<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
-					<jvmarg value="-XX:MaxPermSize=256m"/>
-					<jvmarg value="${jvmdebug}"/>
-					<jvmarg value="-Doak.mongo.db=${demo.mode}"/>
-					<jvmarg value="-Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port}"/>
-					<jvmarg line="${demomachine.jvmargs}"/>
-					<arg value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode}"/>
-					<arg value="-gui"/>
-				</java>
+				<antcall target="aem_start_java">
+					<param name="aem.start.jvmargs" value="-Doak.mongo.db=${demo.mode} -Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port} ${demomachine.jvmargs}"/>
+					<param name="aem.start.args" value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
+				</antcall>
 			</then>
 			<else>
 				<if>
@@ -650,32 +675,32 @@
 					<then>
 						<!-- AEM6.x use case -->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
-						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
-							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
-							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
-							<jvmarg value="-XX:MaxPermSize=256m"/>
-							<jvmarg value="${jvmdebug}"/>
-							<jvmarg line="${demomachine.jvmargs}"/>
-							<arg value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode}"/>
-							<arg value="-gui"/>
-						</java>
+						<antcall target="aem_start_java">
+							<param name="aem.start.jvmargs" value="${demomachine.jvmargs}"/>
+							<param name="aem.start.args" value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
+						</antcall>
 					</then>
 					<else>
 						<!-- CQ5.x or AEM6.0 use case-->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using CRX2..."/>
-						<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
-							<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
-							<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
-							<jvmarg value="-XX:MaxPermSize=256m"/>
-							<jvmarg value="${jvmdebug}"/>
-							<jvmarg line="${demomachine.jvmargs}"/>
-							<arg value="-r ${demo.mode}"/>
-							<arg value="-gui"/>
-						</java>
+						<antcall target="aem_start_java">
+							<param name="aem.start.jvmargs" value="${demomachine.jvmargs}"/>
+							<param name="aem.start.args" value="-r ${demo.mode} ${startup.options}"/>
+						</antcall>
 					</else>
 				</if>
 			</else>
 		</if>
+	</target>
+	<target name="aem_start_java">
+		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
+			<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
+			<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
+			<jvmarg value="-XX:MaxPermSize=256m"/>
+			<jvmarg value="${jvmdebug}"/>
+			<jvmarg line="${aem.start.jvmargs}"/>
+			<arg line="${aem.start.args}"/>
+		</java>
 	</target>
 	<!-- Target for starting the JAMES smtp server -->
 	<target name="james_start" depends="os_detect">
@@ -1129,12 +1154,13 @@
 					</then>
 					<else>
 						<mkdir dir="${mongodb}/data/communities"/>
+						<mkdir dir="${infralogs}/mongo"/>
 						<echo message="Starting the Mongo DB server..."/>
 						<exec executable="${mongodb}/bin/mongod" dir="${mongodb}/bin" spawn="true">
 							<arg line="--dbpath ${mongodb}/data/communities"/>
 							<arg line="--port ${demo.mongo.port}"/>
 							<arg line="--fork"/>
-							<arg line="--logpath ${infralogs}/mongo.log"/>
+							<arg line="--logpath ${infralogs}/mongo/mongo.log"/>
 						</exec>
 						<sleep seconds="2"/>
 						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
@@ -1202,9 +1228,24 @@
 			<arg line="'${mongodb}/bin'"/>
 		</exec>
 	</target>
+	<!-- Target for deleting a specific demo built -->
+	<target name="cleanup" depends="configuration">
+		<antcall target="uninstall_item"/>
+		<delete failonerror="false" includeemptydirs="true">
+		    <fileset dir="${demos}/${demo.build}" excludes="demobuild.properties"/>
+		</delete>
+		<delete dir="${logs}" failonerror="false"/>
+	</target>
 	<!-- Target for uninstalling a specific demo build -->
 	<target name="uninstall" depends="configuration">
-		<echo message="Stopping and installing demo instances for ${demo.build}"/>
+		<antcall target="uninstall_item"/>
+		<delete dir="${demos}/${demo.build}" failonerror="false"/>
+		<delete dir="${logs}" failonerror="false"/>
+		<delete dir="./logs/build" failonerror="false"/>
+	</target>
+	<!-- Target for stopping and cleaning up bits -->
+	<target name="uninstall_item">
+		<echo message="Stopping and removing demo instance for ${demo.build}"/>
 		<antcall target="stop"/>
 		<!-- check if we need to clean up the associated Mongo DB -->
 		<if>
@@ -1246,9 +1287,6 @@
 				<antcall target="mysql_stop"/>
 			</then>
 		</if>
-		<delete dir="${demos}/${demo.build}" failonerror="false"/>
-		<delete dir="${logs}" failonerror="false"/>
-		<delete dir="./logs/build" failonerror="false"/>
 	</target>
 	<!-- Target for installing the Assets demo -->
 	<target name="assets" depends="version,configuration">
@@ -2710,7 +2748,7 @@
 				<available file="${dist}/acs" type="dir"/>
 			</and>
 			<then>
-				<foreach target="acs_instance_item" param="acs">
+				<foreach target="package" param="package">
 					<path id="standard.acs">
 						<fileset dir="${dist}/acs" casesensitive="yes">
 							<include name="all/*.zip"/>
@@ -5458,7 +5496,255 @@
 			</then>
 		</if>
 	</target>
+	<!-- Rebuild target -->
+	<target name="rebuild">
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/demobuild.properties"/>
+			</resourceexists>
+			<then>
+				<echo message="Rebuilding ${demo.build}"/>
+				<!-- Rebuilding via ANT -->
+				<mkdir dir="${validation}/build"/>
+				<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
+					<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' create"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Screenshot target -->
+	<target name="screenshot" depends="version,configuration">
+		<antcall target="validation">
+			<param name="screenshot" value="true"/>
+		</antcall>
+	</target>
+	<!-- Validation target -->
+	<target name="validation">
+		<!-- Timestamp for results -->
+		<tstamp>
+			<format property="validation.timestamp" pattern="yyyy-MM-dd-HH-mm"/>
+		</tstamp>
+		<mkdir dir="${validation}/screenshots/${validation.timestamp}"/>
+		<if>
+			<equals arg1="${demo.validation.reset}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="stop"/>
+				<antcall target="install_mongo"/>
+				<antcall target="install_solr"/>
+				<antcall target="install_mysql"/>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
+			<then>
+				<property name="results" value="results-${demo.build}-${validation.timestamp}"/>
+			</then>
+			<else>
+				<property name="results" value="results-${validation.timestamp}"/>
+			</else>
+		</if>
+		<mkdir dir="${validation}/screenshots/${validation.timestamp}"/>
+		<mkdir dir="${validation}/html/${validation.timestamp}"/>
+		<mkdir dir="${validation}/build"/>
+		<echo file="${validation}/${results}.html">
+			&lt;!DOCTYPE html&gt;
+			&lt;html&gt;
+			&lt;head&gt;
+			&lt;link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"&gt;
+			&lt;link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous"&gt;
+			&lt;script src="https://code.jquery.com/jquery-3.1.0.min.js"&gt;
+			&lt;script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"&gt;&lt;/script&gt;
+			&lt;/head&gt;
+			&lt;body&gt;
+			&lt;table class="table table-striped"&gt;
+		</echo>
+		<propertyselector property="constituents.unsorted" match="demo.validation.([^\.]*).url" select="\1" casesensitive="false"/>
+		<sortlist property="constituents" value="${constituents.unsorted}" delimiter=","/>
+		<!-- Printing table headers -->
+		<echo file="${validation}/${results}.html" append="true">&lt;tr&gt;&lt;th&gt;error&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&lt;/th&gt;&lt;th&gt;duration&lt;/th&gt;&lt;th&gt;versions&lt;/th&gt;</echo>
+		<foreach list="${constituents}" target="validation_build_header" param="screenshot.id" inheritall="true"/>
+		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
+		<if>
+			<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="validation_build">
+					<param name="demopath" value="${demos}/${demo.build}"/>
+				</antcall>
+			</then>
+			<else>
+				<foreach target="validation_build" param="demopath" inheritall="true">
+					<path>
+						<dirset dir="${demos}">
+							<include name="*"/>
+						</dirset>
+					</path>
+				</foreach>
+			</else>
+		</if>
+		<echo file="${validation}/${results}.html" append="true">&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;</echo>
+		<!-- Taking the uber screenshot -->
+		<exec executable="webkit2png" dir="${validation}" spawn="false" failonerror="false">
+			<arg line="-o ${results} --fullsize -W 3200 -H 2800 '${results}.html'"/>
+		</exec>
+	</target>
+	<target name="validation_build">
+		<basename property="demo" file="${demopath}"/>
+		<if>
+			<or>
+				<and>
+					<!-- Only rebuilding if possible and desired -->
+					<resourceexists>
+						<file file="${demos}/${demo}/demobuild.properties"/>
+					</resourceexists>
+					<resourcecontains resource="${demos}/${demo}/demobuild.properties" substring="demo.validation=true"/>
+				</and>
+				<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
+			</or>
+			<then>
+				<stopwatch name="timer_overall"/>
+				<!-- Rebuilding via nested ANT -->
+				<if>
+					<not>
+						<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
+					</not>
+					<then>
+						<echo message="Rebuilding demo environment: ${demo}"/>
+						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
+							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
+						</exec>
+						<!-- resetting demo.gui and demo.nobrowser as before-->
+						<propertyfile file="${demos}/${demo}/demobuild.properties">
+							<entry key="demo.gui" value="${demo.gui}"/>
+							<entry key="demo.nobrowser" value="${demo.nobrowser}"/>
+						</propertyfile>
+					</then>
+				</if>
+				<!-- Scrubbing logs -->
+				<echo file="${validation}/${results}.html" append="true">&lt;tr&gt;&lt;td&gt;</echo>
+				<antcall target="validation_build_logs">
+					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/error.log"/>
+					<param name="validation.log.pattern" value="ERROR"/>
+					<param name="validation.log.style" value="danger"/>
+				</antcall>
+				<antcall target="validation_build_logs">
+					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/error.log"/>
+					<param name="validation.log.pattern" value="WARN"/>
+					<param name="validation.log.style" value="warning"/>
+				</antcall>
+				<echo file="${validation}/${results}.html" append="true">&lt;/td&gt;</echo>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;</echo>
+				<antcall target="validation_build_logs">
+					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log"/>
+					<param name="validation.log.pattern" value="ERROR"/>
+					<param name="validation.log.style" value="danger"/>
+				</antcall>
+				<antcall target="validation_build_logs">
+					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log"/>
+					<param name="validation.log.pattern" value="WARN"/>
+					<param name="validation.log.style" value="warning"/>
+				</antcall>
+				<echo file="${validation}/${results}.html" append="true">&lt;/td&gt;</echo>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;${demo}&lt;/td&gt;</echo>
+				<!-- Duration -->
+				<stopwatch name="timer_overall" action="total"/>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;${timer_overall}&lt;/td&gt;</echo>
+				<!-- Versions -->
+				<exec executable="curl">
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-o '${logs}/${AdobeAEM.publishport}_${demo}_packages.json' http://${demo.host}:${AdobeAEM.publishport}/crx/packmgr/list.jsp"/>
+				</exec>
+				<loadfile property="packages.list" srcFile="${logs}/${AdobeAEM.publishport}_${demo}_packages.json"/>
+				<propertyregex property="soco.version" input="${packages.list}" regexp="cq-socialcommunities-pkg-([0-9.]+).zip" select="\1"/>
+				<exec executable="curl">
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-o '${logs}/${AdobeAEM.publishport}_${demo}_bundles.html' http://${demo.host}:${AdobeAEM.publishport}/system/console/bundles"/>
+				</exec>
+				<loadfile property="bundles.list" srcFile="${logs}/${AdobeAEM.publishport}_${demo}_bundles.html"/>
+				<propertyregex property="oak.version" input="${bundles.list}" regexp="version&quot;:&quot;([0-9.]+)&quot;,&quot;symbolicName&quot;:&quot;org.apache.jackrabbit.oak-core" select="\1"/>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;OAK&amp;nbsp;${oak.version}&lt;br/&gt;SoCo&amp;nbsp;${soco.version}&lt;/td&gt;</echo>
+				<!-- Taking Screenshots -->
+				<foreach list="${constituents}" target="validation_build_screenshot" param="screenshot.id" inheritall="true"/>
+				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
+				<!-- Cleaning via nested ANT -->
+				<if>
+					<and>
+						<not>
+							<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
+						</not>
+						<resourcecontains resource="${demos}/${demo}/demobuild.properties" substring="demo.validation.wipeout=true"/>
+					</and>
+					<then>
+						<echo message="Cleaning demo environment: ${demo}"/>
+						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' cleanup"/>
+						</exec>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+	<target name="validation_build_header">
+		<antcall target="validation_build_header_item">
+			<param name="screenshot.label" value="demo.validation.${screenshot.id}.label"/>
+		</antcall>
+	</target>
+	<target name="validation_build_header_item">
+		<propertycopy property="this.label" from="${screenshot.label}"/>
+		<echo file="${validation}/${results}.html" append="true">&lt;th&gt;${this.label}&lt;/th&gt;</echo>
+	</target>
+	<target name="validation_build_screenshot">
+		<antcall target="validation_build_screenshot_item">
+			<param name="screenshot.url" value="demo.validation.${screenshot.id}.url"/>
+			<param name="screenshot.type" value="demo.validation.${screenshot.id}.type"/>
+		</antcall>
+	</target>
+	<target name="validation_build_screenshot_item">
+		<propertycopy property="this.url" from="${screenshot.url}"/>
+		<propertycopy property="this.type" from="${screenshot.type}"/>
+		<if>
+			<http url="http://${demo.host}:${AdobeAEM.publishport}${this.url}" errorsBeginAt="400"/>
+			<then>
+				<echo message="Taking screenshot of ${this.url} on ${this.type}"/>
+				<stopwatch name="timer_screenshot"/>
+				<get src="http://${demo.host}:${AdobeAEM.publishport}${this.url}" dest="${validation}/html/${validation.timestamp}" ignoreerrors="true"/>
+				<stopwatch name="timer_screenshot" action="total"/>
+				<exec executable="webkit2png" dir="${validation}/screenshots/${validation.timestamp}" spawn="false" failonerror="false">
+					<arg line="-o ${demo}-${screenshot.id} -s 0.2 -W 1280 -H 800 'http://${demo.host}:${AdobeAEM.publishport}${this.url}'"/>
+				</exec>
+				<if>
+					<resourceexists>
+						<file file="${validation}/screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png"/>
+					</resourceexists>
+					<then>
+						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;div style="box-shadow: 0 1px 2px rgba(0,0,0,.075);overflow:hidden; max-height:240px"&gt;&lt;a href="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png" target="_blank"&gt;&lt;img src="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-thumb.png" class="img-rounded" alt="${this.url}" width="200"/&gt;&lt;/a&gt;&lt;br/&gt;&lt;/div&gt;&lt;small&gt;${timer_screenshot}&lt;/small&gt;&lt;/td&gt;</echo>
+					</then>
+					<else>
+						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;/td&gt;</echo>
+					</else>
+				</if>
+			</then>
+			<else>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;/td&gt;</echo>
+			</else>
+		</if>
+	</target>
+	<target name="validation_build_logs">
+		<resourcecount property="file.lines">
+			<tokens>
+				<concat>
+					<filterchain>
+						<linecontainsregexp>
+							<regexp pattern="${validation.log.pattern}"/>
+						</linecontainsregexp>
+					</filterchain>
+					<fileset file="${validation.log.file}"/>
+				</concat>
+			</tokens>
+		</resourcecount>
+		<echo file="${validation}/${results}.html" append="true">&lt;span class="label label-${validation.log.style}"&gt;${file.lines}&lt;/span&gt;&amp;nbsp;</echo>
+	</target>
+	<!-- Default target when no target name is provided to ANT -->
 	<target name="default">
-		<echo message="Welcome to the AEM Demo Machine! Please use the install target to setup your first environment"/>
+		<echo message="Welcome to the AEM Demo Machine! Please use the 'create' target to setup your first environment"/>
 	</target>
 </project>
