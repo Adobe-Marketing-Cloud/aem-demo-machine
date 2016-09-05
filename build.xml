@@ -146,7 +146,17 @@
 	</target>
 	<!-- Target for getting some information about a particular demo environment -->
 	<target name="details" depends="version, configuration">
-		<antcall target="demo_settings"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/demomachine.properties"/>
+			</resourceexists>
+			<then>
+				<antcall target="demo_settings"/>
+			</then>
+			<else>
+				<echo message="This demo environment is not available. Please rebuild first."/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for loading the persisted demo machine configuration -->
 	<target name="configuration">
@@ -251,8 +261,17 @@
 			<entry key="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
 		</propertyfile>
 		<property file="${demos}/${demo.build}/demomachine.properties"/>
-		<echo message="Persisting build options in demobuild.properties"/>
-		<echoproperties destfile="${demos}/${demo.build}/demobuild.properties"/>
+		<if>
+			<not>
+				<resourceexists>
+					<file file="${demos}/${demo.build}/demobuild.properties"/>
+				</resourceexists>
+			</not>
+			<then>
+				<echo message="Persisting build options in demobuild.properties"/>
+				<echoproperties destfile="${demos}/${demo.build}/demobuild.properties"/>
+			</then>
+		</if>
 		<property name="demo.spfile" value="${dist}/bin/${demo.jar}-sp.zip"/>
 		<echo message="AEM JAR to use: ${demo.jar}.jar"/>
 		<if>
@@ -1228,18 +1247,19 @@
 			<arg line="'${mongodb}/bin'"/>
 		</exec>
 	</target>
-	<!-- Target for deleting a specific demo built -->
+	<!-- Target for deleting a specific demo build -->
 	<target name="cleanup" depends="configuration">
 		<antcall target="uninstall_item"/>
-		<delete failonerror="false" includeemptydirs="true">
-		    <fileset dir="${demos}/${demo.build}" excludes="demobuild.properties"/>
-		</delete>
+		<move file="${demos}/${demo.build}/demobuild.properties" todir="${demos}" overwrite="true"/>
+		<delete dir="${demos}/${demo.build}" failonerror="false" includeemptydirs="true"/>
+		<mkdir dir="${demos}/${demo.build}"/>
+		<move file="${demos}/demobuild.properties" todir="${demos}/${demo.build}" overwrite="true"/>
 		<delete dir="${logs}" failonerror="false"/>
 	</target>
 	<!-- Target for uninstalling a specific demo build -->
 	<target name="uninstall" depends="configuration">
 		<antcall target="uninstall_item"/>
-		<delete dir="${demos}/${demo.build}" failonerror="false"/>
+		<delete dir="${demos}/${demo.build}" failonerror="false" includeemptydirs="true"/>
 		<delete dir="${logs}" failonerror="false"/>
 		<delete dir="./logs/build" failonerror="false"/>
 	</target>
@@ -3712,7 +3732,7 @@
 	<target name="community_loader_author" depends="community_loader_flag">
 		<java classname="com.adobe.aem.demomachine.communities.Loader">
 			<classpath refid="demo.classpath"/>
-			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.authorport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
+			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 	</target>
 	<!-- Target for loading a CSV file with UGC into a demo instance which might happen just on author (if MSRP or ASRP), or on multiple instances -->
@@ -5563,6 +5583,8 @@
 		<!-- Printing table headers -->
 		<echo file="${validation}/${results}.html" append="true">&lt;tr&gt;&lt;th&gt;error&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&lt;/th&gt;&lt;th&gt;duration&lt;/th&gt;&lt;th&gt;versions&lt;/th&gt;</echo>
 		<foreach list="${constituents}" target="validation_build_header" param="screenshot.id" inheritall="true"/>
+		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;</echo>
+		<foreach list="${constituents}" target="validation_build_user" param="screenshot.id" inheritall="true"/>
 		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
 		<if>
 			<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
@@ -5612,11 +5634,6 @@
 						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
 							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
 						</exec>
-						<!-- resetting demo.gui and demo.nobrowser as before-->
-						<propertyfile file="${demos}/${demo}/demobuild.properties">
-							<entry key="demo.gui" value="${demo.gui}"/>
-							<entry key="demo.nobrowser" value="${demo.nobrowser}"/>
-						</propertyfile>
 					</then>
 				</if>
 				<!-- Scrubbing logs -->
@@ -5651,17 +5668,39 @@
 				<!-- Versions -->
 				<exec executable="curl">
 					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-o '${logs}/${AdobeAEM.publishport}_${demo}_packages.json' http://${demo.host}:${AdobeAEM.publishport}/crx/packmgr/list.jsp"/>
+					<arg line="-o '${validation}/build/${AdobeAEM.publishport}_${demo}_productinfo.json' http://${demo.host}:${AdobeAEM.publishport}/system/console/status-productinfo.json"/>
 				</exec>
-				<loadfile property="packages.list" srcFile="${logs}/${AdobeAEM.publishport}_${demo}_packages.json"/>
-				<propertyregex property="soco.version" input="${packages.list}" regexp="cq-socialcommunities-pkg-([0-9.]+).zip" select="\1"/>
+				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="aem.version">
+					<arg line="-f '${validation}/build/${AdobeAEM.publishport}_${demo}_productinfo.json'"/>
+					<arg line="-r '([0-9.]+)'"/>
+					<arg line="-p last"/>
+					<classpath refid="demo.classpath"/>
+				</java>
 				<exec executable="curl">
 					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-o '${logs}/${AdobeAEM.publishport}_${demo}_bundles.html' http://${demo.host}:${AdobeAEM.publishport}/system/console/bundles"/>
+					<arg line="-o '${validation}/build/${AdobeAEM.publishport}_${demo}_packages.json' http://${demo.host}:${AdobeAEM.publishport}/crx/packmgr/list.jsp"/>
 				</exec>
-				<loadfile property="bundles.list" srcFile="${logs}/${AdobeAEM.publishport}_${demo}_bundles.html"/>
+				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="soco.version.zip">
+					<arg line="-f '${validation}/build/${AdobeAEM.publishport}_${demo}_packages.json'"/>
+					<arg line="-r 'cq-socialcommunities-pkg-([0-9.]+).zip'"/>
+					<arg line="-p last"/>
+					<classpath refid="demo.classpath"/>
+				</java>
+				<propertyregex property="soco.version" input="${soco.version.zip}" regexp="([0-9.]+)" select="\1" defaultValue="n/a"/>
+				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="scorm.version.zip">
+					<arg line="-f '${validation}/build/${AdobeAEM.publishport}_${demo}_packages.json'"/>
+					<arg line="-r 'cq-social-scorm-pkg-([0-9.]+).zip'"/>
+					<arg line="-p first"/>
+					<classpath refid="demo.classpath"/>
+				</java>
+				<propertyregex property="scorm.version" input="${scorm.version.zip}" regexp="([0-9.]+)" select="\1" defaultValue="n/a"/>
+				<exec executable="curl">
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-o '${validation}/build/${AdobeAEM.publishport}_${demo}_bundles.html' http://${demo.host}:${AdobeAEM.publishport}/system/console/bundles"/>
+				</exec>
+				<loadfile property="bundles.list" srcFile="${validation}/build/${AdobeAEM.publishport}_${demo}_bundles.html"/>
 				<propertyregex property="oak.version" input="${bundles.list}" regexp="version&quot;:&quot;([0-9.]+)&quot;,&quot;symbolicName&quot;:&quot;org.apache.jackrabbit.oak-core" select="\1"/>
-				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;OAK&amp;nbsp;${oak.version}&lt;br/&gt;SoCo&amp;nbsp;${soco.version}&lt;/td&gt;</echo>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;AEM&amp;nbsp;${aem.version}&lt;br/&gt;OAK&amp;nbsp;${oak.version}&lt;br/&gt;SoCo&amp;nbsp;${soco.version}&lt;br/&gt;SCORM&amp;nbsp;${scorm.version}&lt;/td&gt;&lt;/td&gt;</echo>
 				<!-- Taking Screenshots -->
 				<foreach list="${constituents}" target="validation_build_screenshot" param="screenshot.id" inheritall="true"/>
 				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
@@ -5683,6 +5722,30 @@
 			</then>
 		</if>
 	</target>
+	<target name="validation_build_user">
+		<if>
+			<not>
+				<isset property="demo.validation.${screenshot.id}.user"/>
+			</not>
+			<then>
+				<property name="demo.validation.${screenshot.id}.user" value="guest@weretail.com"/>
+			</then>
+		</if>
+		<antcall target="validation_build_user_item">
+			<param name="screenshot.user" value="demo.validation.${screenshot.id}.user"/>
+		</antcall>
+	</target>
+	<target name="validation_build_user_item">
+		<propertycopy property="this.user" from="${screenshot.user}"/>
+		<echo file="${validation}/build/${AdobeAEM.publishport}_username.txt">${this.user}</echo>
+		<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="demo.user">
+			<arg line="-f '${validation}/build/${AdobeAEM.publishport}_username.txt'"/>
+			<arg line="-r '([^@]+)'"/>
+			<arg line="-p first"/>
+			<classpath refid="demo.classpath"/>
+		</java>
+		<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;small&gt;${demo.user}&lt;/small&gt;&lt;/td&gt;</echo>
+	</target>
 	<target name="validation_build_header">
 		<antcall target="validation_build_header_item">
 			<param name="screenshot.label" value="demo.validation.${screenshot.id}.label"/>
@@ -5693,30 +5756,54 @@
 		<echo file="${validation}/${results}.html" append="true">&lt;th&gt;${this.label}&lt;/th&gt;</echo>
 	</target>
 	<target name="validation_build_screenshot">
+		<if>
+			<not>
+				<isset property="demo.validation.${screenshot.id}.user"/>
+			</not>
+			<then>
+				<property name="demo.validation.${screenshot.id}.user" value="guest"/>
+			</then>
+		</if>
 		<antcall target="validation_build_screenshot_item">
 			<param name="screenshot.url" value="demo.validation.${screenshot.id}.url"/>
 			<param name="screenshot.type" value="demo.validation.${screenshot.id}.type"/>
+			<param name="screenshot.user" value="demo.validation.${screenshot.id}.user"/>
 		</antcall>
 	</target>
 	<target name="validation_build_screenshot_item">
 		<propertycopy property="this.url" from="${screenshot.url}"/>
 		<propertycopy property="this.type" from="${screenshot.type}"/>
+		<propertycopy property="this.user" from="${screenshot.user}"/>
 		<if>
 			<http url="http://${demo.host}:${AdobeAEM.publishport}${this.url}" errorsBeginAt="400"/>
 			<then>
-				<echo message="Taking screenshot of ${this.url} on ${this.type}"/>
+				<echo message="Taking screenshot of ${this.url} on ${this.type} for ${this.user} user"/>
 				<stopwatch name="timer_screenshot"/>
 				<get src="http://${demo.host}:${AdobeAEM.publishport}${this.url}" dest="${validation}/html/${validation.timestamp}" ignoreerrors="true"/>
 				<stopwatch name="timer_screenshot" action="total"/>
-				<exec executable="webkit2png" dir="${validation}/screenshots/${validation.timestamp}" spawn="false" failonerror="false">
-					<arg line="-o ${demo}-${screenshot.id} -s 0.2 -W 1280 -H 800 'http://${demo.host}:${AdobeAEM.publishport}${this.url}'"/>
-				</exec>
+				<if>
+					<equals arg1="${this.user}" arg2="guest" casesensitive="false"/>
+					<then>
+						<exec executable="webkit2png" dir="${validation}/screenshots/${validation.timestamp}" spawn="false" failonerror="false">
+							<arg line="--delay=2 -o ${demo}-${screenshot.id} -s 0.2 -W 1280 -H 800 'http://${demo.host}:${AdobeAEM.publishport}${this.url}'"/>
+						</exec>
+					</then>
+					<else>
+						<java classname="com.adobe.aem.demomachine.Base64Encoder" outputproperty="screenshot.authorization">
+							<arg line="-v '${this.user}:password'"/>
+							<classpath refid="demo.classpath"/>
+						</java>
+						<exec executable="webkit2png" dir="${validation}/screenshots/${validation.timestamp}" spawn="false" failonerror="false">
+							<arg line="--delay=2 --basic-auth ${screenshot.authorization} -o ${demo}-${screenshot.id} -s 0.2 -W 1280 -H 800 'http://${demo.host}:${AdobeAEM.publishport}${this.url}'"/>
+						</exec>
+					</else>
+				</if>
 				<if>
 					<resourceexists>
 						<file file="${validation}/screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png"/>
 					</resourceexists>
 					<then>
-						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;div style="box-shadow: 0 1px 2px rgba(0,0,0,.075);overflow:hidden; max-height:240px"&gt;&lt;a href="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png" target="_blank"&gt;&lt;img src="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-thumb.png" class="img-rounded" alt="${this.url}" width="200"/&gt;&lt;/a&gt;&lt;br/&gt;&lt;/div&gt;&lt;small&gt;${timer_screenshot}&lt;/small&gt;&lt;/td&gt;</echo>
+						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;div style="box-shadow: 0 1px 2px rgba(0,0,0,.075);overflow:hidden; max-height:240px"&gt;&lt;a href="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png" target="_blank"&gt;&lt;img src="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-thumb.png" class="img-rounded" alt="${this.url}" width="200"/&gt;&lt;/a&gt;&lt;br/&gt;&lt;/div&gt;&lt;small&gt;${timer_screenshot}&amp;nbsp;&lt;a href="http://${demo.host}:${AdobeAEM.publishport}${this.url}" target="_blank"&gt;link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;</echo>
 					</then>
 					<else>
 						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;/td&gt;</echo>

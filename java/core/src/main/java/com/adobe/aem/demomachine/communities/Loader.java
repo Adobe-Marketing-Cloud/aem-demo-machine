@@ -291,6 +291,7 @@ public class Loader {
 		String[] url = new String[10];  // Handling 10 levels maximum for nested comments 
 		int urlLevel = 0;
 		int row = 0;
+		boolean ignoreUntilNextComponent = false;
 		HashMap<String,ArrayList<String>> learningpaths=new HashMap<String,ArrayList<String>>();
 
 		try {
@@ -315,6 +316,7 @@ public class Loader {
 			Version vBundleCommunitiesAdvancedScoring = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scoring-advanced-impl");
 
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
+			ignoreUntilNextComponent = false;
 			for (CSVRecord record : records) {
 
 				LinkedList<InputStream> lIs = new LinkedList<InputStream>();
@@ -343,6 +345,7 @@ public class Loader {
 				if (record.get(0).equals(SLEEP)) {
 
 					doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
+					continue;
 
 				}
 
@@ -735,16 +738,16 @@ public class Loader {
 								logger.warn("Group template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
-							
+
 							// If the group template includes the blogs or calendars, then it won't work with 6.1GA
 							if (name.equals("functions") && (value.indexOf("blog")>0 || value.indexOf("calendar")>0) && vBundleCommunitiesEnablement==null) {
 								logger.warn("Template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
-							
+
 						}
 					}
-					
+
 					// Site or Group template creation
 					if (isValid) doPost(hostname, port,
 							"/content.social.json",
@@ -969,10 +972,10 @@ public class Loader {
 				}
 
 				// Let's see if we deal with a new block of content or just a new entry
-				if ((record.get(0).equals(CALENDAR) && vBundleCommunitiesEnablement!=null)
+				if (record.get(0).equals(CALENDAR)
 						|| record.get(0).equals(SLINGPOST)
 						|| record.get(0).equals(RATINGS) 
-						|| (record.get(0).equals(BLOG) && vBundleCommunitiesEnablement!=null) 
+						|| record.get(0).equals(BLOG) 
 						|| record.get(0).equals(JOURNAL) 
 						|| record.get(0).equals(COMMENTS) 
 						|| record.get(0).equals(REVIEWS) 
@@ -989,8 +992,8 @@ public class Loader {
 						|| record.get(0).equals(BADGEIMAGE) 
 						|| record.get(0).equals(BADGEASSIGN) 
 						|| record.get(0).equals(FRAGMENT) 
-						|| (record.get(0).equals(RESOURCE) && vBundleCommunitiesEnablement!=null)
-						|| (record.get(0).equals(LEARNING) && vBundleCommunitiesEnablement!=null) 
+						|| record.get(0).equals(RESOURCE)
+						|| record.get(0).equals(LEARNING) 
 						|| record.get(0).equals(QNA) 
 						|| record.get(0).equals(FORUM)) {
 
@@ -999,6 +1002,14 @@ public class Loader {
 					url[0] = record.get(1);
 					urlLevel=0;
 
+					// If it's not a SLINGPOST that could result in nodes to be created, let's make sure the end point is really there.
+					if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getConfigurePath(record.get(1)))) {
+						ignoreUntilNextComponent = true;
+						continue;
+					} else {
+						ignoreUntilNextComponent = false;
+					}
+					
 					if (!componentType.equals(SLINGPOST) && reset) {
 
 						int pos = record.get(1).indexOf("/jcr:content");
@@ -1008,7 +1019,7 @@ public class Loader {
 									"admin", adminPassword);
 
 					}
-
+										
 					// If the Configure command line flag is set, we try to configure the component with all options enabled
 					if (componentType.equals(SLINGPOST) || configure) {
 
@@ -1017,6 +1028,24 @@ public class Loader {
 						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, configurePath, record, 2);
 						if (nameValuePairs.size()>2) {
 
+							// If we're posting against a jcr:content node, let's make sure the parent folder is there
+							int pos1 = configurePath.indexOf("/jcr:content");
+							if (pos1>0) {
+								
+								if (!isResourceAvailable(hostname, port, adminPassword, configurePath.substring(0, pos1)))
+										continue;
+								
+							}
+
+							// If we're posting against a configuration node, let's make sure the parent folder is there
+							int pos2 = configurePath.indexOf("configuration");
+							if (pos2>0) {
+								
+								if (!isResourceAvailable(hostname, port, adminPassword, configurePath))
+										continue;
+								
+							}
+							
 							// Only do this when really have configuration settings
 							doPost(hostname, port,
 									configurePath,
@@ -1035,16 +1064,20 @@ public class Loader {
 									);
 						}
 
-
-
 					}
 
 					// We're done with this line, moving on to the next line in the CSV file
 					continue;
 				}
 
+				// Are we processing until the next component because the end point if not available?
+				if (ignoreUntilNextComponent) {
+					logger.debug("Ignoring this record because of unavailable component configuration");
+					continue;
+				}
+								
 				// Let's see if we need to indent the list, if it's a reply or a reply to a reply
-				if (record.get(1).length()!=1) continue;  // We need a valid level indicator
+				if (record.get(1)==null || record.get(1).length()!=1) continue;  // We need a valid level indicator
 
 				if (Integer.parseInt(record.get(1))>urlLevel) {
 					url[++urlLevel] = location;
@@ -1053,6 +1086,9 @@ public class Loader {
 					urlLevel = Integer.parseInt(record.get(1));
 					logger.debug("Decrementing urlLevel to: " + urlLevel);
 				}
+
+				// Special case for 6.1 GA only with forums and files
+				if (vBundleCommunitiesEnablement==null && (!(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(JOIN)))) continue;
 
 				// Get the credentials or fall back to password
 				String password = getPassword(record.get(0), adminPassword);
@@ -2272,13 +2308,18 @@ public class Loader {
 				try {
 					returnCode = response.getStatusLine().getStatusCode();
 					String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
-					if (returnCode>=400) {
-						logger.debug("POST return code: " + returnCode);
-					}
 					if (returnCode>=500) {
-						logger.fatal("Server error" + responseString);
+						logger.error("POST return code: " + returnCode);
+						logger.debug(responseString);
 						return returnCode;
 					}
+					if (returnCode>=400) {
+						logger.warn("POST return code: " + returnCode);
+						logger.debug(responseString);
+						return returnCode;
+					}
+					if (elements==null)
+						return returnCode;
 					Set<String> keys = elements.keySet();
 					if (!isJSONValid(responseString) && keys.size()>0) {
 						logger.warn("POST operation didn't return a JSON string, hence cannot extract requested value");
@@ -2567,8 +2608,16 @@ public class Loader {
 	private static boolean isResourceAvailable(String hostname, String port, String password, String path) {
 
 		boolean isAvailable = false;
+		
+		if (path==null || hostname==null || port==null || password==null) return false;
+		
+		int pos = path.indexOf(".");
+		
+		if (pos>0) path = path.substring(0,pos);
 
-		String json = doGet(hostname, port, path.indexOf(".json")>0?path:path + ".json", "admin", password, null);
+		path = path + ".json";
+		
+		String json = doGet(hostname, port, path, "admin", password, null);
 
 		if (json!=null) isAvailable = true;
 
@@ -2624,7 +2673,7 @@ public class Loader {
 						response.close();
 					}
 				} else {
-					logger.warn("GET return code: " + response.getStatusLine().getStatusCode());
+					logger.debug("GET return code: " + response.getStatusLine().getStatusCode());
 				}
 			} catch (Exception ex) {
 				logger.error(ex.getMessage());
