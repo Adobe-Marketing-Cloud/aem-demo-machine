@@ -1680,7 +1680,7 @@
 		<mkdir dir="${dist}/downloads"/>
 		<mkdir dir="${dist}/we-retail"/>
 		<exec executable="curl">
-			<arg line="-L -s -k -o '${dist}/downloads/we.retail.all-${demo.download.weretail.all}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail/releases/download/${demo.download.weretail.all}/we.retail.all-${demo.download.weretail.all}.zip"/>
+			<arg line="-L -s -k -o '${dist}/downloads/we.retail.all-${demo.download.weretail.all}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail/releases/download/we.retail-${demo.download.weretail.all}/we.retail.all-${demo.download.weretail.all}.zip"/>
 		</exec>
 		<move todir="${dist}/we-retail">
 			<fileset dir="${dist}/downloads">
