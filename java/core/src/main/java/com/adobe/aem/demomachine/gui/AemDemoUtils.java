@@ -209,6 +209,21 @@ public class AemDemoUtils {
 		return listOptions(buildFile,AemDemoConstants.OPTIONS_STORES);
 
 	}
+	
+	// Retrieves a particular property from build.properties 
+	public static String getPropertyValue(File buildFile, String propertyName) {
+		
+		String propertyValue = null;
+		Properties defaultProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "build.properties");
+		Properties personalProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");
+		if (personalProps.containsKey(propertyName)) {
+			propertyValue = personalProps.getProperty(propertyName);
+		} else {
+			propertyValue = defaultProps.getProperty(propertyName);
+		}
+		return propertyValue;
+
+	}
 
 	public static AemDemoProperty[] listOptions(File buildFile, String property) {
 

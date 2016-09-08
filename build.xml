@@ -2484,26 +2484,6 @@
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
 				<echo message="Configuring the Publish instance"/>
-				<echo message="Activating the Crypto keys in /etc/key from Author to Publish"/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${demomachine.authorport}_cryptokey.html'"/>
-					<arg line="-v -u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="-d path=/etc/key"/>
-					<arg line="-d cmd=activate"/>
-					<arg line="-d ignoredeactivated=true"/>
-					<arg line="http://${demo.host}:${demomachine.authorport}/etc/replication/treeactivation.html"/>
-				</exec>
-				<echo message="Restarting the Crypto Bundle on Publish instance (30s pause)"/>
-				<antcall target="bundle_restart">
-					<param name="bundle.port" value="${demomachine.publishport}"/>
-					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
-				</antcall>
-				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 60 seconds -->
-				<sleep seconds="30"/>
-				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-					<http url="http://${demo.host}:${demomachine.publishport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-				</waitfor>
 				<antcall target="configure_post">
 					<param name="port" value="${demomachine.publishport}"/>
 				</antcall>
@@ -2519,13 +2499,6 @@
 			<socket server="${demo.host}" port="${demomachine.farmport}"/>
 			<then>
 				<echo message="Configuring the Farm instance"/>
-				<echo message="Restarting the Crypto Bundle on Farm instance"/>
-				<antcall target="bundle_restart">
-					<param name="bundle.port" value="${demomachine.farmport}"/>
-					<param name="bundle.name" value="Adobe Granite Crypto Support"/>
-				</antcall>
-				<!-- Unfortunately there's no good way to check when the bundle and its dependencies are up again, hence waiting 30 seconds -->
-				<sleep seconds="30"/>
 				<antcall target="configure_post">
 					<param name="port" value="${demomachine.farmport}"/>
 				</antcall>
@@ -2802,8 +2775,23 @@
 						</fileset>
 					</path>
 				</foreach>
+				<foreach target="osgi_config_package" param="package">
+					<path id="standard.package">
+						<fileset dir="${dist}/config" casesensitive="yes">
+							<include name="all/all/**/*.zip"/>
+							<include name="all/${demo.instance}/**/*.zip"/>
+							<include name="${demo.packages}/all/**/*.zip"/>
+							<include name="${demo.packages}/${demo.instance}/**/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
 			</then>
 		</if>
+	</target>
+	<target name="osgi_config_package">
+		<basename property="package.name" file="${package}"/>
+		<copy file="${package}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install" overwrite="true"/>
+		<echo message="Adding configuration package ${package.name} on instance ${demo.instance}"/>
 	</target>
 	<target name="osgi_config_item">
 		<basename property="config.name" file="${config}"/>

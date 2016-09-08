@@ -744,7 +744,7 @@ public class AemDemo {
 			}
 		});
 		mnOther.add(mntmAemAcs);
-		
+
 		JMenuItem mntmAemDemoMachine = new JMenuItem("Download Latest AEM Demo Machine");
 		mntmAemDemoMachine.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmAemDemoMachine.addActionListener(new ActionListener() {
@@ -904,11 +904,14 @@ public class AemDemo {
 		lblCommandOutput.setBounds(24, 143, 160, 16);
 		frameMain.getContentPane().add(lblCommandOutput);
 
-		// Initializing and launching the scroller
-		AemDemoMarquee mp = new AemDemoMarquee(AemDemoConstants.Credits, 60);
-		mp.setBounds(140, 440, 650, 30);
-		frameMain.getContentPane().add(mp);
-		mp.start();
+		// Initializing and launching the ticker
+		String tickerOn = AemDemoUtils.getPropertyValue(buildFile,"demo.ticker");
+		if (tickerOn==null || (tickerOn!=null && tickerOn.equals("true"))) {
+			AemDemoMarquee mp = new AemDemoMarquee(AemDemoConstants.Credits, 60);
+			mp.setBounds(140, 440, 650, 30);
+			frameMain.getContentPane().add(mp);
+			mp.start();
+		}
 
 		// Launching the download tracker task
 		AemDemoDownload aemDownload = new AemDemoDownload(AemDemo.this);
