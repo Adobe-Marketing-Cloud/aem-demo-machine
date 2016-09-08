@@ -1540,6 +1540,9 @@
 		<antcall target="phonegapbuild">
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
+		<antcall target="dps">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 		<foreach target="package_author" param="package">
 			<path id="apps.packages">
 				<fileset dir="${dist}" casesensitive="yes">
@@ -2643,9 +2646,6 @@
 					<param name="port" value="${port}"/>
 				</antcall>
 				<antcall target="scene7_registration">
-					<param name="port" value="${port}"/>
-				</antcall>
-				<antcall target="dps">
 					<param name="port" value="${port}"/>
 				</antcall>
 			</then>
