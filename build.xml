@@ -2972,6 +2972,20 @@
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/demomachine/jcr:content/public"/>
 				</exec>
 			</then>
+			<else>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_analytics_delete_demo.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X DELETE"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_analytics_delete_assets.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X DELETE"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/assetinsights"/>
+				</exec>
+			</else>
 		</if>
 	</target>
 	<target name="assets_insights" if="aem62orlater" depends="version,configuration,community_loader_flag">
@@ -3060,6 +3074,14 @@
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/dps2015/demomachine/jcr:content"/>
 				</exec>
 			</then>
+			<else>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_dps_delete_demo.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X DELETE"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/dps2015/demomachine"/>
+				</exec>
+			</else>
 		</if>
 	</target>
 	<!-- Adobe Target: posting email, client code and password -->
@@ -3079,6 +3101,14 @@
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/testandtarget/demomachine/jcr:content"/>
 				</exec>
 			</then>
+			<else>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_target_delete_demo.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X DELETE"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/testandtarget/demomachine"/>
+				</exec>
+			</else>
 		</if>
 	</target>
 	<!-- Adobe Mobile Services: posting username, password and secret key for encryption wiht local instance keys -->
@@ -3802,46 +3832,6 @@
 			</and>
 			<then>
 				<antcall target="community_loader_weretail"/>
-			</then>
-		</if>
-		<!-- Associating Cloud Service on author and publishing... -->
-		<if>
-			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
-			<then>
-				<antcall target="cloudservices">
-					<param name="port" value="${demomachine.authorport}"/>
-					<param name="path" value="/content/we-retail/jcr:content"/>
-				</antcall>
-				<antcall target="cloudservices">
-					<param name="port" value="${demomachine.authorport}"/>
-					<param name="path" value="/content/we-retail/community/en/jcr:content"/>
-				</antcall>
-				<if>
-					<socket server="${demo.host}" port="${demomachine.publishport}"/>
-					<then>
-						<antcall target="cloudservices">
-							<param name="port" value="${demomachine.publishport}"/>
-							<param name="path" value="/content/we-retail/jcr:content"/>
-						</antcall>
-						<antcall target="cloudservices">
-							<param name="port" value="${demomachine.publishport}"/>
-							<param name="path" value="/content/we-retail/community/en/jcr:content"/>
-						</antcall>
-					</then>
-				</if>
-				<if>
-					<socket server="${demo.host}" port="${demomachine.farmport}"/>
-					<then>
-						<antcall target="cloudservices">
-							<param name="port" value="${demomachine.farmport}"/>
-							<param name="path" value="/content/we-retail/jcr:content"/>
-						</antcall>
-						<antcall target="cloudservices">
-							<param name="port" value="${demomachine.farmport}"/>
-							<param name="path" value="/content/we-retail/community/en/jcr:content"/>
-						</antcall>
-					</then>
-				</if>
 			</then>
 		</if>
 	</target>
@@ -5692,6 +5682,9 @@
 				<!-- Taking Screenshots -->
 				<foreach list="${constituents}" target="validation_build_screenshot" param="screenshot.id" inheritall="true"/>
 				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
+				<!-- Archiving log files -->
+				<copy file="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log" tofile="${validation}/build/${demo}-aem-demo-machine.log"/>
+				<copy file="${demos}/${demo}/author/crx-quickstart/logs/error.log" tofile="${validation}/build/${demo}-error.log"/>
 				<!-- Cleaning via nested ANT -->
 				<if>
 					<and>

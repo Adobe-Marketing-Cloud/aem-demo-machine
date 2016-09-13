@@ -42,6 +42,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -519,7 +521,7 @@ public class Loader {
 
 							// If the template includes some of the enablement features, then it won't work for 6.1 GA
 							if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
-								logger.warn("Site update is not compatible with this version of AEM");
+								logger.info("Site update is not compatible with this version of AEM");
 								isValid=false;
 							}
 
@@ -645,7 +647,7 @@ public class Loader {
 				if (record.get(0).equals(BADGE)) {
 
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
-						logger.warn("Badging operations not available with this version of AEM");
+						logger.info("Badging operations not available with this version of AEM");
 						continue;
 					}
 
@@ -723,25 +725,25 @@ public class Loader {
 
 							// If the template is already there, let's not try to create it
 							if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + value.replaceAll(" ","_").toLowerCase()) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + value.replaceAll(" ","_").toLowerCase()))) {
-								logger.warn("Template " + value + " is already there");
+								logger.info("Template " + value + " is already there");
 								isValid=false;
 							}
 
 							// If the template includes some of the enablement features, then it won't work for 6.1 GA
 							if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
-								logger.warn("Template " + record.get(3) + " is not compatible with this version of AEM");
+								logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
 
 							// If the group template includes the nested group features, then it won't work until 6.2 FP1
 							if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
-								logger.warn("Group template " + record.get(3) + " is not compatible with this version of AEM");
+								logger.info("Group template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
 
 							// If the group template includes the blogs or calendars, then it won't work with 6.1GA
 							if (name.equals("functions") && (value.indexOf("blog")>0 || value.indexOf("calendar")>0) && vBundleCommunitiesEnablement==null) {
-								logger.warn("Template " + record.get(3) + " is not compatible with this version of AEM");
+								logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
 								isValid=false;
 							}
 
@@ -1003,13 +1005,13 @@ public class Loader {
 					urlLevel=0;
 
 					// If it's not a SLINGPOST that could result in nodes to be created, let's make sure the end point is really there.
-					if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getConfigurePath(record.get(1)))) {
+					if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getRootPath(record.get(1)))) {
 						ignoreUntilNextComponent = true;
 						continue;
 					} else {
 						ignoreUntilNextComponent = false;
 					}
-					
+
 					if (!componentType.equals(SLINGPOST) && reset) {
 
 						int pos = record.get(1).indexOf("/jcr:content");
@@ -1019,7 +1021,7 @@ public class Loader {
 									"admin", adminPassword);
 
 					}
-										
+
 					// If the Configure command line flag is set, we try to configure the component with all options enabled
 					if (componentType.equals(SLINGPOST) || configure) {
 
@@ -1031,21 +1033,21 @@ public class Loader {
 							// If we're posting against a jcr:content node, let's make sure the parent folder is there
 							int pos1 = configurePath.indexOf("/jcr:content");
 							if (pos1>0) {
-								
+
 								if (!isResourceAvailable(hostname, port, adminPassword, configurePath.substring(0, pos1)))
-										continue;
-								
+									continue;
+
 							}
 
 							// If we're posting against a configuration node, let's make sure the parent folder is there
 							int pos2 = configurePath.indexOf("configuration");
 							if (pos2>0) {
-								
+
 								if (!isResourceAvailable(hostname, port, adminPassword, configurePath))
-										continue;
-								
+									continue;
+
 							}
-							
+
 							// Only do this when really have configuration settings
 							doPost(hostname, port,
 									configurePath,
@@ -1072,10 +1074,10 @@ public class Loader {
 
 				// Are we processing until the next component because the end point if not available?
 				if (ignoreUntilNextComponent) {
-					logger.debug("Ignoring this record because of unavailable component configuration");
+					logger.info("Ignoring this record because of unavailable component configuration");
 					continue;
 				}
-								
+
 				// Let's see if we need to indent the list, if it's a reply or a reply to a reply
 				if (record.get(1)==null || record.get(1).length()!=1) continue;  // We need a valid level indicator
 
@@ -1144,7 +1146,7 @@ public class Loader {
 
 					} else {
 
-						logger.warn("Ignoring FOLLOW with this version of AEM Communities");
+						logger.info("Ignoring FOLLOW with this version of AEM Communities");
 						continue;
 
 					}
@@ -1168,7 +1170,7 @@ public class Loader {
 
 					} else {
 
-						logger.warn("Ignoring NOTIFICATION with this version of AEM Communities");
+						logger.info("Ignoring NOTIFICATION with this version of AEM Communities");
 						continue;
 
 					}
@@ -1195,7 +1197,7 @@ public class Loader {
 
 						} catch (Exception e) {
 
-							logger.warn("Couldn't figure out home folder for user " + record.get(0));
+							logger.error("Couldn't figure out home folder for user " + record.get(0));
 
 						}
 
@@ -1232,7 +1234,7 @@ public class Loader {
 
 						} catch (Exception e) {
 
-							logger.warn("Couldn't figure out home folder for user " + record.get(2));
+							logger.error("Couldn't figure out home folder for user " + record.get(2));
 
 						}
 
@@ -1293,7 +1295,7 @@ public class Loader {
 				if (componentType.equals(QNA)) {
 
 					if(vBundleCommunitiesEnablement==null) {
-						logger.warn("QnAs are not compatible with this version of AEM");
+						logger.info("QnAs are not compatible with this version of AEM");
 						continue;
 					}
 
@@ -1313,7 +1315,7 @@ public class Loader {
 				if (componentType.equals(JOURNAL) || componentType.equals(BLOG)) {
 
 					if(vBundleCommunitiesEnablement==null) {
-						logger.warn("Blogs are not compatible with this version of AEM");
+						logger.info("Blogs are not compatible with this version of AEM");
 						continue;
 					}
 
@@ -1466,6 +1468,11 @@ public class Loader {
 					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "\"}]";
 					nameValuePairs.add(new BasicNameValuePair("assets", assets));
 
+					// If it's a SCORM asset, making sure the output is available before processing
+					if (record.get(2).endsWith(".zip")) {
+						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output");
+					}
+					
 				}
 
 				// Creates a learning path
@@ -1524,7 +1531,7 @@ public class Loader {
 				if (componentType.equals(CALENDAR)) {
 
 					if(vBundleCommunitiesEnablement==null) {
-						logger.warn("Calendars are not compatible with this version of AEM");
+						logger.info("Calendars are not compatible with this version of AEM");
 						continue;
 					}
 
@@ -1705,38 +1712,36 @@ public class Loader {
 				// Step 6. We post ratings and comments for each of the enrollees on publish
 				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
 
+					// Wait for the workflows to be completed
+					doWaitWorkflows(hostname, port, adminPassword, "resource");
+
 					// Wait for the data to be fully copied
 					doWaitPath(hostname, port, adminPassword, location + "/assets/asset");
 
 					// If we are dealing with a SCORM asset, we wait for all workflows to be completed before publishing the resource
 					if (record.get(2).indexOf(".zip")>0) {
-						doWaitWorkflows(hostname, port, adminPassword, "scorm");
+
+						// Wait for the output to be available
+						doWaitPath(hostname, port, adminPassword, location + "/assets/asset/" + record.get(2) + "/output");
+
 					}
 
-					// Publishing the resource if not part of a learning path (other wise publishing the learning path will take care of this)
+					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
+					publishNameValuePairs.add(new BasicNameValuePair(":operation","se:publishEnablementContent"));
+					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
+					logger.debug("Publishing a Resource from: " + location);					
+					Loader.doPost(hostname, port,
+							location,
+							userName, password,
+							new UrlEncodedFormEntity(publishNameValuePairs),
+							null);
 
-					if (record.get(RESOURCE_INDEX_PATH).length()>0) {
+					// Waiting for the resource to be published
+					doWaitPath(hostname, altport, adminPassword, location);
 
-						List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-						publishNameValuePairs.add(new BasicNameValuePair(":operation","se:publishEnablementContent"));
-						publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
-						logger.debug("Publishing a Resource from: " + location);					
-						Loader.doPost(hostname, port,
-								location,
-								userName, password,
-								new UrlEncodedFormEntity(publishNameValuePairs),
-								null);
-
-						// Waiting for the resource to be published
-						doWaitPath(hostname, altport, adminPassword, location);
-
-						// Adding comments and ratings for this resource
-						logger.debug("Decorating the resource with comments and ratings");
-						doDecorate(hostname, altport, adminPassword, location, record, analytics, rootPath);
-
-					} else {
-						logger.debug("Resource belongs to a learning path, not publishing it yet");
-					}
+					// Adding comments and ratings for this resource
+					logger.debug("Decorating the resource with comments and ratings");
+					doDecorate(hostname, altport, adminPassword, location, record, analytics, rootPath);
 
 					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
 					DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -1866,8 +1871,24 @@ public class Loader {
 			return record.substring(pass+1);
 		}	
 
-		// If not, return the defaut password 
+		// If not, return the default password 
 		return defaultPassword;
+
+	}
+
+	// This method gets the root path for a record
+	private static String getRootPath(String record) {
+
+		String rootPath = getConfigurePath(record);
+		int jcr = rootPath.indexOf("jcr:content");
+		if (jcr>0) {
+			rootPath = rootPath.substring(0,jcr);
+		}
+		jcr = rootPath.indexOf("_jcr_content");
+		if (jcr>0) {
+			rootPath = rootPath.substring(0,jcr);
+		}
+		return rootPath;
 
 	}
 
@@ -2564,16 +2585,25 @@ public class Loader {
 		return query;
 	}
 
-	// This method WAITS for all running workflows to be completed
+	// This method waits for all running workflows to be completed
 	private static void doWaitWorkflows(String hostname, String port, String adminPassword, String context) {
 
 		int retries = 0;
 		while (retries++ < MAXRETRIES) {
 
 			String runningWorkflows = doPost(hostname, port, "/system/console/jmx/com.adobe.granite.workflow%3Atype%3DMaintenance/op/listRunningWorkflowsPerModel/", "admin", adminPassword);
-			if (runningWorkflows!=null && runningWorkflows.indexOf("<td>1</td>")>0) {
+			if (runningWorkflows!=null) {
 
-				doSleep(2000, "Running workflows for " + context + " were found, waiting for completion, attempt " + retries);
+				Matcher m = Pattern.compile("<td>([0-9]+)</td>").matcher(runningWorkflows);
+				if (m.find()) {
+					doSleep(2000, m.group(1) + " running workflows for " + context + " were found, waiting for completion, attempt " + retries);
+				} else {
+					break; // no more running workflows
+				}
+
+			} else {
+				
+				doSleep(2000, "Cannot get the list of running workflows for " + context + ", attempt " + retries);
 
 			}
 
@@ -2608,15 +2638,17 @@ public class Loader {
 	private static boolean isResourceAvailable(String hostname, String port, String password, String path) {
 
 		boolean isAvailable = false;
-		
-		if (path==null || hostname==null || port==null || password==null) return false;
-		
-		int pos = path.indexOf(".");
-		
-		if (pos>0) path = path.substring(0,pos);
 
+		if (path==null || hostname==null || port==null || password==null) return false;
+
+		int pos = path.lastIndexOf("/");
+		int pos2 = path.indexOf(".",pos);
+
+		if (pos2>0) path = path.substring(0,pos2);
+
+		if (path.endsWith(".json")) path = path.replaceAll("\\.json", "");		
 		path = path + ".json";
-		
+
 		String json = doGet(hostname, port, path, "admin", password, null);
 
 		if (json!=null) isAvailable = true;
@@ -2740,6 +2772,12 @@ public class Loader {
 				if (value.equals("TRUE")) { value = "true"; }
 				if (value.equals("FALSE")) { value = "false"; }		
 
+				// If it's a reference to a resource, let's make sure it's available first
+				if (name.startsWith("cq:cloudserviceconfigs") && !isResourceAvailable(hostname, port, adminPassword, value) ) {
+					logger.warn("Resource " + value + " is not available");
+					continue;
+				}
+				
 				// We are adding to an existing property supporting multiple values (might not exist yet)
 				int addition = name.indexOf("+");
 				if (addition>0 && path!=null) {
