@@ -4843,8 +4843,24 @@
 	<!-- Target for configuring the Communities content fragment creation service -->
 	<target name="community_fragment" if="aem62orlater">
 		<echo message="Configuring AEM Communities Content Fragment creation service on port ${demomachine.authorport}..."/>
+		<antcall target="community_fragment_instance">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<antcall target="community_fragment_instance">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+				<sleep seconds="5"/>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the Content Fragment bundle -->
+	<target name="community_fragment_instance">
+		<echo message="Configuring AEM Communities Content Fragment creation service on port ${port}..."/>
 		<exec executable="curl">
-			<arg line="--output '${logs}/${demomachine.authorport}_fragment.html'"/>
+			<arg line="--output '${logs}/${port}_fragment.html'"/>
 			<arg line="--globoff"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
@@ -4853,31 +4869,10 @@
 			<arg line="-d $location="/>
 			<arg line="-d cq.social.content.fragments.services.enabled=true"/>
 			<arg line="-d cq.social.content.fragments.services.enabled=false"/>
-			<arg line="-d cq.social.content.fragments.services.waitTimeSeconds=30"/>
+			<arg line="-d cq.social.content.fragments.services.waitTimeSeconds=120"/>
 			<arg line="-d propertylist=cq.social.content.fragments.services.enabled,cq.social.content.fragments.services.waitTimeSeconds"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.content.fragments.services.impl.CommunitiesFragmentCreationServiceImpl"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.social.content.fragments.services.impl.CommunitiesFragmentCreationServiceImpl"/>
 		</exec>
-		<if>
-			<socket server="${demo.host}" port="${demomachine.publishport}"/>
-			<then>
-				<echo message="Configuring AEM Communities Content Fragment creation service on port ${demomachine.publishport}..."/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${demomachine.publishport}_fragment.html'"/>
-					<arg line="--globoff"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="-d apply=true"/>
-					<arg line="-d action=ajaxConfigManager"/>
-					<arg line="-d $location="/>
-					<arg line="-d cq.social.content.fragments.services.enabled=true"/>
-					<arg line="-d cq.social.content.fragments.services.enabled=false"/>
-					<arg line="-d cq.social.content.fragments.services.waitTimeSeconds=30"/>
-					<arg line="-d propertylist=cq.social.content.fragments.services.enabled,cq.social.content.fragments.services.waitTimeSeconds"/>
-					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.content.fragments.services.impl.CommunitiesFragmentCreationServiceImpl"/>
-				</exec>
-				<sleep seconds="5"/>
-			</then>
-		</if>
 	</target>
 	<!-- Target for configuring the SCORM engine -->
 	<target name="community_scorm">
@@ -5516,6 +5511,13 @@
 			<param name="screenshot" value="true"/>
 		</antcall>
 	</target>
+	<!-- Reset infrastructure target -->
+	<target name="install_infrastructure">
+		<antcall target="stop"/>
+		<antcall target="install_mongo"/>
+		<antcall target="install_solr"/>
+		<antcall target="install_mysql"/>
+	</target>
 	<!-- Validation target -->
 	<target name="validation">
 		<!-- Timestamp for results -->
@@ -5526,10 +5528,7 @@
 		<if>
 			<equals arg1="${demo.validation.reset}" arg2="true" casesensitive="false"/>
 			<then>
-				<antcall target="stop"/>
-				<antcall target="install_mongo"/>
-				<antcall target="install_solr"/>
-				<antcall target="install_mysql"/>
+				<antcall target="install_infrastructure"/>
 			</then>
 		</if>
 		<if>

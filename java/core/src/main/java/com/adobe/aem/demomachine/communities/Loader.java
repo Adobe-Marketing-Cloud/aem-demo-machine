@@ -344,7 +344,7 @@ public class Loader {
 				}
 
 				// Let's see if we need to pause a little bit
-				if (record.get(0).equals(SLEEP)) {
+				if (record.get(0).equals(SLEEP) && record.get(1).length()>0) {
 
 					doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
 					continue;
@@ -1326,7 +1326,11 @@ public class Loader {
 					//We might have more paragraphs to add to the blog or journal article
 					for (int i=6; i < record.size();i++) {
 						if (record.get(i).length()>0) {
-							message.append("<p>" + record.get(i) + "</p>");
+							if (record.get(i).startsWith("isDraft")) {
+								nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
+							} else {
+								message.append("<p>" + record.get(i) + "</p>");
+							}
 						}
 					}
 
@@ -1472,7 +1476,7 @@ public class Loader {
 					if (record.get(2).endsWith(".zip")) {
 						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output");
 					}
-					
+
 				}
 
 				// Creates a learning path
@@ -1635,6 +1639,7 @@ public class Loader {
 
 				// In case of Assets or Resources, we are waiting for all workflows to be completed
 				if (componentType.equals(ASSET) && returnCode<400) {
+					doSleep(1000, "Pausing 1s after submitting asset");
 					doWaitWorkflows(hostname, port, adminPassword, "asset");
 				}
 
@@ -1718,7 +1723,7 @@ public class Loader {
 					// Wait for the data to be fully copied
 					doWaitPath(hostname, port, adminPassword, location + "/assets/asset");
 
-					// If we are dealing with a SCORM asset, we wait for all workflows to be completed before publishing the resource
+					// If we are dealing with a SCORM asset, we wait for the SCORM workflow to be completed before publishing the resource
 					if (record.get(2).indexOf(".zip")>0) {
 
 						// Wait for the output to be available
@@ -1909,7 +1914,7 @@ public class Loader {
 
 		// Wait 2 seconds
 		try {
-			logger.debug("Waiting " + ms + " milliseconds: " + message);
+			logger.info("Waiting " + ms + " milliseconds: " + message);
 			Thread.sleep(ms);
 		} catch(InterruptedException ex) {
 			Thread.currentThread().interrupt();
@@ -2597,12 +2602,13 @@ public class Loader {
 				Matcher m = Pattern.compile("<td>([0-9]+)</td>").matcher(runningWorkflows);
 				if (m.find()) {
 					doSleep(2000, m.group(1) + " running workflows for " + context + " were found, waiting for completion, attempt " + retries);
+					logger.debug(runningWorkflows);
 				} else {
 					break; // no more running workflows
 				}
 
 			} else {
-				
+
 				doSleep(2000, "Cannot get the list of running workflows for " + context + ", attempt " + retries);
 
 			}
@@ -2777,7 +2783,7 @@ public class Loader {
 					logger.warn("Resource " + value + " is not available");
 					continue;
 				}
-				
+
 				// We are adding to an existing property supporting multiple values (might not exist yet)
 				int addition = name.indexOf("+");
 				if (addition>0 && path!=null) {
