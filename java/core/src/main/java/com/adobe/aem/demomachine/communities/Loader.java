@@ -151,6 +151,7 @@ public class Loader {
 	private static final String SLEEP = "Sleep";
 	private static final String FOLLOW = "Follow";
 	private static final String NOTIFICATION = "Notification";
+	private static final String NOTIFICATIONPREFERENCE = "NotificationPreference";
 	private static final String LEARNING = "LearningPath";
 	private static final String BANNER = "pagebanner";
 	private static final String THUMBNAIL = "pagethumbnail";
@@ -987,6 +988,7 @@ public class Loader {
 						|| record.get(0).equals(JOIN) 
 						|| record.get(0).equals(FOLLOW) 
 						|| record.get(0).equals(NOTIFICATION) 
+						|| record.get(0).equals(NOTIFICATIONPREFERENCE) 
 						|| record.get(0).equals(MESSAGE) 
 						|| record.get(0).equals(ASSET) 
 						|| record.get(0).equals(AVATAR) 
@@ -1129,9 +1131,21 @@ public class Loader {
 				// Creates a forum post (or reply)
 				if (componentType.equals(FORUM)) {
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
-					nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+					if (urlLevel == 2 && (record.get(2).equals("Deny") || record.get(2).equals("Flag"))) {
+						if (record.get(2).equals("Deny")) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
+						} else if (record.get(2).equals("Flag")) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
+						}
+					} else {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+						if (urlLevel == 0) {
+							nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
+						} else {
+							nameValuePairs.add(new BasicNameValuePair("subject", ""));	
+						}
+					}
 
 				}
 
@@ -1175,7 +1189,18 @@ public class Loader {
 
 					}
 				}
+				
+				// Notification preferences
+				if (componentType.equals(NOTIFICATIONPREFERENCE)) {
 
+					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
+						
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
+					
+					}
+
+				}
+				
 				// Uploading Avatar picture
 				if (componentType.equals(AVATAR)) {
 
@@ -1299,16 +1324,24 @@ public class Loader {
 						continue;
 					}
 
-					if (urlLevel == 0) {
+					if (urlLevel == 2 && (record.get(2).equals("Deny") || record.get(2).equals("Flag") || record.get(2).equals("Answer"))) {
+						if (record.get(2).equals("Answer")) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));
+						} else if (record.get(2).equals("Deny")) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
+						} else if (record.get(2).equals("Flag")) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
+						}
+					} else {
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
-						nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
 						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
-					} else if (urlLevel == 1) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
-					} else if (urlLevel == 2) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));	            	   
+						if (urlLevel ==0) {
+							nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
+						} else {
+							nameValuePairs.add(new BasicNameValuePair("subject", ""));	
+						}
 					}
+
 				}
 
 				// Creates an article or a comment

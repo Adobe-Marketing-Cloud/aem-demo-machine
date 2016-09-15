@@ -17,6 +17,7 @@
  from Adobe Systems Incorporated.
 
 -->
+<!-- Solr Version: 4.4 -->
 <schema name="base" version="1.5">
     <types>
         <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
@@ -62,10 +63,12 @@
                 <tokenizer class="solr.ICUTokenizerFactory" />
                 <filter class="solr.ICUNormalizer2FilterFactory" name="nfkc_cf" mode="compose"/>
                 <filter class="solr.RemoveDuplicatesTokenFilterFactory" />
+                <charFilter class="solr.HTMLStripCharFilterFactory"/>
             </analyzer>
             <analyzer type="query">
                 <tokenizer class="solr.ICUTokenizerFactory" />
                 <filter class="solr.ICUNormalizer2FilterFactory" name="nfkc_cf" mode="compose"/>
+                <charFilter class="solr.HTMLStripCharFilterFactory"/>
             </analyzer>
         </fieldType>
         
@@ -584,7 +587,7 @@
         
         <field name="provider_id" type="string" indexed="true" stored="false" multiValued="false"/>
         <field name="provider" type="string" indexed="true" stored="false" multiValued="false"/>
-        <field name="title_t" type="minimalText" indexed="true" stored="false" multiValued="false" termVectors="true"/>
+        <field name="title_t" type="text_default" indexed="true" stored="false" multiValued="false" termVectors="true"/>
         <field name="verbatim_default" type="text_default" indexed="true" stored="false" multiValued="false" termVectors="true"/>
         
         <field name="verbatim_en" type="text_en" indexed="true" stored="false" multiValued="false" termVectors="true"/>
@@ -639,7 +642,7 @@
         <field name="author_username" type="minimalText" indexed="true" stored="false" multiValued="false"/>
         <field name="author_username_ci" type="minimalText" indexed="true" stored="false" multiValued="false"/>
         <field name="author_display_name" type="minimalText" indexed="true" stored="false" multiValued="false"/>
-        <field name="timestamp" type="tdate" indexed="true" stored="false" multiValued="false"/>
+        <field name="timestamp" type="tdate" indexed="true" stored="false" multiValued="false" docValues="true"/>
         <field name="report_suite" type="string" indexed="true" stored="false" multiValued="false"/>
         <field name="emotion" type="string" indexed="true" stored="false" multiValued="false"/>
         <field name="language" type="string" indexed="true" stored="false" multiValued="false"/>

@@ -242,7 +242,7 @@
 	</target>
 	<!-- Target for installing and starting the default AUTHOR and PUBLISH servers -->
 	<target name="install">
-		<antcall target="uninstall"/>
+		<antcall target="cleanup"/>
 		<echo message="Installing the build ${demo.build}..."/>
 		<antcall target="demomachine_analytics_install"/>
 		<mkdir dir="${demos}/${demo.build}"/>
@@ -993,6 +993,18 @@
 	<target name="solr_stop_unix" if="isUnix" depends="permissions">
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
 			<arg line="solr"/>
+		</exec>
+	</target>
+	<!-- Target for downloading the SOLR configuration files locally -->
+	<target name="solr_schemas" depends="version,configuration">
+		<echo message="Downloading the SOLR schema from /libs/social/config/datastore/msrp"/>
+		<exec executable="curl">
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-s -o '${dist}/community/solr/schema.xml' http://${demo.host}:${demomachine.authorport}/libs/social/config/datastore/msrp/solr4/schema.xml"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-s -o '${dist}/community/solr/solrconfig.xml' http://${demo.host}:${demomachine.authorport}/libs/social/config/datastore/msrp/solr4/solrconfig.xml"/>
 		</exec>
 	</target>
 	<!-- Target for stopping the JAMES smtp server -->
@@ -2915,6 +2927,14 @@
 			<equals arg1="${AdobeScene7.install}" arg2="true" casesensitive="false"/>
 			<then>
 				<echo message="Configuring Dynamic Media cloud service"/>
+				<foreach target="package" param="package">
+					<path id="standard.package">
+						<fileset dir="${dist}/dynamicmedia/packages" casesensitive="yes">
+							<include name="all/**/*.zip"/>
+							<include name="${demo.packages}/**/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_scene7.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -2948,29 +2968,15 @@
 			<equals arg1="${AdobeAnalytics.install}" arg2="true" casesensitive="false"/>
 			<then>
 				<echo message="Configuring Analytics cloud service"/>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_analytics.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="--data-urlencode './password=${AdobeAnalytics.password}'"/>
-					<arg line="-d ./password@Encrypted="/>
-					<arg line="--data-urlencode './secret=${AdobeAnalytics.secret}'"/>
-					<arg line="-d ./secret@Encrypted="/>
-					<arg line="--data-urlencode './username=${AdobeAnalytics.username}'"/>
-					<arg line="-d ./server=${AdobeAnalytics.server}"/>
-					<arg line="--data-urlencode './company=${AdobeAnalytics.company}'"/>
-					<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
-					<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
-					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
-				</exec>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_analytics_reportsuite.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="--data-urlencode './reportsuite=${AdobeAnalytics.reportsuite}'"/>
-					<arg line="--data-urlencode './reportsuites=${AdobeAnalytics.reportsuite};publish'"/>
-					<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/demomachine/jcr:content/public"/>
-				</exec>
+				<foreach target="package" param="package">
+					<path id="standard.package">
+						<fileset dir="${dist}/analytics/packages" casesensitive="yes">
+							<include name="all/**/*.zip"/>
+							<include name="${demo.packages}/**/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+				<antcall target="analytics_cloud"/>
 			</then>
 			<else>
 				<exec executable="curl">
@@ -2987,6 +2993,31 @@
 				</exec>
 			</else>
 		</if>
+	</target>
+	<target name="analytics_cloud">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_analytics.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--data-urlencode './password=${AdobeAnalytics.password}'"/>
+			<arg line="-d ./password@Encrypted="/>
+			<arg line="--data-urlencode './secret=${AdobeAnalytics.secret}'"/>
+			<arg line="-d ./secret@Encrypted="/>
+			<arg line="--data-urlencode './username=${AdobeAnalytics.username}'"/>
+			<arg line="-d ./server=${AdobeAnalytics.server}"/>
+			<arg line="--data-urlencode './company=${AdobeAnalytics.company}'"/>
+			<arg line="-d ./disableImportPageImpressionsAuthor@Delete=true"/>
+			<arg line="-d ./disableImportPageImpressionsPublish@Delete=true"/>
+			<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/jcr:content"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_analytics_reportsuite.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--data-urlencode './reportsuite=${AdobeAnalytics.reportsuite}'"/>
+			<arg line="--data-urlencode './reportsuites=${AdobeAnalytics.reportsuite};publish'"/>
+			<arg line="http://${demo.host}:${port}/etc/cloudservices/sitecatalyst/demomachine/demomachine/jcr:content/public"/>
+		</exec>
 	</target>
 	<target name="assets_insights" if="aem62orlater" depends="version,configuration,community_loader_flag">
 		<!-- Adds Assets Insights -->
@@ -3090,6 +3121,14 @@
 			<equals arg1="${AdobeTarget.install}" arg2="true" casesensitive="false"/>
 			<then>
 				<echo message="Configuring Target cloud service"/>
+				<foreach target="package" param="package">
+					<path id="standard.package">
+						<fileset dir="${dist}/target/packages" casesensitive="yes">
+							<include name="all/**/*.zip"/>
+							<include name="${demo.packages}/**/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_target.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -3101,14 +3140,6 @@
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/testandtarget/demomachine/jcr:content"/>
 				</exec>
 			</then>
-			<else>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_target_delete_demo.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X DELETE"/>
-					<arg line="http://${demo.host}:${port}/etc/cloudservices/testandtarget/demomachine"/>
-				</exec>
-			</else>
 		</if>
 	</target>
 	<!-- Adobe Mobile Services: posting username, password and secret key for encryption wiht local instance keys -->
@@ -4294,7 +4325,7 @@
 				</fileset>
 			</path>
 		</foreach>
-		<antcall target="analytics">
+		<antcall target="analytics_cloud">
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
 		<if>
@@ -4308,7 +4339,7 @@
 						</fileset>
 					</path>
 				</foreach>
-				<antcall target="analytics">
+				<antcall target="analytics_cloud">
 					<param name="port" value="${demomachine.publishport}"/>
 				</antcall>
 			</then>
@@ -4324,7 +4355,7 @@
 						</fileset>
 					</path>
 				</foreach>
-				<antcall target="analytics">
+				<antcall target="analytics_cloud">
 					<param name="port" value="${demomachine.farmport}"/>
 				</antcall>
 			</then>
@@ -4418,11 +4449,11 @@
 		<if>
 			<and>
 				<equals arg1="${AdobeAnalytics.install}" arg2="true" casesensitive="false"/>
-				<socket server="${demo.host}" port="${demomachine.publishport}"/>
+				<socket server="${demo.host}" port="${demomachine.authorport}"/>
 			</and>
 			<then>
 				<exec executable="curl">
-					<arg line="--output '${logs}/${demomachine.publishport}_analytics_interval.html'"/>
+					<arg line="--output '${logs}/${demomachine.authorport}_analytics_interval.html'"/>
 					<arg line="--globoff"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
@@ -4430,9 +4461,9 @@
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
 					<arg line="-d cq.social.reporting.analytics.polling.importer.interval=1"/>
-					<arg line="-d cq.social.reporting.analytics.polling.importer.pageSize=50000"/>
+					<arg line="-d cq.social.reporting.analytics.polling.importer.pageSize=5000"/>
 					<arg line="-d propertylist=cq.social.reporting.analytics.polling.importer.interval,cq.social.reporting.analytics.polling.importer.pageSize"/>
-					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.reporting.analytics.services.impl.AnalyticsReportImporterServiceImpl"/>
+					<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.reporting.analytics.services.impl.AnalyticsReportImporterServiceImpl"/>
 				</exec>
 			</then>
 		</if>
@@ -5558,7 +5589,7 @@
 		<propertyselector property="constituents.unsorted" match="demo.validation.([^\.]*).url" select="\1" casesensitive="false"/>
 		<sortlist property="constituents" value="${constituents.unsorted}" delimiter=","/>
 		<!-- Printing table headers -->
-		<echo file="${validation}/${results}.html" append="true">&lt;tr&gt;&lt;th&gt;error&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&lt;/th&gt;&lt;th&gt;duration&lt;/th&gt;&lt;th&gt;versions&lt;/th&gt;</echo>
+		<echo file="${validation}/${results}.html" append="true">&lt;tr&gt;&lt;th&gt;error&amp;nbsp;logs&lt;br&gt;(author)&lt;/th&gt;&lt;th&gt;error&amp;nbsp;logs&lt;br&gt;(publish)&lt;/th&gt;&lt;th&gt;demo&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&lt;/th&gt;&lt;th&gt;duration&lt;/th&gt;&lt;th&gt;versions&lt;/th&gt;</echo>
 		<foreach list="${constituents}" target="validation_build_header" param="screenshot.id" inheritall="true"/>
 		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;</echo>
 		<foreach list="${constituents}" target="validation_build_user" param="screenshot.id" inheritall="true"/>
@@ -5622,6 +5653,18 @@
 				</antcall>
 				<antcall target="validation_build_logs">
 					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/error.log"/>
+					<param name="validation.log.pattern" value="WARN"/>
+					<param name="validation.log.style" value="warning"/>
+				</antcall>
+				<echo file="${validation}/${results}.html" append="true">&lt;/td&gt;</echo>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;</echo>
+				<antcall target="validation_build_logs">
+					<param name="validation.log.file" value="${demos}/${demo}/publish/crx-quickstart/logs/error.log"/>
+					<param name="validation.log.pattern" value="ERROR"/>
+					<param name="validation.log.style" value="danger"/>
+				</antcall>
+				<antcall target="validation_build_logs">
+					<param name="validation.log.file" value="${demos}/${demo}/publish/crx-quickstart/logs/error.log"/>
 					<param name="validation.log.pattern" value="WARN"/>
 					<param name="validation.log.style" value="warning"/>
 				</antcall>
