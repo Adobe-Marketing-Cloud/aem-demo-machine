@@ -3123,7 +3123,7 @@
 				<echo message="Configuring Target cloud service"/>
 				<foreach target="package" param="package">
 					<path id="standard.package">
-						<fileset dir="${dist}/target/packages" casesensitive="yes">
+						<fileset dir="${dist}/tt/packages" casesensitive="yes">
 							<include name="all/**/*.zip"/>
 							<include name="${demo.packages}/**/*.zip"/>
 						</fileset>
