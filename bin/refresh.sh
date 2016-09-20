@@ -17,5 +17,5 @@
 
 date
 cd /opt/aem-demo-machine
-/opt/aem-demo-machine/ant/bin/ant demo_communities
+nohup /opt/aem-demo-machine/ant/bin/ant create &
 date
