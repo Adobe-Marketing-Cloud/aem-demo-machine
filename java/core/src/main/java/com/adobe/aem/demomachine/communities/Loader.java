@@ -1136,6 +1136,8 @@ public class Loader {
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
 						} else if (record.get(2).equals("Flag")) {
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
+							nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "this is spam"));
+							nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
 						}
 					} else {
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
@@ -1196,7 +1198,9 @@ public class Loader {
 					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
 						
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
-					
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+						nameValuePairs.addAll(otherNameValuePairs);
+						
 					}
 
 				}
@@ -1331,6 +1335,8 @@ public class Loader {
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
 						} else if (record.get(2).equals("Flag")) {
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
+							nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "this is spam"));
+							nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
 						}
 					} else {
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));

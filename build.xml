@@ -1286,6 +1286,8 @@
 				<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
 			</or>
 			<then>
+				<!-- Let's make sure Mongo is started properly so that we can drop the database if already in there -->
+				<antcall target="mongo_start"/>
 				<propertyregex property="mongo.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
 				<if>
 					<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
