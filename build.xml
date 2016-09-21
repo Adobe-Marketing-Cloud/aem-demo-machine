@@ -1262,10 +1262,24 @@
 	<!-- Target for deleting a specific demo build -->
 	<target name="cleanup" depends="configuration">
 		<antcall target="uninstall_item"/>
-		<move file="${demos}/${demo.build}/demobuild.properties" todir="${demos}" overwrite="true"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/demobuild.properties"/>
+			</resourceexists>
+			<then>
+				<move file="${demos}/${demo.build}/demobuild.properties" todir="${demos}" overwrite="true"/>
+			</then>
+		</if>
 		<delete dir="${demos}/${demo.build}" failonerror="false" includeemptydirs="true"/>
 		<mkdir dir="${demos}/${demo.build}"/>
-		<move file="${demos}/demobuild.properties" todir="${demos}/${demo.build}" overwrite="true"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/demobuild.properties"/>
+			</resourceexists>
+			<then>
+				<move file="${demos}/demobuild.properties" todir="${demos}/${demo.build}" overwrite="true"/>
+			</then>
+		</if>
 		<delete dir="${logs}" failonerror="false"/>
 	</target>
 	<!-- Target for uninstalling a specific demo build -->
