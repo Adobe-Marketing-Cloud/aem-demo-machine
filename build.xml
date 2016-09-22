@@ -335,10 +335,18 @@
 			</else>
 		</if>
 		<antcall target="start"/>
-		<!-- Installing the ACS tools and commons on Author only -->
+		<!-- Installing the ACS tools and commons on Author and Publish only -->
 		<antcall target="acs_instance">
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<antcall target="acs_instance">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+			</then>
+		</if>
 	</target>
 	<!-- Target for setting permissions on bin folder -->
 	<target name="permissions">
