@@ -1780,17 +1780,12 @@
 					<arg line="https://www.adobeaemcloud.com/content/login/j_security_check"/>
 				</exec>
 				<if>
-					<not>
+					<and>
 						<resourceexists>
 							<file file="${logs}/download_packageshare.html"/>
 						</resourceexists>
-					</not>
-					<then>
-						<fail message="There was a problem connecting to PackageShare. Please verify your network connectivity."/>
-					</then>
-				</if>
-				<if>
-					<resourcecontains resource="${logs}/download_packageshare.html" substring="do not match"/>
+						<resourcecontains resource="${logs}/download_packageshare.html" substring="do not match"/>
+					</and>
 					<then>
 						<fail message="There was a problem connecting to PackageShare. Please verify AdobeID.user and AdobeID.password properties."/>
 					</then>
