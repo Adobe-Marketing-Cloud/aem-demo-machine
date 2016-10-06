@@ -1714,14 +1714,14 @@
 		<delete file="${dist}/downloads/google.html"/>
 	</target>
 	<target name="download_weretail">
-		<echo message="Downloading Latest AEM We.Retail packages from GitHub"/>
+		<echo message="Downloading Latest AEM We.Retail 6.2 packages from GitHub"/>
 		<delete dir="${dist}/we-retail"/>
 		<mkdir dir="${dist}/downloads"/>
-		<mkdir dir="${dist}/we-retail"/>
+		<mkdir dir="${dist}/we-retail/aem62"/>
 		<exec executable="curl">
 			<arg line="-L -s -k -o '${dist}/downloads/we.retail.all-${demo.download.weretail.all}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail/releases/download/we.retail-${demo.download.weretail.all}/we.retail.all-${demo.download.weretail.all}.zip"/>
 		</exec>
-		<move todir="${dist}/we-retail">
+		<move todir="${dist}/we-retail/aem62">
 			<fileset dir="${dist}/downloads">
 				<include name="**/we.retail.*.zip"/>
 			</fileset>
@@ -2546,17 +2546,42 @@
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
 			<arg line="-d transportUri=http://${demo.host}:${demomachine.publishport}/bin/receive?sling:authRequestLogin=1"/>
+			<arg line="-d userId=admin"/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled@delete="/>
+			<arg line="-d transportUser=admin"/>
 			<arg line="-d transportPassword=${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${demomachine.authorport}/etc/replication/agents.author/publish/jcr:content"/>
 		</exec>
 		<exec executable="curl">
-			<arg line="--output '${logs}/${demomachine.authorport}_replication1.html'"/>
+			<arg line="--output '${logs}/${demomachine.authorport}_replication2.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
+			<arg line="-d userId=admin"/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled@delete="/>
 			<arg line="-d transportUri=http://${demo.host}:${demomachine.publishport}/bin/receive?sling:authRequestLogin=1"/>
+			<arg line="-d transportUser=admin"/>
 			<arg line="-d transportPassword=${demo.admin.password}"/>
 			<arg line="http://${demo.host}:${demomachine.authorport}/etc/replication/agents.author/publish_reverse/jcr:content"/>
 		</exec>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${demomachine.publishport}_replication3.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d userId=admin"/>
+					<arg line="-d enabled=true"/>
+					<arg line="-d enabled@delete="/>
+					<arg line="-d transportUri=repo://var/replication/outbox"/>
+					<arg line="-d transportUser=admin"/>
+					<arg line="-d transportPassword=${demo.admin.password}"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/etc/replication/agents.publish/outbox/jcr:content"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the Admin account -->
 	<target name="configure_admin" if="aem60orlater">
@@ -3499,7 +3524,7 @@
 		</if>
 	</target>
 	<!-- This target prepares the Geomedia site for future translation jobs -->
-	<target name="translations_geomedia" if="aem61">
+	<target name="translations_geomedia" if="aem61" depends="version,configuration">
 		<antcall target="translations_page">
 			<param name="translation.language" value="fr"/>
 			<param name="translation.title" value="Francais"/>
@@ -3538,11 +3563,12 @@
 			<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
 		</exec>
 		<!-- Then we rename and associate the cloud server to these pages-->
+		<echo message="${port} ${translation.language}"/>
 		<exec executable="curl">
-			<arg line="--output '${logs}/${port)_translations_page_rename_${translation.language}.html'"/>
+			<arg line="--output '${logs}/${port}_translations_page_rename_${translation.language}.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-X POST"/>
-			<arg line="-d ./jcr:title=${translation.title}"/>
+			<arg line="-d ./jcr:title='${translation.title}'"/>
 			<arg line="-d ./cq:cloudserviceconfigs@Delete"/>
 			<arg line="-d ./cq:cloudserviceconfigs=/etc/cloudservices/msft-translation/msft_trial"/>
 			<arg line="http://${demo.host}:${port}${translation.root}/${translation.language}/jcr:content"/>
@@ -3681,28 +3707,6 @@
 				</exec>
 			</then>
 		</if>
-	</target>
-	<!-- Target for compiling the WeRetail Demo site -->
-	<target name="weretail_build" depends="compile">
-		<delete dir="${dist}/we-retail"/>
-		<echo message="Building the weRetail demo..."/>
-		<exec dir="${demo.github.weretail.path}" executable="${demo.mvn}" spawn="false" failonerror="true">
-			<arg line="clean install"/>
-		</exec>
-		<exec dir="${demo.github.weretail.path}/../aem-sample-we-retail-commons" executable="${demo.mvn}" spawn="false" failonerror="true">
-			<arg line="clean install"/>
-		</exec>
-		<copy todir="${dist}/we-retail" overwrite="true" flatten="true">
-			<fileset dir="${demo.github.weretail.path}">
-				<include name="ui.content/target/*.zip"/>
-				<include name="ui.apps/target/*.zip"/>
-			</fileset>
-		</copy>
-		<copy todir="${dist}/we-retail" overwrite="true" flatten="true">
-			<fileset dir="${demo.github.weretail.path}/../aem-sample-we-retail-commons">
-				<include name="ui.content/target/*.zip"/>
-			</fileset>
-		</copy>
 	</target>
 	<!-- Target for compiling the Communities Reference Demo site -->
 	<target name="communities_build_reference">
@@ -3846,6 +3850,7 @@
 			<path id="weretail.packages">
 				<fileset dir="${dist}" casesensitive="yes">
 					<include name="we-retail/*.zip"/>
+					<include name="we-retail/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -3857,6 +3862,7 @@
 					<path id="weretail.packages">
 						<fileset dir="${dist}" casesensitive="yes">
 							<include name="we-retail/*.zip"/>
+							<include name="we-retail/${demo.packages}/*.zip"/>
 						</fileset>
 					</path>
 				</foreach>
@@ -3870,6 +3876,7 @@
 					<path id="weretail.packages">
 						<fileset dir="${dist}" casesensitive="yes">
 							<include name="we-retail/*.zip"/>
+							<include name="we-retail/${demo.packages}/*.zip"/>
 						</fileset>
 					</path>
 				</foreach>
@@ -3902,7 +3909,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on${demo.loader.analytics}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the reference demo site for AEM Communities -->
@@ -3917,20 +3924,27 @@
 		</foreach>
 		<!-- Waiting for the bundles to be available -->
 		<sleep seconds="10"/>
-		<echo message="Configuring AEM Communities Reference Demo Site"/>
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
+				<foreach target="package_publish" param="package">
+					<path id="community.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="community/reference/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
 				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
 			</then>
 			<else>
 				<property name="demo.loader.publish" value=""/>
 			</else>
 		</if>
+		<echo message="Configuring AEM Communities Reference Demo Site"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_reference_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on${demo.loader.analytics}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the extra demo sites for AEM Communities -->
@@ -4010,7 +4024,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_scoring_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/scoringdemo&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/scoringdemo&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on"/>
 		</exec>
 	</target>
 	<!-- Target for loading the enablement demo site for AEM Communities -->
@@ -4038,7 +4052,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_enablement_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/enablement&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/enablement&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on"/>
 		</exec>
 	</target>
 	<!-- Target for waiting for AEM to be available -->
@@ -4409,6 +4423,7 @@
 		<antcall target="community_fragment"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
+		<antcall target="community_livefyre"/>
 		<!-- Load all the sample content -->
 		<if>
 			<equals arg1="${demo.communities.samples.geometrixx}" arg2="true" casesensitive="false"/>
@@ -4451,7 +4466,6 @@
 		</if>
 		<antcall target="stepbystep"/>
 		<antcall target="community_analytics"/>
-		<antcall target="community_livefyre"/>
 		<antcall target="community_warmup"/>
 	</target>
 	<!-- Target for configuring the Livefyre cloud service -->
@@ -4892,7 +4906,6 @@
 	</target>
 	<!-- Target for configuring the Communities content fragment creation service -->
 	<target name="community_fragment" if="aem62orlater">
-		<echo message="Configuring AEM Communities Content Fragment creation service on port ${demomachine.authorport}..."/>
 		<antcall target="community_fragment_instance">
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
@@ -5290,6 +5303,13 @@
 		</antcall>
 	</target>
 	<target name="prerequisites">
+		<!-- Making sure the demo machine is not installed in folder with space characters - because of MySQL compatibility issues -->
+		<if>
+			<contains substring=" " string="${dist}" casesensitive="false"/>
+			<then>
+				<echo message="WARNING: Your Demo Machine is installed in folder containing space characters, which is causing MySQL based scenarios to break."/>
+			</then>
+		</if>
 		<!-- Making sure the hotfixes have been downloaded -->
 		<if>
 			<and>
@@ -5610,7 +5630,7 @@
 		<!-- Printing table headers -->
 		<echo file="${validation}/${results}.html" append="true">&lt;tr&gt;&lt;th&gt;error&amp;nbsp;logs&lt;br&gt;(author)&lt;/th&gt;&lt;th&gt;error&amp;nbsp;logs&lt;br&gt;(publish)&lt;/th&gt;&lt;th&gt;demo&amp;nbsp;logs&lt;/th&gt;&lt;th&gt;demo&lt;/th&gt;&lt;th&gt;duration&lt;/th&gt;&lt;th&gt;versions&lt;/th&gt;</echo>
 		<foreach list="${constituents}" target="validation_build_header" param="screenshot.id" inheritall="true"/>
-		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;</echo>
+		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;</echo>
 		<foreach list="${constituents}" target="validation_build_user" param="screenshot.id" inheritall="true"/>
 		<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
 		<if>
@@ -5661,6 +5681,10 @@
 						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
 							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
 						</exec>
+						<propertyfile file="${demos}/${demo}/demobuild.properties">
+							<entry key="demo.gui" value="true"/>
+							<entry key="demo.nobrowser" value="false"/>
+						</propertyfile>
 					</then>
 				</if>
 				<!-- Scrubbing logs -->
@@ -5744,8 +5768,8 @@
 				<foreach list="${constituents}" target="validation_build_screenshot" param="screenshot.id" inheritall="true"/>
 				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
 				<!-- Archiving log files -->
-				<copy file="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log" tofile="${validation}/build/${demo}-aem-demo-machine.log"/>
-				<copy file="${demos}/${demo}/author/crx-quickstart/logs/error.log" tofile="${validation}/build/${demo}-error.log"/>
+				<copy file="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log" tofile="${validation}/build/${demo}-aem-demo-machine.log" failonerror="false"/>
+				<copy file="${demos}/${demo}/author/crx-quickstart/logs/error.log" tofile="${validation}/build/${demo}-error.log" failonerror="false"/>
 				<!-- Cleaning via nested ANT -->
 				<if>
 					<and>
@@ -5816,12 +5840,18 @@
 		<propertycopy property="this.url" from="${screenshot.url}"/>
 		<propertycopy property="this.type" from="${screenshot.type}"/>
 		<propertycopy property="this.user" from="${screenshot.user}"/>
+		<stopwatch name="timer_screenshot"/>
+		<get src="http://${demo.host}:${AdobeAEM.publishport}${this.url}" dest="${validation}/html/${validation.timestamp}/${screenshot.id}.html" username="admin" password="${demo.admin.password}" retries="1" ignoreerrors="true"/>
 		<if>
-			<http url="http://${demo.host}:${AdobeAEM.publishport}${this.url}" errorsBeginAt="400"/>
+			<and>
+				<resourceexists>
+					<file file="${validation}/html/${validation.timestamp}/${screenshot.id}.html"/>
+				</resourceexists>
+				<not>
+					<resourcecontains resource="${validation}/html/${validation.timestamp}/${screenshot.id}.html" substring="No Resource Found" casesensitive="false"/>
+				</not>
+			</and>
 			<then>
-				<echo message="Taking screenshot of ${this.url} on ${this.type} for ${this.user} user"/>
-				<stopwatch name="timer_screenshot"/>
-				<get src="http://${demo.host}:${AdobeAEM.publishport}${this.url}" dest="${validation}/html/${validation.timestamp}" ignoreerrors="true"/>
 				<stopwatch name="timer_screenshot" action="total"/>
 				<if>
 					<equals arg1="${this.user}" arg2="guest" casesensitive="false"/>
@@ -5853,6 +5883,7 @@
 				</if>
 			</then>
 			<else>
+				<echo message="WARNING: page reported an error for ${this.url} and ${this.user} on ${this.type}"/>
 				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;/td&gt;</echo>
 			</else>
 		</if>

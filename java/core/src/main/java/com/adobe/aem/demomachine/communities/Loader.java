@@ -16,6 +16,7 @@
 package com.adobe.aem.demomachine.communities;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -116,12 +117,14 @@ public class Loader {
 	private static final String SITE = "Site";
 	private static final String SITEUPDATE = "SiteUpdate";
 	private static final String SITEPUBLISH = "SitePublish";
+	private static final String SITEDELETE = "SiteDelete";
 	private static final String SITETEMPLATE = "SiteTemplate";
 	private static final String GROUPTEMPLATE = "GroupTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
 	private static final String GROUPPUBLISH = "GroupPublish";
 	private static final String SITEMEMBERS = "SiteMembers";
 	private static final String GROUP = "Group";
+	private static final String SUBGROUP = "SubGroup";
 	private static final String JOIN = "Join";
 	private static final String ASSET = "Asset";
 	private static final String ASSETINSIGHTS = "AssetInsights";
@@ -165,7 +168,9 @@ public class Loader {
 	private static final String ENABLEMENT61FP3 = "1.0.148";
 	private static final String ENABLEMENT61FP4 = "1.0.164";
 	private static final String ENABLEMENT62 = "1.1.0";
-
+	private static final String COMMUNITIES61 = "1.0.13";
+	private static final String COMMUNITIES61FP5 = "2.0.7";
+	
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
 
 	public static void main(String[] args) {
@@ -318,6 +323,10 @@ public class Loader {
 			Version vBundleCommunitiesSCF = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scf-impl");
 			Version vBundleCommunitiesAdvancedScoring = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scoring-advanced-impl");
 
+			// Versions related methods
+			boolean isCommunities61 = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61))==0;
+			boolean isCommunities61FP5orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP5))>=0;
+			
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
 			for (CSVRecord record : records) {
@@ -387,7 +396,7 @@ public class Loader {
 
 
 								// Starting with 6.1 FP5 and 6.2 FP1, we can create multiple languages at once
-								if (vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version("1.2.2"))>0) {
+								if (isCommunities61FP5orlater) {
 
 									initialLanguages = value.split(",");
 									for (String initialLanguage : initialLanguages) {
@@ -432,12 +441,19 @@ public class Loader {
 						}
 					}
 
+					// Printing site creation settings
+					//ByteArrayOutputStream out = new ByteArrayOutputStream();
+					//builder.build().writeTo(out);
+					//String string = out.toString();
+					//logger.debug(string);
+
 					// Site creation
 					doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
 							null);
 
 					// Waiting for site creation to be complete
-					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + "/" + initialLanguages[0]);
+					boolean existingSiteWithLocale = rootPath.indexOf("/"+initialLanguages[0])>0;					
+					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]));
 
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
@@ -447,7 +463,7 @@ public class Loader {
 							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 							nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
-							nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + "/" + initialLanguage));
+							nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguage)));
 
 							logger.debug("Publishing site " + urlName + " for language " + initialLanguage);
 
@@ -457,7 +473,7 @@ public class Loader {
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
-							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + "/" + initialLanguage);
+							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage));
 
 						}
 
@@ -469,18 +485,22 @@ public class Loader {
 				// Let's see if we need to update an existing Community site (this doesn't include republishing the site!)
 				if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
 
-					if (isResourceAvailable(hostname, port, adminPassword, rootPath + "/" + record.get(1) + "/" + record.get(2))) {
+					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
 						logger.debug("Updating a Community Site " + record.get(1));
 					} else {
-						logger.warn("Can't update a Community Site " + record.get(1));
+						logger.error("Can't update a Community Site " + record.get(1));
 						continue;
 					}
 
 					// Let's fetch the theme for this Community Site Url
-					String siteConfig = doGet(hostname, port,
-							rootPath + "/" + record.get(1) + "/" + record.get(2) + "/configuration.social.json",
+					String siteConfig = doGet(hostname, port, record.get(1),
 							"admin",adminPassword,
 							null);
+
+					if (siteConfig==null) {
+						logger.error("Can't update a Community Site " + record.get(1));
+						continue;
+					}
 
 					// Building the form entity to be posted
 					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -532,7 +552,7 @@ public class Loader {
 
 					if (isValid)
 						doPost(hostname, port,
-								rootPath + "/" + record.get(1) + "/" + record.get(2) + ".social.json",
+								record.get(1),
 								"admin", adminPassword,
 								builder.build(),
 								null);
@@ -647,7 +667,7 @@ public class Loader {
 				// Let's see if we need to assign some badges
 				if (record.get(0).equals(BADGE)) {
 
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
+					if (vBundleCommunitiesEnablement==null || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
 						logger.info("Badging operations not available with this version of AEM");
 						continue;
 					}
@@ -725,7 +745,7 @@ public class Loader {
 							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 							// If the template is already there, let's not try to create it
-							if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + value.replaceAll(" ","_").toLowerCase()) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + value.replaceAll(" ","_").toLowerCase()))) {
+							if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + title2name(value)) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + title2name(value)))) {
 								logger.info("Template " + value + " is already there");
 								isValid=false;
 							}
@@ -762,8 +782,14 @@ public class Loader {
 				}
 
 				// Let's see if we need to create a new Community group
-				if (record.get(0).equals(GROUP)) {
+				if (record.get(0).equals(GROUP) || record.get(0).equals(SUBGROUP)) {
 
+					// SubGroups are only supported with 6.1 FP5 and 6.2 FP1 onwards
+					if (record.get(0).equals(SUBGROUP) && !isCommunities61FP5orlater) {
+						logger.warn("Subgroups are not supported with this version of AEM Communities");
+						continue;
+					}
+					
 					// Building the form entity to be posted
 					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 					builder.setCharset(MIME.UTF8_CHARSET);
@@ -771,6 +797,7 @@ public class Loader {
 					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 					String urlName=null;
+					String groupType=null;
 					for (int i=3;i<record.size()-1;i=i+2) {
 
 						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
@@ -779,6 +806,7 @@ public class Loader {
 							String value = record.get(i+1).trim();
 							if (value.equals("TRUE")) { value = "true"; }
 							if (value.equals("FALSE")) { value = "false"; }	
+							if (name.equals("type")) { groupType = value; }
 							if (name.equals(IMAGE)) {
 								addBinaryBody(builder, lIs, rr, IMAGE, csvfile, value);
 							} else {
@@ -794,6 +822,11 @@ public class Loader {
 						}
 					}
 
+					// Private groups are only support with 6.1 FP1 onwards
+					if (groupType!=null && groupType.equals("Secret") && isCommunities61) {
+						continue;
+					}
+					
 					// Group creation
 					doPost(hostname, port,
 							record.get(1),
@@ -824,6 +857,50 @@ public class Loader {
 
 				}
 
+				// Let's see if we need to delete a Community site
+				if (record.get(0).equals(SITEDELETE) && record.get(1)!=null) {
+
+					// Let's fetch the siteId for this Community Site Url
+					String siteConfig = doGet(hostname, port,
+							record.get(1),
+							"admin",adminPassword,
+							null);
+
+					// No site to Delete
+					if (siteConfig==null) continue;
+
+					try {
+
+						String siteRoot = new JSONObject(siteConfig).getString("siteRoot");
+						String urlName = new JSONObject(siteConfig).getString("urlName");
+						String siteId = new JSONObject(siteConfig).getString("siteId");
+						String resourcesRoot = new JSONObject(siteConfig).getString("siteAssetsPath");
+
+						if (siteRoot!=null && urlName!=null && siteId!=null && resourcesRoot!=null) {
+
+							// First, deleting the main JCR path for this site, on author and publish
+							doDelete(hostname, port, siteRoot + "/" + urlName, "admin", adminPassword);
+							doDelete(hostname, altport, siteRoot + "/" + urlName, "admin", adminPassword);
+
+							// Then, deleting the dam resources for this site, on author and publibsh
+							doDelete(hostname, port, resourcesRoot, "admin", adminPassword);
+							doDelete(hostname, altport, resourcesRoot, "admin", adminPassword);
+
+							// Then, deleting the main UGC path for this site, on author and publish
+							doDelete(hostname, port, "/content/usergenerated" + siteRoot + "/" + urlName, "admin", adminPassword);
+							doDelete(hostname, altport, "/content/usergenerated" + siteRoot + "/" + urlName, "admin", adminPassword);
+
+							// Finally, deleting the system groups for this site, on author and publish
+							doDelete(hostname, port, "/home/groups/community-" + siteId, "admin", adminPassword);
+							doDelete(hostname, altport, "/home/groups/community-" + siteId, "admin", adminPassword);
+
+						}
+
+					} catch (Exception e) {
+						logger.error(e.getMessage());
+					}
+				}
+
 				// Let's see if we need to add users to an AEM Group
 				if ((record.get(0).equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
 
@@ -842,17 +919,40 @@ public class Loader {
 								"admin",adminPassword,
 								null);
 
+						if (siteConfig==null) {
+							logger.error("Can't retrieve site configuration");
+							continue;
+						};
+
+						String siteId = null;
 						try {
 
-							String siteId = new JSONObject(siteConfig).getString("siteId");
-							if (siteId!=null) groupName = "community-" + siteId + "-members";
-							logger.debug("Member group name is " + groupName);
+							siteId = new JSONObject(siteConfig).getString("siteId");
 
 						} catch (Exception e) {
 
-							logger.error("Impossible to retrieve the site admin groupname");
+							logger.warn("No site Id available");
 
 						}
+
+						String urlName = null;
+						try {
+
+							urlName = new JSONObject(siteConfig).getString("urlName");
+
+						} catch (Exception e) {
+
+							logger.error("No site url available");
+							continue;
+
+						}
+
+						if (siteId!=null) 
+							groupName = "community-" + siteId + "-members";
+						else
+							groupName = "community-" + urlName + "-members";
+
+						logger.debug("Site Member group name is " + groupName);
 
 					}
 
@@ -1191,20 +1291,20 @@ public class Loader {
 
 					}
 				}
-				
+
 				// Notification preferences
 				if (componentType.equals(NOTIFICATIONPREFERENCE)) {
 
 					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
-						
+
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
 						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
 						nameValuePairs.addAll(otherNameValuePairs);
-						
+
 					}
 
 				}
-				
+
 				// Uploading Avatar picture
 				if (componentType.equals(AVATAR)) {
 
@@ -1248,7 +1348,7 @@ public class Loader {
 					nameValuePairs.add(new BasicNameValuePair("badgeContentPath", value));
 
 					// Appending the path to the user profile to the target location
-					String userJson = doGet(hostname, port,
+					String userJson = doGet(hostname, altport,
 							"/libs/granite/security/currentuser.json",
 							getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
 							null);
@@ -1496,7 +1596,7 @@ public class Loader {
 					}					
 
 					// Adding the site
-					nameValuePairs.add(new BasicNameValuePair("site", rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
+					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
@@ -1515,7 +1615,7 @@ public class Loader {
 					if (record.get(2).endsWith(".zip")) {
 						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output");
 					}
-
+					
 				}
 
 				// Creates a learning path
@@ -1539,7 +1639,7 @@ public class Loader {
 					}
 
 					// Adding the site
-					nameValuePairs.add(new BasicNameValuePair("site", rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/resources/en"));
+					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
@@ -1652,10 +1752,16 @@ public class Loader {
 				String referrer = null;
 				if (componentType.equals(RESOURCE) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))<=0) {
 					jsonElement = "changes/argument";
+
 				}
 				if (componentType.equals(LEARNING) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<=0) {
 					jsonElement = "path";
 				}
+				
+				if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
+					//printPOST(builder.build());	
+				}
+				
 				if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
 					// Creating an asset doesn't return a JSON string
 					elements.put(jsonElement, "");
@@ -1855,7 +1961,12 @@ public class Loader {
 				logger.debug("Adding file named " + value + " to POST");
 				builder.addBinaryBody(field, attachment, getContentType(value), attachment.getName());
 			} else {
-				logger.error("A non existent file named " + value + " was referenced");
+				attachment = new File(csvfile.substring(0, csvfile.lastIndexOf("/")) + File.separator + "attachments" + File.separator + value);
+				if (attachment.exists()) {
+					builder.addBinaryBody(field, attachment, getContentType(value), attachment.getName());
+				} else {
+					logger.error("A non existent resource named " + value + " was referenced");
+				}
 			}
 		} else {
 			Resource res = rr.getResource(csvfile + "/attachments/" + value + "/jcr:content");
@@ -1924,7 +2035,7 @@ public class Loader {
 	private static String getRootPath(String record) {
 
 		String rootPath = getConfigurePath(record);
-		int jcr = rootPath.indexOf("jcr:content");
+		int jcr = rootPath.indexOf("/jcr:content");
 		if (jcr>0) {
 			rootPath = rootPath.substring(0,jcr);
 		}
@@ -2235,7 +2346,7 @@ public class Loader {
 
 			} catch (Exception ex) {
 
-				logger.error(ex.getMessage());
+				logger.warn("Connectivity error: " + ex.getMessage());
 
 			} finally {
 
@@ -2966,4 +3077,24 @@ public class Loader {
 		}
 		return true;
 	}
+
+	// Converting a Title into a Name
+	public static String title2name(String title) {
+		return title.replaceAll(" ","_").replaceAll("\\.","_").toLowerCase();
+	}
+	
+	// Printing the details of a POST request
+	public static void printPOST(HttpEntity entity) {
+
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		try {
+			entity.writeTo(out);
+			String string = out.toString();
+			logger.debug(string);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
 }
