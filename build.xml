@@ -2193,9 +2193,19 @@
 			<arg line="-s -o '${dist}/downloads/nexus.xml' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/maven-metadata.xml"/>
 		</exec>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
-		<echo message="Downloading cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
+		<propertyregex property="latest10" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.0\.)([0-9]*)(\,1\.^0\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-social-scorm-pkg-1.0.${latest10}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/${metadata.versioning.release}/cq-social-scorm-pkg-${metadata.versioning.release}.zip"/>
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem61.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.0.${latest10}/cq-social-scorm-pkg-1.0.${latest10}.zip"/>
+		</exec>
+		<echo message="Downloading cq-social-scorm-pkg-1.0.${latest10}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem62.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.0.${latest10}/cq-social-scorm-pkg-1.0.${latest10}.zip"/>
+		</exec>
+		<propertyregex property="latest11" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.1\.)([0-9]*)(\,1\.^1\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-social-scorm-pkg-1.1.${latest11}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem63.zip' https://artifactory.corp.adobe.com/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
@@ -4142,12 +4152,12 @@
 							<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 						</or>
 						<resourceexists>
-							<file file="${dist}/downloads/cq-social-scorm-pkg.zip"/>
+							<file file="${dist}/downloads/cq-social-scorm-pkg-${demo.packages}.zip"/>
 						</resourceexists>
 					</and>
 					<then>
 						<antcall target="package">
-							<param name="package" value="${dist}/downloads/cq-social-scorm-pkg.zip"/>
+							<param name="package" value="${dist}/downloads/cq-social-scorm-pkg-${demo.packages}.zip"/>
 						</antcall>
 					</then>
 					<else>
