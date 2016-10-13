@@ -618,7 +618,7 @@
 				<fail message="The port ${demo.port} is already in use."/>
 			</then>
 		</if>
-		<!-- Compute the GUI and Browser settings for the installer -->
+		<!-- Compute the startup settings for the installer -->
 		<if>
 			<and>
 				<isset property="demo.gui"/>
@@ -645,7 +645,20 @@
 				<property name="startup.options.nobrowser" value=""/>
 			</else>
 		</if>
-		<property name="startup.options" value="${startup.options.nobrowser} ${startup.options.gui}"/>
+		<if>
+			<and>
+				<equals arg1="${demo.nofork}" arg2="true" casesensitive="false"/>
+				<isset property="demo.nofork"/>
+			</and>
+			<then>
+				<property name="startup.options.nofork" value="-nofork"/>
+				<echo message="Starting in -nofork mode"/>
+			</then>
+			<else>
+				<property name="startup.options.nofork" value=""/>
+			</else>
+		</if>
+		<property name="startup.options" value="${startup.options.nobrowser} ${startup.options.gui} ${startup.options.nofork}"/>
 		<!-- Compute the JVM debug settings when necessary -->
 		<if>
 			<equals arg1="${demomachine.jvmdebug}" arg2="true" casesensitive="false"/>
@@ -5665,6 +5678,9 @@
 		<exec executable="webkit2png" dir="${validation}" spawn="false" failonerror="false">
 			<arg line="-o ${results} --fullsize -W 3200 -H 2800 '${results}.html'"/>
 		</exec>
+		<!-- Copying the latest screenshots and results -->
+		<copy file="${validation}/${results}.html" tofile="${validation}/results.html" overwrite="true" failonerror="false"/>
+		<copy file="${validation}/${results}-full.png" tofile="${validation}/results.png" overwrite="true" failonerror="false"/>		
 	</target>
 	<target name="validation_build">
 		<basename property="demo" file="${demopath}"/>
@@ -5703,11 +5719,13 @@
 					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/error.log"/>
 					<param name="validation.log.pattern" value="ERROR"/>
 					<param name="validation.log.style" value="danger"/>
+					<param name="validation.log.name" value="author"/>
 				</antcall>
 				<antcall target="validation_build_logs">
 					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/error.log"/>
 					<param name="validation.log.pattern" value="WARN"/>
 					<param name="validation.log.style" value="warning"/>
+					<param name="validation.log.name" value="author"/>
 				</antcall>
 				<echo file="${validation}/${results}.html" append="true">&lt;/td&gt;</echo>
 				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;</echo>
@@ -5715,11 +5733,13 @@
 					<param name="validation.log.file" value="${demos}/${demo}/publish/crx-quickstart/logs/error.log"/>
 					<param name="validation.log.pattern" value="ERROR"/>
 					<param name="validation.log.style" value="danger"/>
+					<param name="validation.log.name" value="publish"/>
 				</antcall>
 				<antcall target="validation_build_logs">
 					<param name="validation.log.file" value="${demos}/${demo}/publish/crx-quickstart/logs/error.log"/>
 					<param name="validation.log.pattern" value="WARN"/>
 					<param name="validation.log.style" value="warning"/>
+					<param name="validation.log.name" value="publish"/>
 				</antcall>
 				<echo file="${validation}/${results}.html" append="true">&lt;/td&gt;</echo>
 				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;</echo>
@@ -5727,11 +5747,13 @@
 					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log"/>
 					<param name="validation.log.pattern" value="ERROR"/>
 					<param name="validation.log.style" value="danger"/>
+					<param name="validation.log.name" value="demomachine"/>
 				</antcall>
 				<antcall target="validation_build_logs">
 					<param name="validation.log.file" value="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log"/>
 					<param name="validation.log.pattern" value="WARN"/>
 					<param name="validation.log.style" value="warning"/>
+					<param name="validation.log.name" value="demomachine"/>
 				</antcall>
 				<echo file="${validation}/${results}.html" append="true">&lt;/td&gt;</echo>
 				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;${demo}&lt;/td&gt;</echo>
@@ -5777,9 +5799,6 @@
 				<!-- Taking Screenshots -->
 				<foreach list="${constituents}" target="validation_build_screenshot" param="screenshot.id" inheritall="true"/>
 				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
-				<!-- Archiving log files -->
-				<copy file="${demos}/${demo}/author/crx-quickstart/logs/aem-demo-machine.log" tofile="${validation}/build/${demo}-aem-demo-machine.log" failonerror="false"/>
-				<copy file="${demos}/${demo}/author/crx-quickstart/logs/error.log" tofile="${validation}/build/${demo}-error.log" failonerror="false"/>
 				<!-- Cleaning via nested ANT -->
 				<if>
 					<and>
@@ -5851,6 +5870,7 @@
 		<propertycopy property="this.type" from="${screenshot.type}"/>
 		<propertycopy property="this.user" from="${screenshot.user}"/>
 		<stopwatch name="timer_screenshot"/>
+		<delete file="${validation}/html/${validation.timestamp}/${screenshot.id}.html" quiet="true" failonerror="false"/>
 		<get src="http://${demo.host}:${AdobeAEM.publishport}${this.url}" dest="${validation}/html/${validation.timestamp}/${screenshot.id}.html" username="admin" password="${demo.admin.password}" retries="1" ignoreerrors="true"/>
 		<if>
 			<and>
@@ -5899,19 +5919,30 @@
 		</if>
 	</target>
 	<target name="validation_build_logs">
-		<resourcecount property="file.lines">
-			<tokens>
-				<concat>
-					<filterchain>
-						<linecontainsregexp>
-							<regexp pattern="${validation.log.pattern}"/>
-						</linecontainsregexp>
-					</filterchain>
-					<fileset file="${validation.log.file}"/>
-				</concat>
-			</tokens>
-		</resourcecount>
-		<echo file="${validation}/${results}.html" append="true">&lt;span class="label label-${validation.log.style}"&gt;${file.lines}&lt;/span&gt;&amp;nbsp;</echo>
+		<if>
+			<resourceexists>
+				<file file="${validation.log.file}"/>
+			</resourceexists>
+			<then>
+				<resourcecount property="file.lines">
+					<tokens>
+						<concat>
+							<filterchain>
+								<linecontainsregexp>
+									<regexp pattern="${validation.log.pattern}"/>
+								</linecontainsregexp>
+							</filterchain>
+							<fileset file="${validation.log.file}"/>
+						</concat>
+					</tokens>
+				</resourcecount>
+				<copy file="${validation.log.file}" tofile="${validation}/build/${demo}-${validation.log.name}.log" failonerror="false"/>
+				<echo file="${validation}/${results}.html" append="true">&lt;a href="build/${demo}-${validation.log.name}.log"&gt;&lt;span class="label label-${validation.log.style}"&gt;${file.lines}&lt;/span&gt;&lt;/a&gt;&amp;nbsp;</echo>
+			</then>
+			<else>
+				<echo file="${validation}/${results}.html" append="true">&lt;span class="label label-${validation.log.style}"&gt;n/a&lt;/span&gt;&amp;nbsp;</echo>
+			</else>
+		</if>
 	</target>
 	<!-- Default target when no target name is provided to ANT -->
 	<target name="default">
