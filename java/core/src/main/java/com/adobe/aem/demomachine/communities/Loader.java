@@ -183,7 +183,8 @@ public class Loader {
 		String adminPassword = "admin";
 		boolean reset = false;
 		boolean configure = false;
-
+		boolean minimize = false;
+		
 		// Command line options for this tool
 		Options options = new Options();
 		options.addOption("h", true, "Hostname");
@@ -193,8 +194,9 @@ public class Loader {
 		options.addOption("r", false, "Reset");
 		options.addOption("u", true, "Admin Password");
 		options.addOption("c", false, "Configure");
+		options.addOption("m", false, "Minimize");
 		options.addOption("s", true, "Analytics Endpoint");
-		options.addOption("t", false, "Analytics Tracking");
+		options.addOption("t", false, "Analytics");
 		CommandLineParser parser = new BasicParser();
 		try {
 			CommandLine cmd = parser.parse( options, args);
@@ -233,6 +235,9 @@ public class Loader {
 				configure = true;
 			}
 
+			if(cmd.hasOption("m")) {
+				minimize = true;
+			}
 
 			if (csvfile==null || port == null || hostname == null) {
 				System.out.println("Request parameters: -h hostname -p port -a alternateport -u adminPassword -f path_to_CSV_file -r (true|false, delete content before import) -c (true|false, post additional properties)");
@@ -261,7 +266,7 @@ public class Loader {
 
 						InputStream is = zipFile.getInputStream(zipEntry);
 						BufferedReader in = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, csvfile);
+						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, csvfile);
 
 					}
 				}
@@ -276,7 +281,7 @@ public class Loader {
 			} else if (csvfile.toLowerCase().endsWith(".csv")) {
 
 				Reader in = new FileReader(csvfile);
-				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, csvfile);
+				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, csvfile);
 
 			}
 
@@ -288,7 +293,7 @@ public class Loader {
 
 	}
 
-	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, String csvfile) {
+	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, boolean minimize, String csvfile) {
 
 		String location = null;
 		String userHome = null;
@@ -1606,13 +1611,21 @@ public class Loader {
 					}
 
 					// Building the asset fragment
+					String assetFileName = record.get(2);
+					
+					// Replacing videos with images in case it's a minimized installation
+					int assetFileNamePos = assetFileName.indexOf(".mp4");
+					if (assetFileNamePos>0 && minimize) {
+						assetFileName = assetFileName.substring(0,assetFileNamePos) + ".jpg";
+					}
+					
 					String coverPath = "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
 					String coverSource = "dam";
-					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "\"}]";
+					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + assetFileName + "\"}]";
 					nameValuePairs.add(new BasicNameValuePair("assets", assets));
 
 					// If it's a SCORM asset, making sure the output is available before processing
-					if (record.get(2).endsWith(".zip")) {
+					if (assetFileName.endsWith(".zip")) {
 						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output");
 					}
 					

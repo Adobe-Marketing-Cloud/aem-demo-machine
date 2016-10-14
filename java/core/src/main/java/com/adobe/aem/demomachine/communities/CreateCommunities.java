@@ -84,6 +84,8 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		String port_author = (String) request.getParameter("port_author");
 		String password = (String) request.getParameter("password");
 		String analytics = (String) request.getParameter("analytics");
+		String minimizeParam = (String) request.getParameter("minimize");
+		boolean minimize = (minimizeParam!=null && minimizeParam.length()>0)?true:false;
 
 		// Checking if the specified hosts and ports are reachable
 		if (hostname_author==null || port_author==null || !Hostname.isReachable(hostname_author,port_author)) {
@@ -142,9 +144,9 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 						out.println("<p>Processing: " + resConfigFile.getName() + "</p>");
 						response.flushBuffer();;
 						if (resConfigFile.getName().contains("author")) {
-							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, analytics, false, true, csvPath);
+							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, analytics, false, true, minimize, csvPath);
 						} else {
-							Loader.processLoading(resourceResolver, in, hostname, port, port, password, analytics, false, true, csvPath);
+							Loader.processLoading(resourceResolver, in, hostname, port, port, password, analytics, false, true, minimize, csvPath);
 						}
 
 						try {

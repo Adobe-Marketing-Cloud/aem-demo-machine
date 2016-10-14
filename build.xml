@@ -3822,6 +3822,15 @@
 				<property name="demo.loader.analytics" value=""/>
 			</else>
 		</if>
+		<if>
+			<equals arg1="${demo.communities.samples.minimize}" arg2="true" casesensitive="false"/>
+			<then>
+				<property name="demo.loader.minimize" value="&amp;minimize=on"/>
+			</then>
+			<else>
+				<property name="demo.loader.minimize" value=""/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for loading a CSV file with UGC into the author instance -->
 	<target name="community_loader_author" depends="community_loader_flag">
@@ -3932,7 +3941,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the reference demo site for AEM Communities -->
@@ -3967,7 +3976,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_reference_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the extra demo sites for AEM Communities -->
