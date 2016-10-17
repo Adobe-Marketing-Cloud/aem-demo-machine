@@ -5643,6 +5643,7 @@
 			</else>
 		</if>
 		<mkdir dir="${validation}/screenshots/${validation.timestamp}"/>
+		<mkdir dir="${validation}/benchmarks/${validation.timestamp}"/>
 		<mkdir dir="${validation}/html/${validation.timestamp}"/>
 		<mkdir dir="${validation}/build"/>
 		<echo file="${validation}/${results}.html">
@@ -5675,9 +5676,14 @@
 			<else>
 				<foreach target="validation_build" param="demopath" inheritall="true">
 					<path>
-						<dirset dir="${demos}">
-							<include name="*"/>
-						</dirset>
+						<sort>
+							<dirset dir="${demos}">
+								<include name="*"/>
+							</dirset>
+							<reverse xmlns="antlib:org.apache.tools.ant.types.resources.comparators">
+								<name/>
+							</reverse>
+						</sort>
 					</path>
 				</foreach>
 			</else>
@@ -5689,7 +5695,7 @@
 		</exec>
 		<!-- Copying the latest screenshots and results -->
 		<copy file="${validation}/${results}.html" tofile="${validation}/results.html" overwrite="true" failonerror="false"/>
-		<copy file="${validation}/${results}-full.png" tofile="${validation}/results.png" overwrite="true" failonerror="false"/>		
+		<copy file="${validation}/${results}-full.png" tofile="${validation}/results.png" overwrite="true" failonerror="false"/>
 	</target>
 	<target name="validation_build">
 		<basename property="demo" file="${demopath}"/>
@@ -5892,6 +5898,28 @@
 			</and>
 			<then>
 				<stopwatch name="timer_screenshot" action="total"/>
+				<!-- Benchmarking the page -->
+				<echo message="Benchmarking the page"/>
+				<if>
+					<equals arg1="${this.user}" arg2="guest" casesensitive="false"/>
+					<then>
+						<exec executable="ab" dir="${validation}/benchmarks/${validation.timestamp}" spawn="false" failonerror="false" outputproperty="validation.bench">
+							<arg line="-n 150 -c 20 -l http://${demo.host}:${AdobeAEM.publishport}${this.url}"/>
+						</exec>
+					</then>
+					<else>
+						<exec executable="ab" dir="${validation}/benchmarks/${validation.timestamp}" spawn="false" failonerror="false" outputproperty="validation.bench">
+							<arg line="-A ${this.user}:password -n 150 -c 20 -l http://${demo.host}:${AdobeAEM.publishport}${this.url}"/>
+						</exec>
+					</else>
+				</if>
+				<echo file="${validation}/benchmarks/${validation.timestamp}/${demo}-${screenshot.id}.txt" append="false">
+					${validation.bench}
+				</echo>
+				<propertyregex property="validation.bench.throughput" input="${validation.bench}" regexp="Requests per second:(.*)\(mean\)" select="\1"/>
+				<propertyregex property="validation.bench.mean" input="${validation.bench}" regexp="Time per request:(.*)\(mean\)" select="\1"/>
+				<echo message="Benchmarked the page ${validation.bench.mean} and ${validation.bench.throughput}"/>
+				<!-- Taking the screenshot -->
 				<if>
 					<equals arg1="${this.user}" arg2="guest" casesensitive="false"/>
 					<then>
@@ -5914,7 +5942,7 @@
 						<file file="${validation}/screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png"/>
 					</resourceexists>
 					<then>
-						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;div style="box-shadow: 0 1px 2px rgba(0,0,0,.075);overflow:hidden; max-height:240px"&gt;&lt;a href="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png" target="_blank"&gt;&lt;img src="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-thumb.png" class="img-rounded" alt="${this.url}" width="200"/&gt;&lt;/a&gt;&lt;br/&gt;&lt;/div&gt;&lt;small&gt;${timer_screenshot}&amp;nbsp;&lt;a href="http://${demo.host}:${AdobeAEM.publishport}${this.url}" target="_blank"&gt;link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;</echo>
+						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;div style="box-shadow: 0 1px 2px rgba(0,0,0,.075);overflow:hidden; max-height:240px"&gt;&lt;a href="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-full.png" target="_blank"&gt;&lt;img src="screenshots/${validation.timestamp}/${demo}-${screenshot.id}-thumb.png" class="img-rounded" alt="${this.url}" width="200"/&gt;&lt;/a&gt;&lt;br/&gt;&lt;/div&gt;&lt;small&gt;${validation.bench.throughput}&lt;br&gt;${validation.bench.mean}&lt;br&gt;&lt;a href="http://${demo.host}:${AdobeAEM.publishport}${this.url}" target="_blank"&gt;link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;</echo>
 					</then>
 					<else>
 						<echo file="${validation}/${results}.html" append="true">&lt;td&gt;&lt;/td&gt;</echo>
