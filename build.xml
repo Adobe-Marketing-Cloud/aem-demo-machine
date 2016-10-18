@@ -1739,6 +1739,20 @@
 				<include name="**/we.retail.*.zip"/>
 			</fileset>
 		</move>
+		<echo message="Downloading Latest AEM We.Retail 6.3 packages from GitHub"/>
+		<mkdir dir="${dist}/we-retail/aem63"/>
+		<exec executable="curl">
+			<arg line="-L -s -k -o '${dist}/downloads/we.retail.communities.ui.apps-${demo.download.weretail.source}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail-communities/releases/download/v${demo.download.weretail.source}/we.retail.communities.ui.apps-${demo.download.weretail.source}.zip"/>
+		</exec>
+		<exec executable="curl">
+			<arg line="-L -s -k -o '${dist}/downloads/we.retail.communities.ui.content-${demo.download.weretail.source}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail-communities/releases/download/v${demo.download.weretail.source}/we.retail.communities.ui.content-${demo.download.weretail.source}.zip"/>
+		</exec>
+		<move todir="${dist}/we-retail/aem63">
+			<fileset dir="${dist}/downloads">
+				<include name="we.retail.communities.ui.apps-${demo.download.weretail.source}.zip"/>
+				<include name="we.retail.communities.ui.content-${demo.download.weretail.source}.zip"/>
+			</fileset>
+		</move>
 	</target>
 	<!-- Target for downloading all packages for a given area -->
 	<target name="download_packageshare">
@@ -5901,16 +5915,25 @@
 				<!-- Benchmarking the page -->
 				<echo message="Benchmarking the page"/>
 				<if>
-					<equals arg1="${this.user}" arg2="guest" casesensitive="false"/>
+					<equals arg1="${demo.validation.benchmark}" arg2="true" casesensitive="false"/>
 					<then>
-						<exec executable="ab" dir="${validation}/benchmarks/${validation.timestamp}" spawn="false" failonerror="false" outputproperty="validation.bench">
-							<arg line="-n 150 -c 20 -l http://${demo.host}:${AdobeAEM.publishport}${this.url}"/>
-						</exec>
+						<if>
+							<equals arg1="${this.user}" arg2="guest" casesensitive="false"/>
+							<then>
+								<exec executable="ab" dir="${validation}/benchmarks/${validation.timestamp}" spawn="false" failonerror="false" outputproperty="validation.bench">
+									<arg line="-n 150 -c 20 -l http://${demo.host}:${AdobeAEM.publishport}${this.url}"/>
+								</exec>
+							</then>
+							<else>
+								<exec executable="ab" dir="${validation}/benchmarks/${validation.timestamp}" spawn="false" failonerror="false" outputproperty="validation.bench">
+									<arg line="-A ${this.user}:password -n 150 -c 20 -l http://${demo.host}:${AdobeAEM.publishport}${this.url}"/>
+								</exec>
+							</else>
+						</if>
 					</then>
 					<else>
-						<exec executable="ab" dir="${validation}/benchmarks/${validation.timestamp}" spawn="false" failonerror="false" outputproperty="validation.bench">
-							<arg line="-A ${this.user}:password -n 150 -c 20 -l http://${demo.host}:${AdobeAEM.publishport}${this.url}"/>
-						</exec>
+						<property name="validation.bench.mean" value="${timer_screenshot}"/>
+						<property name="validation.bench.throughput" value="n/a"/>
 					</else>
 				</if>
 				<echo file="${validation}/benchmarks/${validation.timestamp}/${demo}-${screenshot.id}.txt" append="false">
