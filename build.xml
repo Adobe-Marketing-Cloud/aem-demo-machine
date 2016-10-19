@@ -2834,14 +2834,30 @@
 				<available file="${dist}/acs" type="dir"/>
 			</and>
 			<then>
-				<foreach target="package" param="package">
-					<path id="standard.acs">
-						<fileset dir="${dist}/acs" casesensitive="yes">
-							<include name="all/*.zip"/>
-							<include name="${demo.packages}/*.zip"/>
-						</fileset>
-					</path>
-				</foreach>
+				<if>
+					<equals arg1="${port}" arg2="${demomachine.authorport}" casesensitive="false"/>
+					<then>
+						<foreach target="package" param="package">
+							<path id="standard.acs">
+								<fileset dir="${dist}/acs" casesensitive="yes">
+									<include name="all/*.zip"/>
+									<include name="${demo.packages}/*.zip"/>
+								</fileset>
+							</path>
+						</foreach>
+					</then>
+					<else>
+						<foreach target="package" param="package">
+							<path id="standard.acs">
+								<fileset dir="${dist}/acs" casesensitive="yes">
+									<include name="all/*.zip"/>
+									<include name="${demo.packages}/*.zip"/>
+									<exclude name="**/acs-aem-tools*.zip"/>
+								</fileset>
+							</path>
+						</foreach>
+					</else>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -3600,7 +3616,6 @@
 			<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
 		</exec>
 		<!-- Then we rename and associate the cloud server to these pages-->
-		<echo message="${port} ${translation.language}"/>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_translations_page_rename_${translation.language}.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -4755,6 +4770,7 @@
 					<arg line="-d auth.loginselector.mappings=/content/geometrixx-media/en/toolbar/account/login:/content/geometrixx-media/en"/>
 					<arg line="-d auth.loginselector.mappings=/content/sites/communities/en/signin:/content/sites/communities/en"/>
 					<arg line="-d auth.loginselector.mappings=/content/sites/enablement/en/signin:/content/sites/enablement/en"/>
+					<arg line="-d auth.loginselector.mappings=/content/we-retail/us/en/community/signin:/content/we-retail/us/en"/>
 					<arg line="-d propertylist=auth.loginselector.mappings"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.day.cq.auth.impl.LoginSelectorHandler"/>
 				</exec>
