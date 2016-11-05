@@ -274,13 +274,18 @@
 		</if>
 		<property name="demo.spfile" value="${dist}/bin/${demo.jar}-sp.zip"/>
 		<echo message="AEM JAR to use: ${demo.jar}.jar"/>
+		<echo message="AEM SRP to use: ${demomachine.srp}"/>
+		<echo message="AEM Store to use: ${demomachine.store}"/>
 		<if>
 			<resourceexists>
 				<file file="${dist}/bin/${demo.jar}.jar"/>
 			</resourceexists>
 			<then>
 				<if>
-					<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+					<or>
+						<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+						<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+					</or>
 					<then>
 						<!-- Making sure we configure Solr with a new core for this demo build  -->
 						<antcall target="solr_stop"/>
@@ -335,6 +340,7 @@
 			</else>
 		</if>
 		<antcall target="start"/>
+		<antcall target="crypto"/>
 		<!-- Installing the ACS tools and commons on Author and Publish only -->
 		<antcall target="acs_instance">
 			<param name="port" value="${demomachine.authorport}"/>
@@ -345,6 +351,56 @@
 				<antcall target="acs_instance">
 					<param name="port" value="${demomachine.publishport}"/>
 				</antcall>
+			</then>
+		</if>
+	</target>
+	<!-- Crypto support -->
+	<target name="crypto" if="aem63orlater" depends="version,configuration">
+		<!-- For now, TarMK on 6.3 requires a restart so enforce the /etc/keys to be loaded from JCR -->
+		<echo message="${cq.version} ${aem63orlater}"/>
+		<if>
+			<equals arg1="${demomachine.store}" arg2="crx3" casesensitive="false"/>
+			<then>
+				<echo message="Updating crypto keys on file system for TarMK"/>
+				<antcall target="findandreplace">
+					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
+					<param name="search.targetfolder" value="${demos}/${demo.build}/publish/crx-quickstart/launchpad/felix"/>
+					<param name="search.filename" value="hmac"/>
+				</antcall>
+				<antcall target="findandreplace">
+					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
+					<param name="search.targetfolder" value="${demos}/${demo.build}/publish/crx-quickstart/launchpad/felix"/>
+					<param name="search.filename" value="master"/>
+				</antcall>
+				<antcall target="findandreplace">
+					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
+					<param name="search.targetfolder" value="${demos}/${demo.build}/farm/crx-quickstart/launchpad/felix"/>
+					<param name="search.filename" value="hmac"/>
+				</antcall>
+				<antcall target="findandreplace">
+					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
+					<param name="search.targetfolder" value="${demos}/${demo.build}/farm/crx-quickstart/launchpad/felix"/>
+					<param name="search.filename" value="master"/>
+				</antcall>
+				<antcall target="restart"/>
+			</then>
+		</if>
+	</target>
+	<!-- Searching and replacing a file from a folder to another one -->
+	<target name="findandreplace">
+		<if>
+			<and>
+				<available file="${search.sourcefolder}" type="dir"/>
+				<available file="${search.targetfolder}" type="dir"/>
+			</and>
+			<then>
+				<first id="sourcefile">
+					<fileset dir="${search.sourcefolder}" includes="**/${search.filename}"/>
+				</first>
+				<first id="targetfile">
+					<fileset dir="${search.targetfolder}" includes="**/${search.filename}"/>
+				</first>
+				<copy file="${toString:sourcefile}" tofile="${toString:targetfile}" overwrite="true"/>
 			</then>
 		</if>
 	</target>
@@ -412,31 +468,47 @@
 			</then>
 		</if>
 		<if>
+			<!-- Checking if mysql is to be used -->
 			<or>
 				<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
 				<equals arg1="${demo.communities.enablement}" arg2="true" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
 			</or>
 			<then>
+				<!-- Installing the OSGI driver for MySQL -->
 				<unzip src="${dist}/rdb/mysql.zip" dest="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+				<!-- Need to reset the schemas if already there -->
+				<antcall target="mysql_start"/>
+				<if>
+					<and>
+						<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+						<resourceexists>
+							<file file="${mysql}/bin/mysql"/>
+						</resourceexists>
+					</and>
+					<then>
+						<property name="mysql.exec" value="${mysql}/bin/mysql"/>
+					</then>
+					<else>
+						<property name="mysql.exec" value="${demo.mysql.path}"/>
+					</else>
+				</if>
+				<copy file="${dist}/rdb/drop_schemas.sql" tofile="${dist}/rdb/drop_schemas_${demo.build}.sql" overwrite="true"/>
+				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+				<echo message="Dropping the MySQL schemas ${mysql.prefix} for DSRP, SCORM and Reporting..."/>
+				<replace file="${dist}/rdb/drop_schemas_${demo.build}.sql" token="enablementdb" value="${mysql.prefix}reporting"/>
+				<replace file="${dist}/rdb/drop_schemas_${demo.build}.sql" token="ScormEngineDB" value="${mysql.prefix}scorm"/>
+				<replace file="${dist}/rdb/drop_schemas_${demo.build}.sql" token="DSRP" value="${mysql.prefix}dsrp"/>
+				<replace file="${dist}/rdb/drop_schemas_${demo.build}.sql" token="author" value="${mysql.prefix}author"/>
+				<replace file="${dist}/rdb/drop_schemas_${demo.build}.sql" token="publish" value="${mysql.prefix}publish"/>
+				<exec executable="${mysql.exec}" spawn="false">
+					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/drop_schemas_${demo.build}.sql'"/>
+				</exec>
+				<delete file="${dist}/rdb/drop_schemas_${demo.build}.sql"/>
+				<!-- Creating the Schema and the datasource for RDBMK -->
 				<if>
 					<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
 					<then>
-						<antcall target="mysql_start"/>
-						<if>
-							<and>
-								<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
-								<resourceexists>
-									<file file="${mysql}/bin/mysql"/>
-								</resourceexists>
-							</and>
-							<then>
-								<property name="mysql.exec" value="${mysql}/bin/mysql"/>
-							</then>
-							<else>
-								<property name="mysql.exec" value="${demo.mysql.path}"/>
-							</else>
-						</if>
-						<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
 						<copy file="${dist}/rdb/mysql.sql" tofile="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" overwrite="true"/>
 						<replace file="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql" token="@schema@" value="${mysql.prefix}${demo.instance}"/>
 						<if>
@@ -493,7 +565,10 @@
 			</then>
 		</if>
 		<if>
-			<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+			<or>
+				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+			</or>
 			<then>
 				<!-- Making sure we start Solr  -->
 				<antcall target="solr_start"/>
@@ -503,6 +578,7 @@
 			<or>
 				<equals arg1="${demomachine.communities.enablement}" arg2="true" casesensitive="false"/>
 				<equals arg1="${demomachine.store}" arg2="crx3,crx3rdb" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="DSRP" casesensitive="false"/>
 			</or>
 			<then>
 				<!-- Making sure we start MySQL  -->
@@ -1129,27 +1205,16 @@
 						<property name="mysql.exec" value="${demo.mysql.path}"/>
 					</else>
 				</if>
-				<echo message="Dropping the MySQL schemas for SCORM and Reporting..."/>
 				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
-				<!--
-				<echo message="${demo.build} ${mysql.prefix} ${mysql.exec}"/>
-				-->
-				<copy file="${dist}/community/mysql/drop_schemas.sql" tofile="${dist}/community/mysql/drop_schemas_${demo.build}.sql" overwrite="true"/>
-				<replace file="${dist}/community/mysql/drop_schemas_${demo.build}.sql" token="enablementdb" value="${mysql.prefix}reporting"/>
-				<replace file="${dist}/community/mysql/drop_schemas_${demo.build}.sql" token="ScormEngineDB" value="${mysql.prefix}scorm"/>
-				<exec executable="${mysql.exec}" spawn="false">
-					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/community/mysql/drop_schemas_${demo.build}.sql'"/>
-				</exec>
-				<delete file="${dist}/community/mysql/drop_schemas_${demo.build}.sql"/>
 				<echo message="Configuring the MySQL server for Reporting..."/>
 				<antcall target="mysql_schema_instance">
-					<param name="mysql.path" value="${dist}/community/mysql"/>
+					<param name="mysql.path" value="${dist}/rdb"/>
 					<param name="mysql.file" value="database_schema"/>
 					<param name="mysql.schema" value="reporting"/>
 					<param name="mysql.db" value=""/>
 				</antcall>
 				<antcall target="mysql_schema_instance">
-					<param name="mysql.path" value="${dist}/community/mysql"/>
+					<param name="mysql.path" value="${dist}/rdb"/>
 					<param name="mysql.file" value="database_data"/>
 					<param name="mysql.schema" value="reporting"/>
 					<param name="mysql.db" value="${mysql.prefix}reporting"/>
@@ -1158,13 +1223,13 @@
 					<equals arg1="${demo.communities.scorm}" arg2="true" casesensitive="false"/>
 					<then>
 						<antcall target="mysql_schema_instance">
-							<param name="mysql.path" value="${dist}/community/mysql"/>
+							<param name="mysql.path" value="${dist}/rdb"/>
 							<param name="mysql.file" value="database_scormengine"/>
 							<param name="mysql.schema" value="scorm"/>
 							<param name="mysql.db" value=""/>
 						</antcall>
 						<antcall target="mysql_schema_instance">
-							<param name="mysql.path" value="${dist}/community/mysql"/>
+							<param name="mysql.path" value="${dist}/rdb"/>
 							<param name="mysql.file" value="database_scorm_integration"/>
 							<param name="mysql.schema" value="scorm"/>
 							<param name="mysql.db" value=""/>
@@ -1179,7 +1244,7 @@
 		<echo message="Downloading the MySQL schema from /libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
 		<exec executable="curl">
 			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-s -o '${dist}/community/mysql/${mysql.file}.sql' http://${demo.host}:${demomachine.authorport}/libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
+			<arg line="-s -o '${mysql.path}/${mysql.file}.sql' http://${demo.host}:${demomachine.authorport}/libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
 		</exec>
 		<replace file="${mysql.path}/${mysql.file}.sql" token="enablementdb" value="${mysql.prefix}${mysql.schema}"/>
 		<replace file="${mysql.path}/${mysql.file}.sql" token="ScormEngineDB" value="${mysql.prefix}${mysql.schema}"/>
@@ -1343,7 +1408,10 @@
 		</if>
 		<!-- check if we need to clean up the associated SOLR index -->
 		<if>
-			<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
+			<or>
+				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+			</or>
 			<then>
 				<antcall target="solr_stop"/>
 				<delete dir="${solr}/example/solr/${demo.build}/data"/>
@@ -2573,6 +2641,13 @@
 				<antcall target="configure_post">
 					<param name="port" value="${demomachine.farmport}"/>
 				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+			<then>
+				<!-- For now, DSRP requires a restart -->
+				<antcall target="restart"/>
 			</then>
 		</if>
 	</target>
@@ -3835,12 +3910,18 @@
 			<then>
 				<property name="demo.loader.resetflag" value="-r"/>
 			</then>
+			<else>
+				<property name="demo.loader.resetflag" value=""/>
+			</else>
 		</if>
 		<if>
 			<equals arg1="${demo.loader.configure}" arg2="true" casesensitive="false"/>
 			<then>
 				<property name="demo.loader.configureflag" value="-c"/>
 			</then>
+			<else>
+				<property name="demo.loader.configureflag" value=""/>
+			</else>
 		</if>
 		<if>
 			<equals arg1="${demo.communities.samples.analytics}" arg2="true" casesensitive="false"/>
@@ -3867,8 +3948,9 @@
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
+		<echo message="command line: -h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 	</target>
-	<!-- Target for loading a CSV file with UGC into a demo instance which might happen just on author (if MSRP or ASRP), or on multiple instances -->
+	<!-- Target for loading a CSV file with UGC into a demo instance which might happen just on author (if MSRP or DSRP or ASRP), or on multiple instances -->
 	<target name="community_loader" depends="community_loader_flag">
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
@@ -3883,7 +3965,7 @@
 	</target>
 	<!-- Target for loading all available CSV files for community content into a demo instance -->
 	<target name="community_loader_content" depends="community_loader_flag">
-		<!-- We only process the Samples files if ASRP or MSRP is in use (as no content will be there by default) -->
+		<!-- We only process the Samples files if ASRP or MSRP or DSRP is in use (as no content will be there by default) -->
 		<if>
 			<and>
 				<not>
@@ -3970,7 +4052,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the reference demo site for AEM Communities -->
@@ -3988,13 +4070,6 @@
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
-				<foreach target="package_publish" param="package">
-					<path id="community.packages">
-						<fileset dir="${dist}" casesensitive="yes">
-							<include name="community/reference/*.zip"/>
-						</fileset>
-					</path>
-				</foreach>
 				<property name="demo.loader.publish" value="&amp;port=${demomachine.publishport}&amp;hostname=${demo.host}"/>
 			</then>
 			<else>
@@ -4005,7 +4080,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_reference_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the extra demo sites for AEM Communities -->
@@ -4085,7 +4160,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_scoring_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/scoringdemo&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/scoringdemo&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on"/>
 		</exec>
 	</target>
 	<!-- Target for loading the enablement demo site for AEM Communities -->
@@ -4113,7 +4188,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_enablement_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/enablement&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/enablement&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on"/>
 		</exec>
 	</target>
 	<!-- Target for waiting for AEM to be available -->
@@ -4543,11 +4618,11 @@
 		<if>
 			<and>
 				<equals arg1="${AdobeAnalytics.install}" arg2="true" casesensitive="false"/>
-				<socket server="${demo.host}" port="${demomachine.authorport}"/>
+				<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			</and>
 			<then>
 				<exec executable="curl">
-					<arg line="--output '${logs}/${demomachine.authorport}_analytics_interval.html'"/>
+					<arg line="--output '${logs}/${demomachine.publishport}_analytics_interval.html'"/>
 					<arg line="--globoff"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
@@ -4555,9 +4630,9 @@
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
 					<arg line="-d cq.social.reporting.analytics.polling.importer.interval=1"/>
-					<arg line="-d cq.social.reporting.analytics.polling.importer.pageSize=5000"/>
+					<arg line="-d cq.social.reporting.analytics.polling.importer.pageSize=50000"/>
 					<arg line="-d propertylist=cq.social.reporting.analytics.polling.importer.interval,cq.social.reporting.analytics.polling.importer.pageSize"/>
-					<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.reporting.analytics.services.impl.AnalyticsReportImporterServiceImpl"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.reporting.analytics.services.impl.AnalyticsReportImporterServiceImpl"/>
 				</exec>
 			</then>
 		</if>
@@ -5033,7 +5108,7 @@
 	<!-- Target for configuring the SRP according to the property configuration -->
 	<target name="community_srp" depends="configuration">
 		<if>
-			<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
+			<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
 			<!-- MongoDB storage use case for 6.1 and beyond -->
 			<then>
 				<echo message="Configuring MSRP on port ${port}..."/>
@@ -5058,7 +5133,84 @@
 			</then>
 		</if>
 		<if>
-			<equals arg1="${demomachine.srp}" arg2="ASRP" casesensitive="false"/>
+			<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+			<!-- Database storage use case for 6.1 FP6 and 6.2 FP2 and 6.3 and beyond -->
+			<then>
+				<echo message="Configuring DSRP on port ${port}..."/>
+				<propertyregex property="database.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+				<!-- Downloading and configuring the schema -->
+				<if>
+					<and>
+						<equals arg1="${demo.mysql.external}" arg2="false" casesensitive="false"/>
+						<resourceexists>
+							<file file="${mysql}/bin/mysql"/>
+						</resourceexists>
+					</and>
+					<then>
+						<property name="mysql.exec" value="${mysql}/bin/mysql"/>
+					</then>
+					<else>
+						<property name="mysql.exec" value="${demo.mysql.path}"/>
+					</else>
+				</if>
+				<propertyregex property="mysql.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
+				<echo message="Configuring the MySQL server for DSRP..."/>
+				<echo message="Downloading the MySQL schema from /libs/social/config/datastore/dsrp/schema/init-schema.sql"/>
+				<exec executable="curl">
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-s -o '${dist}/rdb/init-schema.sql' http://${demo.host}:${demomachine.authorport}/libs/social/config/datastore/dsrp/schema/init-schema.sql"/>
+				</exec>
+				<replace file="${dist}/rdb/init-schema.sql" token="dsrp" value="${mysql.prefix}dsrp"/>
+				<echo message="Loading SQL file into internal MySQL server..."/>
+				<exec executable="${mysql.exec}" spawn="false">
+					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/init-schema.sql'"/>
+				</exec>
+				<delete file="${dist}/rdb/init-schema.sql"/>
+				<!-- Configuring the datasource -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_jdbc_dsrp.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d factoryPid=com.day.commons.datasource.jdbcpool.JdbcPoolService"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d jdbc.driver.class=com.mysql.jdbc.Driver"/>
+					<arg line="-d jdbc.connection.uri=jdbc:mysql://${demo.mysql.host}:${demo.mysql.port}/${mysql.prefix}dsrp"/>
+					<arg line="-d jdbc.username=${demo.mysql.user}"/>
+					<arg line="-d jdbc.password=${demo.mysql.password}"/>
+					<arg line="-d jdbc.validation.query="/>
+					<arg line="-d default.readonly=false"/>
+					<arg line="-d default.autocommit=true"/>
+					<arg line="-d default.autocommit=false"/>
+					<arg line="-d pool.size=10"/>
+					<arg line="-d pool.max.wait.msec=1000"/>
+					<arg line="-d datasource.name=dsrp"/>
+					<arg line="-d datasource.svc.properties="/>
+					<arg line="-d propertylist=jdbc.driver.class,jdbc.connection.uri,jdbc.username,jdbc.password,jdbc.validation.query,default.readonly,default.autocommit,pool.size,pool.max.wait.msec,datasource.name,datasource.svc.properties"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/[Temporary%20PID%20replaced%20by%20real%20PID%20upon%20save]"/>
+				</exec>
+				<!-- Configuring DSRP -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_dsrp.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d type=dsrp"/>
+					<arg line="-d datasource=dsrp"/>
+					<arg line="-d database.name=${mysql.prefix}dsrp"/>
+					<arg line="-d zkhost="/>
+					<arg line="-d solr.url=http://127.0.0.1:8983/solr/"/>
+					<arg line="-d solr.collection=${demo.build}"/>
+					<arg line="-d asipath=/content/usergenerated/asi/rdbms"/>
+					<arg line="-d jcr:primaryType=nt:unstructured"/>
+					<arg line="http://${demo.host}:${port}/etc/socialconfig/srpc/defaultconfiguration"/>
+				</exec>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.srp}" arg2="asrp" casesensitive="false"/>
 			<!-- Cloud Storage use case for 6.1 and beyond -->
 			<then>
 				<echo message="Configuring ASRP on port ${port}..."/>
@@ -5443,7 +5595,10 @@
 		</if>
 		<!-- Scenarios for which SOLR is required -->
 		<if>
-			<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+			<or>
+				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+			</or>
 			<then>
 				<if>
 					<not>
@@ -5632,7 +5787,7 @@
 				<!-- Rebuilding via ANT -->
 				<mkdir dir="${validation}/build"/>
 				<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
-					<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' create"/>
+					<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' -Ddemo.build=${demo.build} create"/>
 				</exec>
 			</then>
 		</if>
@@ -5750,7 +5905,7 @@
 					<then>
 						<echo message="Rebuilding demo environment: ${demo}"/>
 						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
-							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
+							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
 						</exec>
 						<propertyfile file="${demos}/${demo}/demobuild.properties">
 							<entry key="demo.gui" value="true"/>
@@ -5839,8 +5994,14 @@
 					<arg line="-o '${validation}/build/${AdobeAEM.publishport}_${demo}_bundles.html' http://${demo.host}:${AdobeAEM.publishport}/system/console/bundles"/>
 				</exec>
 				<loadfile property="bundles.list" srcFile="${validation}/build/${AdobeAEM.publishport}_${demo}_bundles.html"/>
-				<propertyregex property="oak.version" input="${bundles.list}" regexp="version&quot;:&quot;([0-9.]+)&quot;,&quot;symbolicName&quot;:&quot;org.apache.jackrabbit.oak-core" select="\1"/>
-				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;AEM&amp;nbsp;${aem.version}&lt;br/&gt;OAK&amp;nbsp;${oak.version}&lt;br/&gt;SoCo&amp;nbsp;${soco.version}&lt;br/&gt;SCORM&amp;nbsp;${scorm.version}&lt;/td&gt;&lt;/td&gt;</echo>
+				<propertyregex property="oak.version" input="${bundles.list}" regexp="version&quot;:&quot;([a-zA-Z0-9.]+)&quot;,&quot;symbolicName&quot;:&quot;org.apache.jackrabbit.oak-core" select="\1"/>
+				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="srp.type">
+					<arg line="-f '${demos}/${demo}/demobuild.properties'"/>
+					<arg line="-r 'srp=([a-zA-Z0-9.]+)'"/>
+					<arg line="-p first"/>
+					<classpath refid="demo.classpath"/>
+				</java>
+				<echo file="${validation}/${results}.html" append="true">&lt;td&gt;AEM&amp;nbsp;${aem.version}&lt;br/&gt;OAK&amp;nbsp;${oak.version}&lt;br/&gt;SoCo&amp;nbsp;${soco.version}&lt;br/&gt;SCORM&amp;nbsp;${scorm.version}&lt;br/&gt;${srp.type}&lt;/td&gt;&lt;/td&gt;</echo>
 				<!-- Taking Screenshots -->
 				<foreach list="${constituents}" target="validation_build_screenshot" param="screenshot.id" inheritall="true"/>
 				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
@@ -6022,6 +6183,6 @@
 	</target>
 	<!-- Default target when no target name is provided to ANT -->
 	<target name="default">
-		<echo message="Welcome to the AEM Demo Machine! Please use the 'create' target to setup your first environment"/>
+		<antcall target="gui"/>
 	</target>
 </project>

@@ -1,3 +1,0 @@
-DROP DATABASE IF EXISTS `enablementdb` ;
-DROP DATABASE IF EXISTS `ScormEngineDB` ;
-

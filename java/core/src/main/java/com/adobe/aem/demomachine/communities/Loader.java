@@ -99,6 +99,7 @@ public class Loader {
 	private static final String FORUM = "Forum";
 	private static final String JOURNAL = "Journal";
 	private static final String TAG = "Tag";
+	private static final String IDEATION = "Ideation";
 	private static final String BLOG = "Blog";
 	private static final String SUMMARY = "Summary";
 	private static final String CALENDAR = "Calendar";
@@ -119,10 +120,20 @@ public class Loader {
 	private static final String SITEPUBLISH = "SitePublish";
 	private static final String SITEDELETE = "SiteDelete";
 	private static final String SITETEMPLATE = "SiteTemplate";
+	private static final String SITEPATH = "SitePath";
 	private static final String GROUPTEMPLATE = "GroupTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
 	private static final String GROUPPUBLISH = "GroupPublish";
 	private static final String SITEMEMBERS = "SiteMembers";
+	private static final String UGCUPVOTE = "Upvote";
+	private static final String UGCDOWNVOTE = "Downvote";
+	private static final String UGCREPLY = "Reply";
+	private static final String UGCFLAG = "Flag";
+	private static final String UGCDENY = "Deny";
+	private static final String UGCLIKE = "Like";
+	private static final String UGCFEATURE = "Feature";
+	private static final String UGCPIN = "Pin";
+	private static final String UGCANSWER = "Answer";
 	private static final String GROUP = "Group";
 	private static final String SUBGROUP = "SubGroup";
 	private static final String JOIN = "Join";
@@ -170,7 +181,8 @@ public class Loader {
 	private static final String ENABLEMENT62 = "1.1.0";
 	private static final String COMMUNITIES61 = "1.0.13";
 	private static final String COMMUNITIES61FP5 = "2.0.7";
-	
+	private static final String COMMUNITIES61FP6 = "2.0.8";
+
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
 
 	public static void main(String[] args) {
@@ -184,7 +196,8 @@ public class Loader {
 		boolean reset = false;
 		boolean configure = false;
 		boolean minimize = false;
-		
+		int maxretries = MAXRETRIES;
+
 		// Command line options for this tool
 		Options options = new Options();
 		options.addOption("h", true, "Hostname");
@@ -197,6 +210,7 @@ public class Loader {
 		options.addOption("m", false, "Minimize");
 		options.addOption("s", true, "Analytics Endpoint");
 		options.addOption("t", false, "Analytics");
+		options.addOption("w", false, "Retry");
 		CommandLineParser parser = new BasicParser();
 		try {
 			CommandLine cmd = parser.parse( options, args);
@@ -229,6 +243,10 @@ public class Loader {
 
 			if(cmd.hasOption("r")) {
 				reset = true;
+			}
+
+			if(cmd.hasOption("w")) {
+				maxretries = Integer.parseInt(cmd.getOptionValue("w"));
 			}
 
 			if(cmd.hasOption("c")) {
@@ -266,7 +284,7 @@ public class Loader {
 
 						InputStream is = zipFile.getInputStream(zipEntry);
 						BufferedReader in = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, csvfile);
+						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, csvfile, maxretries);
 
 					}
 				}
@@ -281,7 +299,7 @@ public class Loader {
 			} else if (csvfile.toLowerCase().endsWith(".csv")) {
 
 				Reader in = new FileReader(csvfile);
-				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, csvfile);
+				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, csvfile, maxretries);
 
 			}
 
@@ -293,13 +311,14 @@ public class Loader {
 
 	}
 
-	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, boolean minimize, String csvfile) {
+	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, boolean minimize, String csvfile, int maxretries) {
 
 		String location = null;
 		String userHome = null;
 		String sitePagePath = null;
 		String analyticsPagePath = null;
 		String resourceType = null;
+		String subComponentType = null;
 		String rootPath = "/content/sites";
 		String[] url = new String[10];  // Handling 10 levels maximum for nested comments 
 		int urlLevel = 0;
@@ -331,7 +350,8 @@ public class Loader {
 			// Versions related methods
 			boolean isCommunities61 = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61))==0;
 			boolean isCommunities61FP5orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP5))>=0;
-			
+			boolean isCommunities61FP6orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP6))>=0;
+
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
 			for (CSVRecord record : records) {
@@ -339,6 +359,10 @@ public class Loader {
 				LinkedList<InputStream> lIs = new LinkedList<InputStream>();
 				row = row + 1;
 				logger.info("Row: " + row + ", new record: " + record.get(0));			
+				if (record.size()>2)
+					subComponentType = record.get(2);
+				else
+					logger.info("No subcomponent type to load");
 
 				// Let's see if we deal with a comment
 				if (record.get(0).startsWith("#")) {
@@ -364,6 +388,11 @@ public class Loader {
 					doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
 					continue;
 
+				}
+				
+				// Let's see if we need to set the current site path
+				if (record.get(0).equals(SITEPATH)) {
+					sitePagePath = record.get(1);
 				}
 
 				// Let's see if we need to create a new Community site
@@ -458,7 +487,7 @@ public class Loader {
 
 					// Waiting for site creation to be complete
 					boolean existingSiteWithLocale = rootPath.indexOf("/"+initialLanguages[0])>0;					
-					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]));
+					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]), maxretries);
 
 					// Site publishing, if there's a publish instance to publish to
 					if (!port.equals(altport)) {
@@ -478,7 +507,7 @@ public class Loader {
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
-							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage));
+							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage), maxretries);
 
 						}
 
@@ -489,6 +518,27 @@ public class Loader {
 
 				// Let's see if we need to update an existing Community site (this doesn't include republishing the site!)
 				if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
+
+					// Let's set if we need to run based on version number
+					Version vRecord = null;
+					if (record.get(2).startsWith(">") || record.get(2).startsWith("<") || record.get(2).startsWith("=")) {
+						
+						try {
+							vRecord = new Version(record.get(2).substring(1));
+						} catch (Exception e) {
+							logger.error("Invalid version number specified" + record.get(2));
+						}
+					}
+					
+					if (vRecord!=null && record.get(2).startsWith(">") && vBundleCommunitiesSCF.compareTo(vRecord)<=0) {
+						logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
+						continue;
+					}
+
+					if (vRecord!=null && record.get(2).startsWith("<") && vBundleCommunitiesSCF.compareTo(vRecord)>0) {
+						logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
+						continue;
+					}
 
 					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
 						logger.debug("Updating a Community Site " + record.get(1));
@@ -551,10 +601,19 @@ public class Loader {
 								isValid=false;
 							}
 
+							// If the template includes some of the ideation features, then it won't work until 6.2 FP2
+							if (name.equals("functions") && value.indexOf("ideation")>0 && !isCommunities61FP6orlater) {
+								logger.info("Site update is not compatible with this version of AEM");
+								isValid=false;
+							}
+							
 						}
 
 					}
 
+					// Convenient for debugging the site update operation
+					// printPOST(builder.build());	
+					
 					if (isValid)
 						doPost(hostname, port,
 								record.get(1),
@@ -589,7 +648,7 @@ public class Loader {
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
 
-						doWaitPath(hostname, altport, adminPassword, record.get(1));
+						doWaitPath(hostname, altport, adminPassword, record.get(1), maxretries);
 
 					}
 
@@ -761,6 +820,12 @@ public class Loader {
 								isValid=false;
 							}
 
+							// If the template includes some of the ideation features, then it won't work until 6.2 FP2
+							if (name.equals("functions") && value.indexOf("ideation")>0 && !isCommunities61FP6orlater) {
+								logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
+								isValid=false;
+							}
+
 							// If the group template includes the nested group features, then it won't work until 6.2 FP1
 							if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
 								logger.info("Group template " + record.get(3) + " is not compatible with this version of AEM");
@@ -794,7 +859,7 @@ public class Loader {
 						logger.warn("Subgroups are not supported with this version of AEM Communities");
 						continue;
 					}
-					
+
 					// Building the form entity to be posted
 					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 					builder.setCharset(MIME.UTF8_CHARSET);
@@ -822,7 +887,7 @@ public class Loader {
 							}
 							if (name.equals("siteRoot")) {
 								// Some content root has been provided for the Group. It might result from previous actions and might not be there yet - let's wait for it
-								doWaitPath(hostname, port, adminPassword, value);
+								doWaitPath(hostname, port, adminPassword, value, maxretries);
 							}
 						}
 					}
@@ -831,7 +896,7 @@ public class Loader {
 					if (groupType!=null && groupType.equals("Secret") && isCommunities61) {
 						continue;
 					}
-					
+
 					// Group creation
 					doPost(hostname, port,
 							record.get(1),
@@ -842,7 +907,7 @@ public class Loader {
 					// Waiting for group to be available either on publish or author
 					int i = (record.get(1).indexOf("/jcr:content")>0)?record.get(1).indexOf("/jcr:content"):record.get(1).indexOf(".social.json");
 					if (urlName!=null && i>0) {
-						doWaitPath(hostname, port, adminPassword, record.get(1).substring(0, i) + "/" + urlName);
+						doWaitPath(hostname, port, adminPassword, record.get(1).substring(0, i) + "/" + urlName, maxretries);
 					} else {
 						logger.warn("Not waiting for Group to be fully available");
 					}
@@ -887,7 +952,7 @@ public class Loader {
 							doDelete(hostname, port, siteRoot + "/" + urlName, "admin", adminPassword);
 							doDelete(hostname, altport, siteRoot + "/" + urlName, "admin", adminPassword);
 
-							// Then, deleting the dam resources for this site, on author and publibsh
+							// Then, deleting the dam resources for this site, on author and publish
 							doDelete(hostname, port, resourcesRoot, "admin", adminPassword);
 							doDelete(hostname, altport, resourcesRoot, "admin", adminPassword);
 
@@ -916,7 +981,7 @@ public class Loader {
 						String configurationPath = record.get(GROUP_INDEX_NAME);
 
 						// Let's make sure the configuration .json is there
-						doWaitPath(hostname, port, adminPassword, configurationPath);
+						doWaitPath(hostname, port, adminPassword, configurationPath, maxretries);
 
 						// Let's fetch the siteId for this Community Site Url
 						String siteConfig = doGet(hostname, port,
@@ -973,7 +1038,7 @@ public class Loader {
 					// Pause until the group can found
 					String groupList = doWait(hostname, port,
 							"admin", adminPassword,
-							groupName
+							groupName, maxretries
 							);
 
 					if (groupList!=null && groupList.indexOf("\"results\":1")>0) {
@@ -1083,6 +1148,7 @@ public class Loader {
 				if (record.get(0).equals(CALENDAR)
 						|| record.get(0).equals(SLINGPOST)
 						|| record.get(0).equals(RATINGS) 
+						|| record.get(0).equals(IDEATION) 
 						|| record.get(0).equals(BLOG) 
 						|| record.get(0).equals(JOURNAL) 
 						|| record.get(0).equals(COMMENTS) 
@@ -1120,19 +1186,18 @@ public class Loader {
 					}
 
 					if (!componentType.equals(SLINGPOST) && reset) {
-
 						int pos = record.get(1).indexOf("/jcr:content");
 						if (pos>0) 
 							doDelete(hostname, port,
 									"/content/usergenerated" + record.get(1).substring(0,pos),
 									"admin", adminPassword);
-
 					}
 
 					// If the Configure command line flag is set, we try to configure the component with all options enabled
 					if (componentType.equals(SLINGPOST) || configure) {
 
 						String configurePath = getConfigurePath(record.get(1));
+						logger.info(configurePath);
 
 						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, configurePath, record, 2);
 						if (nameValuePairs.size()>2) {
@@ -1169,7 +1234,7 @@ public class Loader {
 							doSleep(10000, "Waiting after a bundle change/restart");
 							doWait(hostname, port,
 									"admin", adminPassword,
-									"administrators"
+									"administrators", maxretries
 									);
 						}
 
@@ -1214,12 +1279,7 @@ public class Loader {
 
 				nameValuePairs.add(new BasicNameValuePair("_charset_", "UTF-8"));
 
-				if(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))
-				{
-					sitePagePath = url[0].substring(0, url[0].indexOf("/en") + 3);
-				}
-
-				if(urlLevel==0 && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR)))
+				if(urlLevel==0 && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(IDEATION) || componentType.equals(BLOG) || componentType.equals(CALENDAR)))
 				{					
 					// Generating a unique hashkey
 					nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
@@ -1230,29 +1290,6 @@ public class Loader {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
 					nameValuePairs.add(new BasicNameValuePair("message", record.get(2)));
-
-				}
-
-				// Creates a forum post (or reply)
-				if (componentType.equals(FORUM)) {
-
-					if (urlLevel == 2 && (record.get(2).equals("Deny") || record.get(2).equals("Flag"))) {
-						if (record.get(2).equals("Deny")) {
-							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
-						} else if (record.get(2).equals("Flag")) {
-							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
-							nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "this is spam"));
-							nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
-						}
-					} else {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
-						if (urlLevel == 0) {
-							nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
-						} else {
-							nameValuePairs.add(new BasicNameValuePair("subject", ""));	
-						}
-					}
 
 				}
 
@@ -1399,16 +1436,36 @@ public class Loader {
 
 				// Creates a new private message
 				if (componentType.equals(MESSAGE)) {
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createMessage"));
-					nameValuePairs.add(new BasicNameValuePair("sendMail", "Sending..."));
-					nameValuePairs.add(new BasicNameValuePair("content", record.get(4)));
-					nameValuePairs.add(new BasicNameValuePair("subject", record.get(3)));
-					nameValuePairs.add(new BasicNameValuePair("serviceSelector", "/bin/community"));
+					
 					nameValuePairs.add(new BasicNameValuePair("to", "/social/authors/" + record.get(2)));
 					nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair(":redirect", "//messaging.html"));
-					nameValuePairs.add(new BasicNameValuePair(":formid", "generic_form"));
-					nameValuePairs.add(new BasicNameValuePair(":formstart", rootPath + "/communities/messaging/compose/jcr:content/content/primary/start"));
+					nameValuePairs.add(new BasicNameValuePair("toId", ""));
+					nameValuePairs.add(new BasicNameValuePair("serviceSelector", "/bin/community"));
+					nameValuePairs.add(new BasicNameValuePair("redirectUrl", "../messaging.html"));
+					nameValuePairs.add(new BasicNameValuePair("attachmentPaths", ""));
+					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createMessage"));
+					nameValuePairs.add(new BasicNameValuePair("subject", record.get(3)));
+					nameValuePairs.add(new BasicNameValuePair("content", record.get(4)));
+					nameValuePairs.add(new BasicNameValuePair("sendMail", "Sending..."));
+
+				}
+
+				// Creates a forum post (or a reply)
+				if (componentType.equals(FORUM)) {
+
+					if (urlLevel == 0) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+
+					} else if (subComponentType.equals(UGCREPLY)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+						nameValuePairs.add(new BasicNameValuePair("subject", ""));
+
+					}
 				}
 
 				// Creates a file or a folder
@@ -1416,11 +1473,16 @@ public class Loader {
 
 					// Top level is always assumed to be a folder, second level files, and third and subsequent levels comments on files
 					if (urlLevel==0) {
+
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createFileLibraryFolder"));
-						nameValuePairs.add(new BasicNameValuePair("name", record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair("name", subComponentType));
 						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
-					} else if (urlLevel==1) {
+
+					} else if (subComponentType.equals(UGCREPLY)) {
+
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
+
 					}
 
 				}
@@ -1433,29 +1495,23 @@ public class Loader {
 						continue;
 					}
 
-					if (urlLevel == 2 && (record.get(2).equals("Deny") || record.get(2).equals("Flag") || record.get(2).equals("Answer"))) {
-						if (record.get(2).equals("Answer")) {
-							nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));
-						} else if (record.get(2).equals("Deny")) {
-							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
-						} else if (record.get(2).equals("Flag")) {
-							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
-							nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "this is spam"));
-							nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
-						}
-					} else {
+					if (urlLevel==0) {
+
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
+						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
 						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
-						if (urlLevel ==0) {
-							nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
-						} else {
-							nameValuePairs.add(new BasicNameValuePair("subject", ""));	
-						}
+
+					} else if (subComponentType.equals(UGCREPLY)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
+						nameValuePairs.add(new BasicNameValuePair("subject", ""));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
+
 					}
 
 				}
 
-				// Creates an article or a comment
+				// Creates a Blog article or a comment
 				if (componentType.equals(JOURNAL) || componentType.equals(BLOG)) {
 
 					if(vBundleCommunitiesEnablement==null) {
@@ -1463,27 +1519,128 @@ public class Loader {
 						continue;
 					}
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
-					nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
-					StringBuffer message = new StringBuffer("<p>" + record.get(3) + "</p>");
+					if (urlLevel==0) {
 
-					//We might have more paragraphs to add to the blog or journal article
-					for (int i=6; i < record.size();i++) {
-						if (record.get(i).length()>0) {
-							if (record.get(i).startsWith("isDraft")) {
-								nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
-							} else {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
+						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+						StringBuffer message = new StringBuffer("<p>" + record.get(3) + "</p>");
+
+						//We might have more paragraphs to add to the blog or journal article
+						for (int i=6; i < record.size();i++) {
+							if (record.get(i).length()>0) {
+								if (record.get(i).startsWith("isDraft")) {
+									nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
+								} else {
+									message.append("<p>" + record.get(i) + "</p>");
+								}
+							}
+						}
+
+						//We might have some tags to add to the blog or journal article
+						if (record.get(5).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
+						}
+
+						nameValuePairs.add(new BasicNameValuePair("message", message.toString()));		         
+
+					} else if (subComponentType.equals(UGCREPLY)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));	
+						nameValuePairs.add(new BasicNameValuePair("subject", ""));
+
+					}
+
+				}
+
+				// Creates an Idea or a comment
+				if (componentType.equals(IDEATION)) {
+
+					if(!isCommunities61FP6orlater) {
+						logger.info("Ideas are not compatible with this version of AEM");
+						continue;
+					}
+
+					if (urlLevel==0) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createIdeationComment"));
+						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+						StringBuffer message = new StringBuffer("");
+
+						//We might have more paragraphs to add to the idea
+						for (int i=6; i < record.size();i++) {
+							if (record.get(i).length()>0) {
 								message.append("<p>" + record.get(i) + "</p>");
 							}
 						}
+
+						if (record.get(5).equals("TRUE")) {
+							nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
+						}
+
+						//We might have some tags to add to the blog or journal article
+						if (record.get(3).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
+						}
+
+						nameValuePairs.add(new BasicNameValuePair("message", message.toString()));	
+
+					} else if (subComponentType.equals(UGCREPLY)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createIdeationComment"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));	
+						nameValuePairs.add(new BasicNameValuePair("subject", ""));
+
 					}
 
-					//We might have some tags to add to the blog or journal article
-					if (record.get(5).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
+				}
+
+				// Taking care of moderation actions for all types
+				if (urlLevel>=1 && !subComponentType.equals(UGCREPLY)) {
+
+					if (subComponentType.equals(UGCPIN)  && !isCommunities61FP5orlater) {
+						logger.warn("This feature is not supported by this version of AEM");
+						continue;
 					}
 
-					nameValuePairs.add(new BasicNameValuePair("message", message.toString()));		         
+					if ((subComponentType.equals(UGCFEATURE) || subComponentType.equals(UGCLIKE)) && !isCommunities61FP6orlater) {
+						logger.warn("This feature is not supported by this version of AEM");
+						continue;
+					}
+					
+					if (subComponentType.equals(UGCANSWER)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));
+					}
+					if (subComponentType.equals(UGCDENY)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
+					}
+					if (subComponentType.equals(UGCFLAG)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
+						nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "Marked as spam"));
+						nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
+					}
+					if (subComponentType.equals(UGCFEATURE)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:featured"));
+						nameValuePairs.add(new BasicNameValuePair("social:markFeatured", "true"));
+					}
+					if (subComponentType.equals(UGCPIN)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:pin"));
+						nameValuePairs.add(new BasicNameValuePair("social:doPin", "true"));
+					}
+					if (subComponentType.equals(UGCUPVOTE)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+						nameValuePairs.add(new BasicNameValuePair("response", "1"));
+						nameValuePairs.add(new BasicNameValuePair("tallyType", "Voting"));					
+					}
+					if (subComponentType.equals(UGCDOWNVOTE)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+						nameValuePairs.add(new BasicNameValuePair("response", "-1"));
+						nameValuePairs.add(new BasicNameValuePair("tallyType", "Voting"));					
+					}
+					if (subComponentType.equals(UGCLIKE)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+						nameValuePairs.add(new BasicNameValuePair("response", "1"));
+						nameValuePairs.add(new BasicNameValuePair("tallyType", "Liking"));							
+					}
 
 				}
 
@@ -1517,7 +1674,7 @@ public class Loader {
 
 					nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
 					nameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
-					nameValuePairs.add(new BasicNameValuePair("response", record.get(2)));
+					nameValuePairs.add(new BasicNameValuePair("response", subComponentType));
 
 				}
 
@@ -1605,20 +1762,20 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
+						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE), maxretries)));
 					} else {
 						nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
 					}
 
 					// Building the asset fragment
 					String assetFileName = record.get(2);
-					
+
 					// Replacing videos with images in case it's a minimized installation
 					int assetFileNamePos = assetFileName.indexOf(".mp4");
 					if (assetFileNamePos>0 && minimize) {
 						assetFileName = assetFileName.substring(0,assetFileNamePos) + ".jpg";
 					}
-					
+
 					String coverPath = "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
 					String coverSource = "dam";
 					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + assetFileName + "\"}]";
@@ -1626,9 +1783,9 @@ public class Loader {
 
 					// If it's a SCORM asset, making sure the output is available before processing
 					if (assetFileName.endsWith(".zip")) {
-						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output");
+						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output", maxretries);
 					}
-					
+
 				}
 
 				// Creates a learning path
@@ -1656,7 +1813,7 @@ public class Loader {
 
 					// Building the cover image fragment
 					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE))));
+						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE), maxretries)));
 					}
 
 					// Building the learning path fragment
@@ -1753,6 +1910,7 @@ public class Loader {
 				if ((componentType.equals(ASSET) || 
 						componentType.equals(AVATAR) ||
 						componentType.equals(FORUM) ||
+						componentType.equals(IDEATION) ||
 						componentType.equals(QNA) ||
 						(componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
 
@@ -1770,11 +1928,12 @@ public class Loader {
 				if (componentType.equals(LEARNING) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<=0) {
 					jsonElement = "path";
 				}
-				
+
 				if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
-					//printPOST(builder.build());	
+					// Useful for debugging complex POST requests
+					// printPOST(builder.build());	
 				}
-				
+
 				if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
 					// Creating an asset doesn't return a JSON string
 					elements.put(jsonElement, "");
@@ -1783,7 +1942,7 @@ public class Loader {
 				}
 
 				// This call generally returns the path to the content fragment that was just created
-				int returnCode = Loader.doPost(hostname, port, getPostURL(componentType, url[urlLevel], userHome), userName, password, builder.build(), elements, null);
+				int returnCode = Loader.doPost(hostname, port, getPostURL(componentType, subComponentType, url[urlLevel], userHome), userName, password, builder.build(), elements, null);
 
 				// Again, Assets being a particular case
 				if (!(componentType.equals(ASSET) || componentType.equals(AVATAR))) {
@@ -1798,7 +1957,7 @@ public class Loader {
 				// In case of Assets or Resources, we are waiting for all workflows to be completed
 				if (componentType.equals(ASSET) && returnCode<400) {
 					doSleep(1000, "Pausing 1s after submitting asset");
-					doWaitWorkflows(hostname, port, adminPassword, "asset");
+					doWaitWorkflows(hostname, port, adminPassword, "asset", maxretries);
 				}
 
 				// If we are loading a content fragment, we need to post the actual content next
@@ -1856,12 +2015,12 @@ public class Loader {
 							null);
 
 					// Waiting for the learning path to be published
-					doWaitPath(hostname, altport, adminPassword, location);
+					doWaitPath(hostname, altport, adminPassword, location, maxretries);
 
 					// Decorate the resources within the learning path with comments and ratings, randomly generated
 					ArrayList<String> paths = learningpaths.get(record.get(2));
 					for (String path : paths) {
-						doDecorate(hostname, altport, adminPassword, path, record, analytics, rootPath);
+						doDecorate(hostname, altport, adminPassword, path, record, analytics, sitePagePath);
 					}						
 
 				}
@@ -1876,16 +2035,16 @@ public class Loader {
 				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
 
 					// Wait for the workflows to be completed
-					doWaitWorkflows(hostname, port, adminPassword, "resource");
+					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
 
 					// Wait for the data to be fully copied
-					doWaitPath(hostname, port, adminPassword, location + "/assets/asset");
+					doWaitPath(hostname, port, adminPassword, location + "/assets/asset", maxretries);
 
 					// If we are dealing with a SCORM asset, we wait for the SCORM workflow to be completed before publishing the resource
 					if (record.get(2).indexOf(".zip")>0) {
 
 						// Wait for the output to be available
-						doWaitPath(hostname, port, adminPassword, location + "/assets/asset/" + record.get(2) + "/output");
+						doWaitPath(hostname, port, adminPassword, location + "/assets/asset/" + record.get(2) + "/output", maxretries);
 
 					}
 
@@ -1900,11 +2059,11 @@ public class Loader {
 							null);
 
 					// Waiting for the resource to be published
-					doWaitPath(hostname, altport, adminPassword, location);
+					doWaitPath(hostname, altport, adminPassword, location, maxretries);
 
 					// Adding comments and ratings for this resource
 					logger.debug("Decorating the resource with comments and ratings");
-					doDecorate(hostname, altport, adminPassword, location, record, analytics, rootPath);
+					doDecorate(hostname, altport, adminPassword, location, record, analytics, sitePagePath);
 
 					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
 					DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -1926,7 +2085,7 @@ public class Loader {
 
 					logger.debug("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
 					logger.debug("Analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
-					if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(CALENDAR))) {
+					if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(IDEATION) || componentType.equals(CALENDAR))) {
 						logger.debug("level: " + Integer.parseInt(record.get(1)));
 						if (Integer.parseInt(record.get(1)) == 0) {
 							// We just created a UGC page that gets viewed. simulate view events.
@@ -1995,7 +2154,7 @@ public class Loader {
 	}
 
 	// This method evaluates where to make the POST
-	private static String getPostURL(String componentType, String urlLevel, String userHome) {
+	private static String getPostURL(String componentType, String subComponentType, String urlLevel, String userHome) {
 
 		String postURL = urlLevel;
 
@@ -2005,6 +2164,17 @@ public class Loader {
 
 		if (componentType.equals(BADGEASSIGN)) {
 			postURL = userHome + "/profile.social.json";
+		}
+
+		if (subComponentType.equals(UGCLIKE) || subComponentType.equals(UGCUPVOTE) || subComponentType.equals(UGCDOWNVOTE)) {
+			int pos = postURL.indexOf(".social.json");
+			if (pos>0) {
+				postURL = postURL.substring(0,pos) + "/voting.social.json";
+				logger.debug("VOTING URL: " + postURL);
+			} else {
+				postURL = postURL + "/voting.social.json";
+			}
+
 		}
 
 		return postURL;
@@ -2086,7 +2256,7 @@ public class Loader {
 	}
 
 	// This method POSTs a DAM file as an asset to be used as a thumbnail later on
-	private static String doThumbnail(ResourceResolver rr, LinkedList<InputStream> lIs, String hostname, String port, String adminPassword, String csvfile, String filename, String sitename) {
+	private static String doThumbnail(ResourceResolver rr, LinkedList<InputStream> lIs, String hostname, String port, String adminPassword, String csvfile, String filename, String sitename, int maxretries) {
 
 		if (filename==null || filename.equals("")) return null;
 
@@ -2106,7 +2276,7 @@ public class Loader {
 				builder.build(),
 				null);
 
-		doWaitWorkflows(hostname, port, adminPassword, "thumbnail");
+		doWaitWorkflows(hostname, port, adminPassword, "thumbnail", maxretries);
 
 		return pathToFile + "/file";
 
@@ -2670,14 +2840,6 @@ public class Loader {
 
 	}
 
-	// This method WAITs for a group to be present on a server, retrying when needed
-	private static String doWait(String hostname, String port, String user, String password, String group) {
-
-		String groupList = doWait(hostname, port, user, password, group, MAXRETRIES);
-		return groupList;
-
-	}
-
 	// This method WAITs of CHECKs for a group on a server
 	private static String doWait(String hostname, String port, String user, String password, String group, int max) {
 
@@ -2754,10 +2916,10 @@ public class Loader {
 	}
 
 	// This method waits for all running workflows to be completed
-	private static void doWaitWorkflows(String hostname, String port, String adminPassword, String context) {
+	private static void doWaitWorkflows(String hostname, String port, String adminPassword, String context, int maxretries) {
 
 		int retries = 0;
-		while (retries++ < MAXRETRIES) {
+		while (retries++ < maxretries) {
 
 			String runningWorkflows = doPost(hostname, port, "/system/console/jmx/com.adobe.granite.workflow%3Atype%3DMaintenance/op/listRunningWorkflowsPerModel/", "admin", adminPassword);
 			if (runningWorkflows!=null) {
@@ -2781,10 +2943,10 @@ public class Loader {
 	}
 
 	// This method WAITS for a node to be available
-	private static void doWaitPath(String hostname, String port, String adminPassword, String path) {
+	private static void doWaitPath(String hostname, String port, String adminPassword, String path, int maxretries) {
 
 		int retries = 0;
-		while (retries++ < MAXRETRIES) {
+		while (retries++ < maxretries) {
 
 			if (isResourceAvailable(hostname, port, adminPassword, path)) {
 
@@ -3095,7 +3257,7 @@ public class Loader {
 	public static String title2name(String title) {
 		return title.replaceAll(" ","_").replaceAll("\\.","_").toLowerCase();
 	}
-	
+
 	// Printing the details of a POST request
 	public static void printPOST(HttpEntity entity) {
 

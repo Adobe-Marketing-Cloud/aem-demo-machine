@@ -85,8 +85,11 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 		String password = (String) request.getParameter("password");
 		String analytics = (String) request.getParameter("analytics");
 		String minimizeParam = (String) request.getParameter("minimize");
+		String sMaxRetries = (String) request.getParameter("maxretries");
+		
 		boolean minimize = (minimizeParam!=null && minimizeParam.length()>0)?true:false;
-
+		int maxretries = (sMaxRetries==null)?30:Integer.parseInt(sMaxRetries);
+		
 		// Checking if the specified hosts and ports are reachable
 		if (hostname_author==null || port_author==null || !Hostname.isReachable(hostname_author,port_author)) {
 			out.println("Aborting: Your AEM Author instance is not reachable. Please verify it is properly started.");
@@ -144,9 +147,9 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 						out.println("<p>Processing: " + resConfigFile.getName() + "</p>");
 						response.flushBuffer();;
 						if (resConfigFile.getName().contains("author")) {
-							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, analytics, false, true, minimize, csvPath);
+							Loader.processLoading(resourceResolver, in, hostname_author, port_author, port, password, analytics, false, true, minimize, csvPath, maxretries);
 						} else {
-							Loader.processLoading(resourceResolver, in, hostname, port, port, password, analytics, false, true, minimize, csvPath);
+							Loader.processLoading(resourceResolver, in, hostname, port, port, password, analytics, false, true, minimize, csvPath, maxretries);
 						}
 
 						try {
