@@ -3997,6 +3997,9 @@
 				</fileset>
 			</path>
 		</foreach>
+		<antcall target="community_patch_weretail">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
 		<if>
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
@@ -4009,6 +4012,9 @@
 						</fileset>
 					</path>
 				</foreach>
+				<antcall target="community_patch_weretail">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
 			</then>
 		</if>
 		<if>
@@ -4023,6 +4029,9 @@
 						</fileset>
 					</path>
 				</foreach>
+				<antcall target="community_patch_weretail">
+					<param name="port" value="${demomachine.farmport}"/>
+				</antcall>
 			</then>
 		</if>
 		<!-- Then we create the We.Retail demo environment -->
@@ -4032,6 +4041,20 @@
 			</and>
 			<then>
 				<antcall target="community_loader_weretail"/>
+			</then>
+		</if>
+	</target>
+	<target name="community_patch_weretail" depends="version,configuration">
+		<!-- If AEM 6.2 and latest feature packs, small patches needed... -->
+		<if>
+			<and>
+				<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
+			</and>
+			<then>
+				<antcall target="package">
+					<param name="package" value="${dist}/community/we-retail/we.retail.apps.communities-1.0.zip"/>
+				</antcall>
 			</then>
 		</if>
 	</target>
@@ -6016,9 +6039,12 @@
 					<then>
 						<echo message="Cleaning demo environment: ${demo}"/>
 						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
-							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' cleanup"/>
+							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
 						</exec>
 					</then>
+					<else>
+						<echo message="Not cleaning up demo environment: ${demo}"/>
+					</else>
 				</if>
 			</then>
 		</if>

@@ -1575,6 +1575,8 @@ public class Loader {
 
 						if (record.get(5).equals("TRUE")) {
 							nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
+						} else {
+							nameValuePairs.add(new BasicNameValuePair("isDraft", "false"));						
 						}
 
 						//We might have some tags to add to the blog or journal article
