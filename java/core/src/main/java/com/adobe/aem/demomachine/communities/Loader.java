@@ -407,6 +407,7 @@ public class Loader {
 					String urlName = null;
 					String[] initialLanguages = null;
 
+					boolean isValid=true;
 					for (int i=2;i<record.size()-1;i=i+2) {
 
 						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
@@ -419,6 +420,12 @@ public class Loader {
 							if (name.equals(ROOT)) {
 								rootPath = value;
 								logger.debug("Rootpath for subsequent processing is: " + rootPath);
+								if (!isResourceAvailable(hostname, port, adminPassword, rootPath)) {
+									logger.warn("Rootpath " + rootPath + " is not available, proceeding to next record");
+									isValid=false;
+								} else {
+									logger.info("Rootpath " + rootPath + " is available");
+								}
 							}
 							if (name.equals(BANNER)) {
 								addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
@@ -482,9 +489,12 @@ public class Loader {
 					//logger.debug(string);
 
 					// Site creation
-					doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
+					if (isValid)
+						doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
 							null);
-
+					else
+						continue;
+					
 					// Waiting for site creation to be complete
 					boolean existingSiteWithLocale = rootPath.indexOf("/"+initialLanguages[0])>0;					
 					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]), maxretries);
