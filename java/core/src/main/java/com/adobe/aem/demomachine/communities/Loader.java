@@ -967,8 +967,8 @@ public class Loader {
 							doDelete(hostname, altport, resourcesRoot, "admin", adminPassword);
 
 							// Then, deleting the main UGC path for this site, on author and publish
-							doDelete(hostname, port, "/content/usergenerated" + siteRoot + "/" + urlName, "admin", adminPassword);
-							doDelete(hostname, altport, "/content/usergenerated" + siteRoot + "/" + urlName, "admin", adminPassword);
+							doDelete(hostname, port, "/content/usergenerated/asi/jcr" + siteRoot + "/" + urlName, "admin", adminPassword);
+							doDelete(hostname, altport, "/content/usergenerated/asi/jcr" + siteRoot + "/" + urlName, "admin", adminPassword);
 
 							// Finally, deleting the system groups for this site, on author and publish
 							doDelete(hostname, port, "/home/groups/community-" + siteId, "admin", adminPassword);
