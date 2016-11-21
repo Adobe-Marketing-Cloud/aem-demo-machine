@@ -3941,6 +3941,15 @@
 				<property name="demo.loader.minimize" value=""/>
 			</else>
 		</if>
+		<if>
+			<equals arg1="${demo.communities.samples.noenablement}" arg2="true" casesensitive="false"/>
+			<then>
+				<property name="demo.loader.noenablement" value="&amp;noenablement=on"/>
+			</then>
+			<else>
+				<property name="demo.loader.noenablement" value=""/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for loading a CSV file with UGC into the author instance -->
 	<target name="community_loader_author" depends="community_loader_flag">
@@ -4075,7 +4084,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.publishport}_weretail_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/we-retail&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}${demo.loader.noenablement}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the reference demo site for AEM Communities -->
@@ -4103,7 +4112,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_reference_site.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;contentPath=/etc/community/reference&amp;maxretries=${demo.loader.maxretries}&amp;setup-1=on&amp;setup-2=on&amp;setup-3=on&amp;setup-4=on&amp;setup-5=on&amp;setup-6=on&amp;setup-7=on&amp;setup-8=on${demo.loader.analytics}${demo.loader.minimize}${demo.loader.noenablement}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the extra demo sites for AEM Communities -->
@@ -5027,14 +5036,14 @@
 			<arg line="-d email.createPostFromReply=false"/>
 			<arg line="-d email.addCommentIdTo=subject"/>
 			<arg line="-d email.subjectMaximumLength=200"/>
-			<arg line="--data-urlencode 'email.from=${demo.emailserver.subscriptions}'"/>
+			<arg line="--data-urlencode 'email.replyToAddress=${demo.emailserver.subscriptions}'"/>
 			<arg line="--data-urlencode 'email.replyToDelimiter=+'"/>
 			<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
 			<arg line="-d email.asHTML=true"/>
 			<arg line="-d email.asHTML=false"/>
 			<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
 			<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/subscriptions-email'"/>
-			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.from%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
+			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.replyToAddress%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
 			<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${component.id}"/>
 		</exec>
 	</target>
@@ -5053,14 +5062,14 @@
 			<arg line="-d email.createPostFromReply=false"/>
 			<arg line="-d email.addCommentIdTo=replyTo"/>
 			<arg line="-d email.subjectMaximumLength=200"/>
-			<arg line="--data-urlencode 'email.from=${demo.emailserver.noreply}'"/>
+			<arg line="--data-urlencode 'email.replyToAddress=${demo.emailserver.noreply}'"/>
 			<arg line="--data-urlencode 'email.replyToDelimiter=+'"/>
 			<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
 			<arg line="-d email.asHTML=true"/>
 			<arg line="-d email.asHTML=false"/>
 			<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
 			<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/email'"/>
-			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.from%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
+			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.replyToAddress%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
 			<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${component.id}"/>
 		</exec>
 	</target>
