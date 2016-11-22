@@ -5041,7 +5041,7 @@
 			<arg line="--data-urlencode 'email.trackerIdPrefixInSubject=post#'"/>
 			<arg line="-d email.asHTML=true"/>
 			<arg line="-d email.asHTML=false"/>
-			<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.noreply}'"/>
+			<arg line="--data-urlencode 'email.defaultUserName=${demo.emailserver.subscriptions}'"/>
 			<arg line="--data-urlencode 'email.templates.rootPath=/etc/community/templates/subscriptions-email'"/>
 			<arg line="--data-binary 'propertylist=email.name%2Cemail.createPostFromReply%2Cemail.addCommentIdTo%2Cemail.subjectMaximumLength%2Cemail.replyToAddress%2Cemail.replyToDelimiter%2Cemail.trackerIdPrefixInSubject%2Cemail.asHTML%2Cemail.defaultUserName%2Cemail.templates.rootPath'"/>
 			<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${component.id}"/>
@@ -5192,7 +5192,7 @@
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-s -o '${dist}/rdb/init-schema.sql' http://${demo.host}:${demomachine.authorport}/libs/social/config/datastore/dsrp/schema/init-schema.sql"/>
 				</exec>
-				<replace file="${dist}/rdb/init-schema.sql" token="dsrp" value="${mysql.prefix}dsrp"/>
+				<replace file="${dist}/rdb/init-schema.sql" token="communities" value="${mysql.prefix}dsrp"/>
 				<echo message="Loading SQL file into internal MySQL server..."/>
 				<exec executable="${mysql.exec}" spawn="false">
 					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${dist}/rdb/init-schema.sql'"/>
