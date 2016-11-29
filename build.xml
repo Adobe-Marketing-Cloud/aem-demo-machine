@@ -2647,7 +2647,9 @@
 			<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
 			<then>
 				<!-- For now, DSRP requires a restart -->
+				<!--
 				<antcall target="restart"/>
+				-->
 			</then>
 		</if>
 	</target>
