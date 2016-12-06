@@ -179,9 +179,11 @@ public class Loader {
 	private static final String ENABLEMENT61FP3 = "1.0.148";
 	private static final String ENABLEMENT61FP4 = "1.0.164";
 	private static final String ENABLEMENT62 = "1.1.0";
+	private static final String ENABLEMENT62FP1 = "1.1.19";
 	private static final String COMMUNITIES61 = "1.0.13";
 	private static final String COMMUNITIES61FP5 = "2.0.7";
-	private static final String COMMUNITIES61FP6 = "2.0.8";
+	private static final String COMMUNITIES61FP6 = "2.0.14";
+	private static final String COMMUNITIES61FP7 = "2.0.15";
 
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
 
@@ -357,6 +359,7 @@ public class Loader {
 			boolean isCommunities61 = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61))==0;
 			boolean isCommunities61FP5orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP5))>=0;
 			boolean isCommunities61FP6orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP6))>=0;
+			boolean isCommunities61FP7orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP7))>=0;
 
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
@@ -1290,7 +1293,7 @@ public class Loader {
 				builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
 				List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 
-				if (!componentType.equals(RESOURCE))
+				if (!componentType.equals(RESOURCE) && !componentType.equals(LEARNING))
 					nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
 
 				nameValuePairs.add(new BasicNameValuePair("_charset_", "UTF-8"));
@@ -1751,10 +1754,23 @@ public class Loader {
 
 					}
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0?"social:createResource":"se:createResource"));
+					String createResourceOpName = "se:createResource";
+					String enablementType = "social/enablement/components/hbs/resource";
+					
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) createResourceOpName="social:createResource";
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementResourceModel";
+
+					nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
 					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
+
+					// Assignments only make sense when SCORM is configured
+					if (vBundleCommunitiesSCORM==null) {
+						nameValuePairs.remove("add-learners");
+						nameValuePairs.remove("deltaList");
+						logger.warn("SCORM not configured on this instance, not assigning a resource");
+					}					
 
 					// Special processing of lists with multiple users, need to split a String into multiple entries
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) {
@@ -1764,17 +1780,19 @@ public class Loader {
 						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
 						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
 
-						nameValuePairs.add(new BasicNameValuePair("enablement-type", "social/enablement/components/hbs/resource"));
-
+					}
+					
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
+						nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/resource/model"));
+						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
+						nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
+						nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
+						nameValuePairs = convertKeyName(nameValuePairs, "id", "se_resource-uid");
+						enablementType = "resource";
 					}
 
-					// Assignments only make sense when SCORM is configured
-					if (vBundleCommunitiesSCORM==null) {
-						nameValuePairs.remove("add-learners");
-						nameValuePairs.remove("deltaList");
-						logger.warn("SCORM not configured on this instance, not assigning a resource");
-					}					
-
+					nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
+					
 					// Adding the site
 					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
 
@@ -1820,11 +1838,18 @@ public class Loader {
 						continue;
 					}
 					
-					nameValuePairs.add(new BasicNameValuePair(":operation", vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"social:editLearningPath":"se:editLearningPath"));
+					String createResourceOpName = "se:editLearningPath";
+					String enablementType = "social/enablement/components/hbs/learningpath";
+					String resourceList = "learningpath-items";
+					
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) createResourceOpName="social:editLearningPath";
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementLearningPathModel";
+
+					nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
 					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
-
+						
 					// Special processing of lists with multiple users, need to split a String into multiple entries
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) {
 
@@ -1833,9 +1858,18 @@ public class Loader {
 						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
 						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
 
-						nameValuePairs.add(new BasicNameValuePair("enablement-type", "social/enablement/components/hbs/learningpath"));
-
 					}
+
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
+						nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/model/learningpath"));
+						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
+						nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
+						nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
+						enablementType = "learningpath";
+						resourceList = "resourcelist";
+					}
+
+					nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
 
 					// Adding the site
 					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
@@ -1865,7 +1899,7 @@ public class Loader {
 					}
 
 					assets.append("]");
-					nameValuePairs.add(new BasicNameValuePair("learningpath-items", assets.toString()));
+					nameValuePairs.add(new BasicNameValuePair(resourceList , assets.toString()));
 
 				}
 
@@ -1960,7 +1994,7 @@ public class Loader {
 
 				if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
 					// Useful for debugging complex POST requests
-					// printPOST(builder.build());	
+					//printPOST(builder.build());	
 				}
 
 				if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
@@ -2034,7 +2068,11 @@ public class Loader {
 
 					// Publishing the learning path 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-					publishNameValuePairs.add(new BasicNameValuePair(":operation",vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))>0?"se:publishEnablementContent":"se:publishEnablementContent"));
+
+					String publishOpName = "se:publishEnablementContent";
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementLearningPathModel";
+					publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
+					
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
 					logger.debug("Publishing a learning path from: " + location);					
 					Loader.doPost(hostname, port,
@@ -2049,7 +2087,7 @@ public class Loader {
 					// Decorate the resources within the learning path with comments and ratings, randomly generated
 					ArrayList<String> paths = learningpaths.get(record.get(2));
 					for (String path : paths) {
-						doDecorate(hostname, altport, adminPassword, path, record, analytics, sitePagePath);
+						doDecorate(hostname, altport, adminPassword, path, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
 					}						
 
 				}
@@ -2066,25 +2104,35 @@ public class Loader {
 					// Wait for the workflows to be completed
 					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
 
+					String resourcePath = "/assets/asset";
+					
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
+						resourcePath = "/se_assets/se_primary";
+					}
+					
 					// Wait for the data to be fully copied
-					doWaitPath(hostname, port, adminPassword, location + "/assets/asset", maxretries);
+					doWaitPath(hostname, port, adminPassword, location + resourcePath, maxretries);
 
 					// If we are dealing with a SCORM asset, we wait for the SCORM workflow to be completed before publishing the resource
 					if (record.get(2).indexOf(".zip")>0) {
 
 						// Wait for the output to be available
-						doWaitPath(hostname, port, adminPassword, location + "/assets/asset/" + record.get(2) + "/output", maxretries);
+						doWaitPath(hostname, port, adminPassword, location + resourcePath + "/" + record.get(2) + "/output", maxretries);
 
-					}
-					
-					// Wait for 10 seconds
-					doSleep(10000, "Processing a SCORM resource");
+						// Wait for 10 seconds
+						doSleep(10000, "Processing a SCORM resource");
+
+					}					
 					
 					// Wait for the workflows to be completed before publishing the resource
 					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-					publishNameValuePairs.add(new BasicNameValuePair(":operation","se:publishEnablementContent"));
+					
+					String publishOpName = "se:publishEnablementContent";
+					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementResourceModel";
+					publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
+
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
 					logger.debug("Publishing a Resource from: " + location);					
 					Loader.doPost(hostname, port,
@@ -2098,7 +2146,7 @@ public class Loader {
 
 					// Adding comments and ratings for this resource
 					logger.debug("Decorating the resource with comments and ratings");
-					doDecorate(hostname, altport, adminPassword, location, record, analytics, sitePagePath);
+					doDecorate(hostname, altport, adminPassword, location, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
 
 					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
 					DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -2357,7 +2405,7 @@ public class Loader {
 	}
 
 	// This method POSTs a set of comments and ratings for a resource for a particular location
-	private static void doDecorate(String hostname, String altport, String adminPassword, String location, CSVRecord record, String analytics, String rootPath) {
+	private static void doDecorate(String hostname, String altport, String adminPassword, String location, CSVRecord record, String analytics, String rootPath, Version vBundleCommunitiesEnablement) {
 
 		// Getting the JSON view of the resource
 		String resourceJson = Loader.doGet(hostname, altport,
@@ -2369,11 +2417,23 @@ public class Loader {
 		try {
 
 			JSONObject resourceJsonObject = new JSONObject(resourceJson);
+			String resourceRatingsEndpoint = location + "/se_social/se_ratings.social.json";
+			String resourceCommentsEndpoint = location + "/se_social/se_comments.social.json";
+			String assetPath = "assetProperties";
+			
+			if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))<=0) {
+				
+				 resourceRatingsEndpoint = resourceJsonObject.getString("ratingsEndPoint") + ".social.json";
+				 resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint")  + ".social.json";
+				
+			} else {
+				
+				assetPath = "primaryAsset";
+				
+			}
 
-			String resourceRatingsEndpoint = resourceJsonObject.getString("ratingsEndPoint") + ".social.json";
-			String resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint")  + ".social.json";
 			String resourceID = resourceJsonObject.getString("id");
-			String resourceType = resourceJsonObject.getJSONObject("assetProperties").getString("type");
+			String resourceType = resourceJsonObject.getJSONObject(assetPath).getString("type");
 			String referer = "http://" + hostname + ":" + altport + rootPath + "/" + record.get(RESOURCE_INDEX_SITE) + "/en" + (record.get(RESOURCE_INDEX_FUNCTION).length()>0?("/" + record.get(RESOURCE_INDEX_FUNCTION)):"") + ".resource.html" + resourceID; 
 
 			// Looking for the list of enrolled users
@@ -3120,6 +3180,22 @@ public class Loader {
 		return newNameValuePairs;
 	}
 
+	// This method creates a list of name value pairs from an existing one, converting a JSON array into multiple individual entries
+	private static List<NameValuePair> convertKeyName(List<NameValuePair> nameValuePairs, String oldkey, String newkey) {
+
+		List<NameValuePair> newNameValuePairs = new ArrayList<NameValuePair>();		
+		for (NameValuePair nvp : nameValuePairs) {
+			if (nvp.getName().equals(oldkey)) {
+				newNameValuePairs.add(new BasicNameValuePair(newkey, nvp.getValue())); 
+			} else {
+				newNameValuePairs.add(nvp);
+			}
+		}
+
+		return newNameValuePairs;
+	}
+
+	
 	// This method builds a list of NVP for a subsequent Sling post
 	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start) {
 

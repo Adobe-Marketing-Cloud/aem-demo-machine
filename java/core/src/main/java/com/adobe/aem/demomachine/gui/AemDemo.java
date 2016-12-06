@@ -328,7 +328,7 @@ public class AemDemo {
 		mnAssets.add(mntmAssetsInstallAddOn);
 
 		// Communities Add-on
-		JMenu mnCommunities = new JMenu("Communities");
+		JMenu mnCommunities = new JMenu("Communities/Livefyre");
 		mnUpdate.add(mnCommunities);
 
 		JMenuItem mntmAemCommunitiesFeaturePacks = new JMenuItem("Download Packages (PackageShare)");
@@ -668,6 +668,25 @@ public class AemDemo {
 
 		JMenu mntmAemDownload = new JMenu("AEM & License files (VPN)");
 
+		JMenuItem mntmAemLoad = new JMenuItem("Download Latest AEM Load");
+		mntmAemLoad.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemLoad.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_load");
+			}
+		});
+		mntmAemDownload.add(mntmAemLoad);
+
+		JMenuItem mntmAemSnapshot = new JMenuItem("Download Latest AEM Snapshot");
+		mntmAemSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemSnapshot.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_snapshot");
+			}
+		});
+		mntmAemDownload.add(mntmAemSnapshot);
+
+		
 		JMenuItem mntmAemDownloadAEM62 = new JMenuItem("Download AEM 6.2");
 		mntmAemDownloadAEM62.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -727,15 +746,6 @@ public class AemDemo {
 		});
 		mnOther.add(mntmAemHotfix);
 
-		JMenuItem mntmAemSnapshot = new JMenuItem("Download Latest AEM Snapshot (VPN)");
-		mntmAemSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
-		mntmAemSnapshot.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_snapshot");
-			}
-		});
-		mnOther.add(mntmAemSnapshot);
-
 		JMenuItem mntmAemAcs = new JMenuItem("Download Latest ACS Commons and Tools");
 		mntmAemAcs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
 		mntmAemAcs.addActionListener(new ActionListener() {
@@ -744,15 +754,6 @@ public class AemDemo {
 			}
 		});
 		mnOther.add(mntmAemAcs);
-
-		JMenuItem mntmAemDemoMachine = new JMenuItem("Download Latest AEM Demo Machine");
-		mntmAemDemoMachine.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
-		mntmAemDemoMachine.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.openWebpage(AemDemoUtils.getActualPropertyValue(defaultProperties, personalProperties, AemDemoConstants.OPTIONS_DEMODOWNLOAD));
-			}
-		});
-		mnOther.add(mntmAemDemoMachine);
 
 		// Adding the menu bar
 		frameMain.setJMenuBar(menuBar);

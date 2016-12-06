@@ -1935,6 +1935,16 @@
 			</else>
 		</if>
 	</target>
+	<!-- Target for downloading the latest AEM load  -->
+	<target name="download_load">
+		<mkdir dir="${dist}/downloads"/>
+		<echo message="Downloading cq-quickstart-${demo.load}.jar"/>
+		<exec executable="curl">
+			<arg line="-s -k -o '${dist}/downloads/${demo.load}.jar' https://artifactory.corp.adobe.com/artifactory/maven-aem-release-local/com/day/cq/cq-quickstart/${demo.load}/cq-quickstart-${demo.load}.jar"/>
+		</exec>
+		<echo message="AEM Load downloaded as ${demo.load}.jar in /dist/bin"/>
+		<move file="${dist}/downloads/${demo.load}.jar" todir="${dist}/bin" overwrite="true"/>
+	</target>
 	<!-- Target for downloading the latest QuickStart snapshot -->
 	<target name="download_snapshot">
 		<echo message="Downloading a AEM QuickStart snapshot build ${demo.snapshot}"/>
