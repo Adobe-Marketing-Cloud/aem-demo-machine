@@ -1445,14 +1445,23 @@
 				<fileset dir="${dist}" casesensitive="yes">
 					<include name="assets-packages/all/*.zip"/>
 					<include name="assets-packages/${demo.packages}/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<antcall target="ffmpeg">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<antcall target="assets_smarttags">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<foreach target="package_author" param="package">
+			<path id="assets.packages">
+				<fileset dir="${dist}" casesensitive="yes">
 					<include name="assets/all/*.zip"/>
 					<include name="assets/${demo.packages}/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
-		<antcall target="assets_smarttags">
-			<param name="port" value="${demomachine.authorport}"/>
-		</antcall>
 	</target>
 	<!-- Target for installing the Forms demo -->
 	<target name="forms" depends="version,configuration">
@@ -3495,15 +3504,6 @@
 			<equals arg1="${demo.assets.smarttags.install}" arg2="true" casesensitive="false"/>
 			<then>
 				<echo message="Configuring AEM Assets Smart Tags"/>
-				<!-- Reindexing the Lucene OAK index for assets -->
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_assetsindex.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="--globoff"/>
-					<arg line="-d reindex=true"/>
-					<arg line="http://${demo.host}:${port}/oak:index/damAssetLucene"/>
-				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetsfeatureflag.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -3517,6 +3517,35 @@
 					<arg line="-d propertylist=feature.flag.active.status"/>
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.similaritysearch.internal.impl.AutoTagAssetFeatureFlag"/>
 				</exec>
+				<echo message="Creating Smart Tagging cloud service"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_smarttag_cloudservice.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
+					<arg line="-X POST"/>
+					<arg line="-d cmd=createPage"/>
+					<arg line="-d _charset_=utf-8"/>
+					<arg line="-d parentPath=/etc/cloudservices/smarttagging"/>
+					<arg line="-d title=DemoMachine"/>
+					<arg line="-d label=DemoMachine"/>
+					<arg line="-d template=/libs/dam/templates/smarttagging"/>
+					<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
+				</exec>
+				<echo message="Configuring Smart Tagging cloud service"/>
+				<exec executable="curl" output="${logs}/${port}_smarttag_settingscurl.html">
+					<arg line="--output '${logs}/${port}_smarttag_settings.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="--data-urlencode './serviceUrl=${demo.assets.smarttags.url}'"/>
+					<arg line="--data-urlencode './authServerUrl=none'"/>
+					<arg line="--data-urlencode './apiKey=none'"/>
+					<arg line="--data-urlencode './techAcctId=none'"/>
+					<arg line="--data-urlencode './orgId=none'"/>
+					<arg line="--data-urlencode './clientSecret=none'"/>
+					<arg line="--data-urlencode './clientSecret@Encrypted='"/>
+					<arg line="-d ./sling:resourceType=dam/components/smarttaggingservicepage"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/smarttagging/DemoMachine/jcr:content"/>
+				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetstaggingservice.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -3525,11 +3554,11 @@
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
-					<arg line="-d index.server.url=${demo.assets.smarttags.url}"/>
+					<arg line="-d bypass.auth=true"/>
 					<arg line="-d indexed.rendition=cq5dam.thumbnail.319.319.png"/>
 					<arg line="-d max.tags=${demo.assets.smarttags.maxtags}"/>
 					<arg line="-d min.tag.confidence=${demo.assets.smarttags.minconfidence}"/>
-					<arg line="-d propertylist=index.server.url,indexed.rendition,max.tags,min.tag.confidence"/>
+					<arg line="-d propertylist=bypass.auth,indexed.rendition,max.tags,min.tag.confidence"/>
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.similaritysearch.internal.impl.SimilaritySearchServiceImpl"/>
 				</exec>
 				<!-- Inserting the Smart Tag extraction task to the DAM update workflow -->
@@ -3647,12 +3676,20 @@
 		<if>
 			<equals arg1="${demo.ffmpeg.transcoding}" arg2="false" casesensitive="false"/>
 			<then>
+				<!-- Locating the FFMPEG transcoding task -->
+				<exec executable="curl">
+					<arg line="-o '${logs}/${port}_assets_damupdateworkflow.json'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/_jcr_content/flow.infinity.json"/>
+				</exec>				
+				<loadfile property="dam.update.workflow.model" srcFile="${logs}/${port}_assets_damupdateworkflow.json"/>
+				<propertyregex property="process.id" input="${dam.update.workflow.model}" regexp="process([0-9])&quot;:\{&quot;jcr:primaryType&quot;:&quot;nt:unstructured&quot;,&quot;jcr:title&quot;:&quot;FFmpeg transcoding" select="\1"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_ffmpeg_renditions.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./PROCESS_ARGS@Delete"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/process3/metaData"/>
+					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/process${process.id}/metaData"/>
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_ffmpeg_workflow.html'"/>
