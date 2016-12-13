@@ -3681,7 +3681,7 @@
 					<arg line="-o '${logs}/${port}_assets_damupdateworkflow.json'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/_jcr_content/flow.infinity.json"/>
-				</exec>				
+				</exec>
 				<loadfile property="dam.update.workflow.model" srcFile="${logs}/${port}_assets_damupdateworkflow.json"/>
 				<propertyregex property="process.id" input="${dam.update.workflow.model}" regexp="process([0-9])&quot;:\{&quot;jcr:primaryType&quot;:&quot;nt:unstructured&quot;,&quot;jcr:title&quot;:&quot;FFmpeg transcoding" select="\1"/>
 				<exec executable="curl">
@@ -4046,23 +4046,14 @@
 	</target>
 	<!-- Target for configuring the We.Retail Community subsite -->
 	<target name="weretail" if="aem62orlater" depends="version,configuration">
-		<echo message="Loading We.Retail Demo Packages on Author"/>
-		<foreach target="package_author" param="package">
-			<path id="weretail.packages">
-				<fileset dir="${dist}" casesensitive="yes">
-					<include name="we-retail/*.zip"/>
-					<include name="we-retail/${demo.packages}/*.zip"/>
-				</fileset>
-			</path>
-		</foreach>
-		<antcall target="community_patch_weretail">
-			<param name="port" value="${demomachine.authorport}"/>
-		</antcall>
+		<!-- Then we create the We.Retail demo environment -->
 		<if>
-			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<and>
+				<equals arg1="${demo.weretail.local}" arg2="true" casesensitive="false"/>
+			</and>
 			<then>
-				<echo message="Loading We.Retail Demo Packages on Publish"/>
-				<foreach target="package_publish" param="package">
+				<echo message="Loading We.Retail Demo Packages on Author"/>
+				<foreach target="package_author" param="package">
 					<path id="weretail.packages">
 						<fileset dir="${dist}" casesensitive="yes">
 							<include name="we-retail/*.zip"/>
@@ -4071,25 +4062,42 @@
 					</path>
 				</foreach>
 				<antcall target="community_patch_weretail">
-					<param name="port" value="${demomachine.publishport}"/>
+					<param name="port" value="${demomachine.authorport}"/>
 				</antcall>
-			</then>
-		</if>
-		<if>
-			<socket server="${demo.host}" port="${demomachine.farmport}"/>
-			<then>
-				<echo message="Loading We.Retail Demo Packages on Farm"/>
-				<foreach target="package_farm" param="package">
-					<path id="weretail.packages">
-						<fileset dir="${dist}" casesensitive="yes">
-							<include name="we-retail/*.zip"/>
-							<include name="we-retail/${demo.packages}/*.zip"/>
-						</fileset>
-					</path>
-				</foreach>
-				<antcall target="community_patch_weretail">
-					<param name="port" value="${demomachine.farmport}"/>
-				</antcall>
+				<if>
+					<socket server="${demo.host}" port="${demomachine.publishport}"/>
+					<then>
+						<echo message="Loading We.Retail Demo Packages on Publish"/>
+						<foreach target="package_publish" param="package">
+							<path id="weretail.packages">
+								<fileset dir="${dist}" casesensitive="yes">
+									<include name="we-retail/*.zip"/>
+									<include name="we-retail/${demo.packages}/*.zip"/>
+								</fileset>
+							</path>
+						</foreach>
+						<antcall target="community_patch_weretail">
+							<param name="port" value="${demomachine.publishport}"/>
+						</antcall>
+					</then>
+				</if>
+				<if>
+					<socket server="${demo.host}" port="${demomachine.farmport}"/>
+					<then>
+						<echo message="Loading We.Retail Demo Packages on Farm"/>
+						<foreach target="package_farm" param="package">
+							<path id="weretail.packages">
+								<fileset dir="${dist}" casesensitive="yes">
+									<include name="we-retail/*.zip"/>
+									<include name="we-retail/${demo.packages}/*.zip"/>
+								</fileset>
+							</path>
+						</foreach>
+						<antcall target="community_patch_weretail">
+							<param name="port" value="${demomachine.farmport}"/>
+						</antcall>
+					</then>
+				</if>
 			</then>
 		</if>
 		<!-- Then we create the We.Retail demo environment -->
@@ -4970,7 +4978,7 @@
 				<socket server="${demo.emailserver.hostname}" port="${demo.emailserver.imap}"/>
 			</and>
 			<then>
-				<echo message="Configuring AEM Communities Email Importer on port ${demomachine.publishport}..."/>
+				<echo message="Configuring AEM Communities Email importer on port ${demomachine.publishport}..."/>
 				<!-- Reconfiguring email importer protocol -->
 				<exec executable="curl">
 					<arg line="--output '${logs}/${demomachine.publishport}_importer_protocol.html'"/>

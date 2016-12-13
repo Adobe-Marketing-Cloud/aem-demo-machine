@@ -88,6 +88,8 @@ import org.json.JSONObject;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 
+import com.adobe.aem.demomachine.Hostname;
+
 public class Loader {
 
 	static Logger logger = Logger.getLogger(Loader.class);
@@ -1237,6 +1239,17 @@ public class Loader {
 								if (!isResourceAvailable(hostname, port, adminPassword, configurePath))
 									continue;
 
+							}
+							
+							// If we're posting to fetch analytics data, let's make sure the analytics host is available
+							int pos3 = configurePath.indexOf("analyticsCommunities");
+							if (pos3>0) {
+								
+								if (!Hostname.isReachable("www.adobe.com", "80")) {
+									logger.warn("Analytics cannot be imported since you appear to be offline"); // The things you have to do when coding in airplanes...
+									continue;						
+								}
+								
 							}
 
 							// Only do this when really have configuration settings
