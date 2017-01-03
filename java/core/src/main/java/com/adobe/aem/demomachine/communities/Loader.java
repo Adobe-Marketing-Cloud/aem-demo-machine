@@ -78,7 +78,7 @@ import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
@@ -2084,7 +2084,7 @@ public class Loader {
 
 					String publishOpName = "se:publishEnablementContent";
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementLearningPathModel";
-					publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
+					publishNameValuePairs.add(new BasicNameValuePair(":operation", publishOpName));				
 					
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
 					logger.debug("Publishing a learning path from: " + location);					
@@ -2742,8 +2742,8 @@ public class Loader {
 			CredentialsProvider credsProvider = new BasicCredentialsProvider();
 			credsProvider.setCredentials(new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
-			CloseableHttpClient httpClient =
-					HttpClients.custom().setDefaultCredentialsProvider(credsProvider).build();
+			CloseableHttpClient httpClient = 
+				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -2862,8 +2862,8 @@ public class Loader {
 			CredentialsProvider credsProvider = new BasicCredentialsProvider();
 			credsProvider.setCredentials(new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
-			CloseableHttpClient httpClient =
-					HttpClients.custom().setDefaultCredentialsProvider(credsProvider).build();
+			CloseableHttpClient httpClient = 
+				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -2918,8 +2918,8 @@ public class Loader {
 			credsProvider.setCredentials(
 					new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
-			CloseableHttpClient httpClient = HttpClients.custom()
-					.setDefaultCredentialsProvider(credsProvider).build();
+			CloseableHttpClient httpClient = 
+				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -3107,8 +3107,8 @@ public class Loader {
 			credsProvider.setCredentials(
 					new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
-			CloseableHttpClient httpClient = HttpClients.custom()
-					.setDefaultCredentialsProvider(credsProvider).build();
+			CloseableHttpClient httpClient = 
+				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 

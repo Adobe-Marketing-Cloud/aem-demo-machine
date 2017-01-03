@@ -357,7 +357,6 @@
 	<!-- Crypto support -->
 	<target name="crypto" if="aem63orlater" depends="version,configuration">
 		<!-- For now, TarMK on 6.3 requires a restart so enforce the /etc/keys to be loaded from JCR -->
-		<echo message="${cq.version} ${aem63orlater}"/>
 		<if>
 			<equals arg1="${demomachine.store}" arg2="crx3" casesensitive="false"/>
 			<then>
@@ -2468,6 +2467,38 @@
 			</then>
 		</if>
 	</target>
+	<target name="serialization_firewall" if="aem63orlater">
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_serialization.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="--globoff"/>
+			<arg line="-X POST"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d firewall.deserialization.whitelist=org.apache.http.impl."/>
+			<arg line="-d firewall.deserialization.whitelist=com.day."/>
+			<arg line="-d firewall.deserialization.whitelist=com.google.api.client.auth.oauth2."/>
+			<arg line="-d firewall.deserialization.whitelist=com.scene7."/>
+			<arg line="-d firewall.deserialization.whitelist=java."/>
+			<arg line="-d firewall.deserialization.whitelist=javax."/>
+			<arg line="-d firewall.deserialization.whitelist=oracle.sql."/>
+			<arg line="-d firewall.deserialization.whitelist=org.apache.jackrabbit."/>
+			<arg line="-d firewall.deserialization.whitelist=org.apache.sling."/>
+			<arg line="-d firewall.deserialization.blacklist=org.apache.commons.collections.functors.InvokerTransformer"/>
+			<arg line="-d firewall.deserialization.blacklist=org.apache.commons.collections4.functors.InvokerTransformer"/>
+			<arg line="-d firewall.deserialization.blacklist=org.apache.commons.collections.functors.InstantiateTransformer"/>
+			<arg line="-d firewall.deserialization.blacklist=org.apache.commons.collections4.functors.InstantiateTransformer"/>
+			<arg line="-d firewall.deserialization.blacklist=org.apache.xalan.internal.xsltc.trax.TemplatesImpl"/>
+			<arg line="-d firewall.deserialization.blacklist=org.codehaus.groovy.runtime.MethodClosure"/>
+			<arg line="-d firewall.deserialization.blacklist=org.springframework.beans.factory.ObjectFactory"/>
+			<arg line="-d firewall.deserialization.blacklist=org.springframework.core.SerializableTypeWrapper$MethodInvokeTypeProvider"/>
+			<arg line="-d firewall.deserialization.blacklist=com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"/>	
+			<arg line="-d firewall.deserialization.diagnostics=class-name-only"/>
+			<arg line="-d propertylist=firewall.deserialization.whitelist,firewall.deserialization.blacklist,firewall.deserialization.diagnostics"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.deserfw.impl.DeserializationFirewallImpl"/>
+		</exec>
+	</target>	
 	<target name="externalizer">
 		<if>
 			<equals arg1="${demo.externalizer}" arg2="true" casesensitive="false"/>
@@ -2839,7 +2870,6 @@
 				</antcall>
 			</then>
 		</if>
-		<!-- Configuration tasks on Publish only -->
 		<antcall target="community_srp">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -2853,6 +2883,9 @@
 			<param name="port" value="${port}"/>
 		</antcall>
 		<antcall target="externalizer">
+			<param name="port" value="${port}"/>
+		</antcall>
+		<antcall target="serialization_firewall">
 			<param name="port" value="${port}"/>
 		</antcall>
 	</target>
@@ -3119,15 +3152,20 @@
 		<if>
 			<equals arg1="${AdobeScene7.install}" arg2="true" casesensitive="false"/>
 			<then>
-				<echo message="Configuring Dynamic Media cloud service"/>
-				<foreach target="package" param="package">
-					<path id="standard.package">
-						<fileset dir="${dist}/dynamicmedia/packages" casesensitive="yes">
-							<include name="all/**/*.zip"/>
-							<include name="${demo.packages}/**/*.zip"/>
-						</fileset>
-					</path>
-				</foreach>
+				<echo message="Creating Dynamic Media cloud service"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_dynamicmedia_cloudservice.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
+					<arg line="-X POST"/>
+					<arg line="-d cmd=createPage"/>
+					<arg line="-d _charset_=utf-8"/>
+					<arg line="-d parentPath=/etc/cloudservices/dynamicmediaservices"/>
+					<arg line="-d title=DemoMachine"/>
+					<arg line="-d label=DemoMachine"/>
+					<arg line="-d template=/libs/dam/templates/dynamicmediaservices"/>
+					<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
+				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_scene7.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -3135,7 +3173,7 @@
 					<arg line="-d ./serviceUrl=${AdobeScene7.videoService}"/>
 					<arg line="-d ./registrationID=${AdobeScene7.registrationID}"/>
 					<arg line="-d ./registrationID@Encrypted="/>
-					<arg line="http://${demo.host}:${port}/etc/cloudservices/dynamicmediaservices/dynamic-media/jcr:content"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/dynamicmediaservices/DemoMachine/jcr:content"/>
 				</exec>
 			</then>
 		</if>

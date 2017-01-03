@@ -287,16 +287,6 @@ public class AemDemo {
 		});
 		mnSites.add(mntmSitesDownloadFP);
 
-		mnSites.addSeparator();
-
-		JMenuItem mntmSitesInstallAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmSitesInstallAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "sites");
-			}
-		});
-		mnSites.add(mntmSitesInstallAddOn);
-
 		// Assets Add-on
 		JMenu mnAssets = new JMenu("Assets");
 		mnUpdate.add(mnAssets);
@@ -317,16 +307,6 @@ public class AemDemo {
 		});
 		mnAssets.add(mntmAssetsDownloadFP);
 
-		mnAssets.addSeparator();
-
-		JMenuItem mntmAssetsInstallAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmAssetsInstallAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "assets");
-			}
-		});
-		mnAssets.add(mntmAssetsInstallAddOn);
-
 		// Communities Add-on
 		JMenu mnCommunities = new JMenu("Communities/Livefyre");
 		mnUpdate.add(mnCommunities);
@@ -338,16 +318,6 @@ public class AemDemo {
 			}
 		});
 		mnCommunities.add(mntmAemCommunitiesFeaturePacks);
-
-		mnCommunities.addSeparator();
-
-		JMenuItem mntmAemCommunitiesAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmAemCommunitiesAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "communities");
-			}
-		});
-		mnCommunities.add(mntmAemCommunitiesAddOn);
 
 		// Forms Add-on
 		JMenu mnForms = new JMenu("Forms");
@@ -369,16 +339,6 @@ public class AemDemo {
 		});
 		mnForms.add(mntmAemFormsFP);
 
-		mnForms.addSeparator();
-
-		JMenuItem mntmAemFormsAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmAemFormsAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "forms");
-			}
-		});
-		mnForms.add(mntmAemFormsAddOn);
-
 		// Mobile Add-on
 		JMenu mnApps = new JMenu("Mobile");
 		mnUpdate.add(mnApps);
@@ -398,16 +358,6 @@ public class AemDemo {
 			}
 		});
 		mnApps.add(mntmAemApps);
-
-		mnApps.addSeparator();
-
-		JMenuItem mntmAemAppsAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmAemAppsAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "apps");
-			}
-		});
-		mnApps.add(mntmAemAppsAddOn);
 
 		// Commerce Add-on
 		JMenu mnCommerce = new JMenu("Commerce");
@@ -434,16 +384,6 @@ public class AemDemo {
 		});
 		mnCommerceDownload.add(mnCommerceDownloadWAS);
 
-		mnCommerce.addSeparator();
-
-		JMenuItem mntmAemCommerceAddOn = new JMenuItem("Install on running AEM instance(s)");
-		mntmAemCommerceAddOn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "commerce");
-			}
-		});
-		mnCommerce.add(mntmAemCommerceAddOn);
-
 		// WeRetail Add-on
 		JMenu mnWeRetail = new JMenu("We-Retail");
 		mnUpdate.add(mnWeRetail);
@@ -455,16 +395,6 @@ public class AemDemo {
 			}
 		});
 		mnWeRetail.add(mnWeRetailAddon);
-
-		mnWeRetail.addSeparator();
-
-		JMenuItem mnWeRetailAddonInstall = new JMenuItem("Install on running AEM instance(s)");
-		mnWeRetailAddonInstall.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "weretail");
-			}
-		});
-		mnWeRetail.add(mnWeRetailAddonInstall);
 
 		// Download all section
 		mnUpdate.addSeparator();
