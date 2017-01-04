@@ -120,10 +120,16 @@ public class AemDemoOptions extends JDialog {
 		};
 
 		// Check if column 3 is modified
+		table.putClientProperty("terminateEditOnFocusLost",true);
 		model.addTableModelListener(new TableModelListener() {
 			public void tableChanged(TableModelEvent e){
 				if (e.getColumn() == 3){
-							table.getModel().setValueAt(true, e.getLastRow(), 0);
+					String value = (String)table.getModel().getValueAt(e.getLastRow(), e.getColumn());
+					if (value.equals("")) {
+						table.getModel().setValueAt(false, e.getLastRow(), 0);
+					} else {
+						table.getModel().setValueAt(true, e.getLastRow(), 0);
+					}
 				}
 			}
 		});
