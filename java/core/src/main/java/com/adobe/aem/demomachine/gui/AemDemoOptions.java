@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright 2016 Adobe Systems Incorporated.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +27,9 @@ import java.util.TreeSet;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.*;
+import javax.swing.event.TableModelListener;
+import javax.swing.event.TableModelEvent;
+
 
 public class AemDemoOptions extends JDialog {
 
@@ -115,6 +118,16 @@ public class AemDemoOptions extends JDialog {
 			}
 
 		};
+
+		// Check if column 3 is modified
+		model.addTableModelListener(new TableModelListener() {
+			public void tableChanged(TableModelEvent e){
+				if (e.getColumn() == 3){
+							table.getModel().setValueAt(true, e.getLastRow(), 0);
+				}
+			}
+		});
+
 		table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 		table.setAutoCreateRowSorter(true);
 		table.getRowSorter().toggleSortOrder(1);
@@ -155,7 +168,7 @@ public class AemDemoOptions extends JDialog {
 		contentPanel.add(cancelButton);
 
 		// Set Apply as the default button
-		JRootPane rootPane = SwingUtilities.getRootPane(applyButton); 
+		JRootPane rootPane = SwingUtilities.getRootPane(applyButton);
 		rootPane.setDefaultButton(applyButton);
 
 		// Save Button
@@ -170,7 +183,7 @@ public class AemDemoOptions extends JDialog {
 				if (personalConf.exists()) {
 					personalConf.renameTo(personalBackup);
 				}
-				File newPersonalConf = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");				
+				File newPersonalConf = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");
 				try {
 					aemDemo.setPersonalProperties(savePersonalProperties());
 
@@ -271,7 +284,7 @@ public class AemDemoOptions extends JDialog {
 					String propertyKey = (String) table.getModel().getValueAt(i, 1);
 					if (!customValue.equals(AemDemoConstants.PASSWORD)) {
 						// It is a password and its value was edited, hence we used the edited value
-						newPersonalProperties.setProperty(propertyKey, customValue); 
+						newPersonalProperties.setProperty(propertyKey, customValue);
 					} else {
 						// It is a password, not displayed in the table and it wasn't changed, hence reuse the previously saved password
 						newPersonalProperties.setProperty(propertyKey, aemDemo.getPersonalProperties().getProperty(propertyKey));
