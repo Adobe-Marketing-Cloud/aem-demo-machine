@@ -119,7 +119,8 @@ public class AemDemoOptions extends JDialog {
 
 		};
 
-		// Check if column 3 is modified
+		// Check first column ("Override") if column 3 ("Custom Value") is modified and not empty
+		// Uncheck first column ("Override") if column 3 ("Custom Value") is modified and empty
 		table.putClientProperty("terminateEditOnFocusLost",true);
 		model.addTableModelListener(new TableModelListener() {
 			public void tableChanged(TableModelEvent e){
