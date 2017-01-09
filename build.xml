@@ -2409,6 +2409,29 @@
 			</else>
 		</if>
 	</target>
+	<!-- Target for downloading the latest InDesign Server for Mac -->
+	<target name="download_indesignserver">
+		<input message="Please enter Adobe LDAP username:" addproperty="adobe.ldap.user"/>
+		<input message="Please enter Adobe LDAP password (caution: will be displayed):" addproperty="adobe.ldap.password"/>
+		<mkdir dir="${dist}/downloads"/>
+		<ftp action="get" server="indstore.corp.adobe.com" userid="${adobe.ldap.user}" password="${adobe.ldap.password}">
+			<fileset dir="builds03/InDesignServer/12.0.0/osx10-64/mul/20161005.m.081-2/Image/AdobeInDesignServer12HD-mul-ESD">
+				<include name="**/*.dmg"/>
+			</fileset>
+		</ftp>
+	</target>
+	<target name="start_indesignserver">
+		<exec executable="/bin/sh" os="Mac OS X" spawn="false">
+			<arg value="-c"/>
+			<arg value="&quot;${Adobe.indesignserver.path}&quot; -port ${Adobe.indesignserver.port} &amp; sleep 5"/>
+		</exec>
+	</target>
+	<target name="stop_indesignserver" if="isUnix" depends="permissions">
+		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
+			<arg line="'InDesignServer'"/>
+		</exec>
+		<sleep seconds="2"/>
+	</target>
 	<!-- Target for installing and configuring the Livefyre feature pack -->
 	<target name="livefyre" if="aem61orlater" depends="version,configuration">
 		<antcall target="livefyre_instance">
@@ -2493,12 +2516,12 @@
 			<arg line="-d firewall.deserialization.blacklist=org.codehaus.groovy.runtime.MethodClosure"/>
 			<arg line="-d firewall.deserialization.blacklist=org.springframework.beans.factory.ObjectFactory"/>
 			<arg line="-d firewall.deserialization.blacklist=org.springframework.core.SerializableTypeWrapper$MethodInvokeTypeProvider"/>
-			<arg line="-d firewall.deserialization.blacklist=com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"/>	
+			<arg line="-d firewall.deserialization.blacklist=com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"/>
 			<arg line="-d firewall.deserialization.diagnostics=class-name-only"/>
 			<arg line="-d propertylist=firewall.deserialization.whitelist,firewall.deserialization.blacklist,firewall.deserialization.diagnostics"/>
 			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.deserfw.impl.DeserializationFirewallImpl"/>
 		</exec>
-	</target>	
+	</target>
 	<target name="externalizer">
 		<if>
 			<equals arg1="${demo.externalizer}" arg2="true" casesensitive="false"/>
