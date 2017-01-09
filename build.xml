@@ -2423,7 +2423,7 @@
 	<target name="start_indesignserver">
 		<exec executable="/bin/sh" os="Mac OS X" spawn="false">
 			<arg value="-c"/>
-			<arg value="&quot;${Adobe.indesignserver.path}&quot; -port ${Adobe.indesignserver.port} &amp; sleep 5"/>
+			<arg value="&quot;${Adobe.indesignserver.path}&quot; -LogToApplicationEventLog -port ${Adobe.indesignserver.port} &amp; sleep 5"/>
 		</exec>
 	</target>
 	<target name="stop_indesignserver" if="isUnix" depends="permissions">
