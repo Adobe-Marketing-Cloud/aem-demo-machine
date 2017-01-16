@@ -1800,7 +1800,7 @@ public class Loader {
 						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
 						nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
 						nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
-						nameValuePairs = convertKeyName(nameValuePairs, "id", "se_resource-uid");
+						nameValuePairs = convertKeyName(nameValuePairs, "id", "resource-uid");
 						enablementType = "resource";
 					}
 
@@ -1878,6 +1878,7 @@ public class Loader {
 						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
 						nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
 						nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
+						nameValuePairs = convertKeyName(nameValuePairs, "id", "resource-uid");
 						enablementType = "learningpath";
 						resourceList = "resourcelist";
 					}

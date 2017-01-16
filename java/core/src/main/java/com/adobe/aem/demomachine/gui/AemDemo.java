@@ -561,7 +561,6 @@ public class AemDemo {
 
 		mnInfrastructure.add(mnJames);		
 
-
 		// FFMPEPG options
 		JMenu mnFFMPEG = new JMenu("FFMPEG");
 
@@ -582,6 +581,39 @@ public class AemDemo {
 		mnFFMPEG.add(mntmInfraFFMPEGInstall);
 
 		mnInfrastructure.add(mnFFMPEG);		
+
+		mnInfrastructure.addSeparator();
+
+		// InDesignServer options
+		JMenu mnInDesignServer = new JMenu("InDesign Server");
+
+		JMenuItem mntmInfraInDesignServerDownload = new JMenuItem("Download");
+		mntmInfraInDesignServerDownload.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_indesignserver");
+			}
+		});
+		mnInDesignServer.add(mntmInfraInDesignServerDownload);
+
+		mnInDesignServer.addSeparator();
+
+		JMenuItem mntmInfraInDesignServerStart = new JMenuItem("Start");
+		mntmInfraInDesignServerStart.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "start_indesignserver");
+			}
+		});
+		mnInDesignServer.add(mntmInfraInDesignServerStart);
+
+		JMenuItem mntmInfraInDesignServerStop = new JMenuItem("Stop");
+		mntmInfraInDesignServerStop.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "stop_indesignserver");
+			}
+		});
+		mnInDesignServer.add(mntmInfraInDesignServerStop);
+		
+		mnInfrastructure.add(mnInDesignServer);		
 
 		mnInfrastructure.addSeparator();
 

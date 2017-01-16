@@ -534,7 +534,10 @@
 				</if>
 			</then>
 		</if>
-		<antcall target="osgi_instance"/>
+		<antcall target="osgi_instance"/>		
+		<!--
+		<sleep seconds="60"/>
+		-->
 		<antcall target="hotfix_osgi_instance"/>
 		<antcall target="hotfix_package_instance"/>
 		<antcall target="community_instance"/>
@@ -2420,7 +2423,7 @@
 			</fileset>
 		</ftp>
 	</target>
-	<target name="start_indesignserver">
+	<target name="start_indesignserver" if="isUnix" depends="permissions">
 		<exec executable="/bin/sh" os="Mac OS X" spawn="false">
 			<arg value="-c"/>
 			<arg value="&quot;${Adobe.indesignserver.path}&quot; -LogToApplicationEventLog -port ${Adobe.indesignserver.port} &amp; sleep 5"/>
@@ -2908,9 +2911,11 @@
 		<antcall target="externalizer">
 			<param name="port" value="${port}"/>
 		</antcall>
+		<!--
 		<antcall target="serialization_firewall">
 			<param name="port" value="${port}"/>
 		</antcall>
+		-->
 	</target>
 	<!-- Target for loading a package on the AUTHOR instance -->
 	<target name="package_author" depends="configuration">
@@ -3560,7 +3565,7 @@
 		</exec>
 	</target>
 	<!-- Adobe AEM Assets: enabling smart tags -->
-	<target name="assets_smarttags" if="aem62orlater">
+	<target name="assets_smarttags" if="aem62orlater" depends="version,configuration">
 		<if>
 			<equals arg1="${demo.assets.smarttags.install}" arg2="true" casesensitive="false"/>
 			<then>
