@@ -59,7 +59,7 @@ public class AemDemoRunnable implements Runnable {
 		if (t.startsWith("download")) {
 			aemDemo.setDownloadInProgress(false);
 		}
-
+		
 		// After the end of each run, refresh the list of available demo environments
 		String buildName = p.getProperty("demo.build");
 		if (Arrays.asList(AemDemoConstants.CLEANUP_ACTIONS).contains(t)) aemDemo.getListModelDemoMachines().removeElement(buildName);

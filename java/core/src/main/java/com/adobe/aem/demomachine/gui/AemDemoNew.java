@@ -216,6 +216,12 @@ public class AemDemoNew extends JDialog {
 						}	
 					}
 
+					// Since it's a new install, not a rebuild, we need to make sure there isn't an existing demobuild.properties file
+					File demobuild = new File(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "demos" + File.separator + demoBuildName.getText() + File.separator + "demobuild.properties");
+					if (demobuild!=null && demobuild.exists()) {
+						if (demobuild.delete()) System.out.println("Existing demobuild.properties deleted since it's a fresh install");
+					}
+					
 					// New ANT project
 					AemDemoProject p = new AemDemoProject(aemDemo);
 
@@ -227,22 +233,17 @@ public class AemDemoNew extends JDialog {
 					p.setUserProperty("demo.build", demoBuildName.getText());
 
 					// Overriding the demo add-on options with the current selection
-					Properties defaultProps = AemDemoUtils.loadProperties(aemDemo.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "build.properties");
-					Enumeration<?> props = defaultProps.keys();
-					while (props.hasMoreElements()) {
-						String key = (String) props.nextElement();
-						if (key.startsWith("demo.addons.") & !(key.endsWith("help") || key.endsWith("label"))) {
-							String addon = key.substring(1 + key.lastIndexOf("."));
-							AemDemoProperty currentAddon = new AemDemoProperty(addon, defaultProps.getProperty(key + ".label"));							
-							if (selectedAddOns.contains(currentAddon)) {
-								p.setUserProperty(key,"true");
-							} else {
-								p.setUserProperty(key,"false");
-							}
-							
-						}
-					}
+					AemDemoProperty[] aemConfigs = AemDemoUtils.listDemoAddons(aemDemo.getBuildFile());
+					for (int i=0;i<aemConfigs.length;i++) {
 
+						if (selectedAddOns.contains(aemConfigs[i])) {
+							p.setUserProperty("demo.addons." + (i+1) + "." + aemConfigs[i].getValue(),"true");
+						} else {
+							p.setUserProperty("demo.addons." + (i+1) + "." + aemConfigs[i].getValue(),"false");
+						}
+					
+					}
+					
 					// Make sure host name is there
 					try {
 						p.setUserProperty("demo.hostname", InetAddress.getLocalHost().getHostName());
