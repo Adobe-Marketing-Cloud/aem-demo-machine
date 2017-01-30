@@ -340,7 +340,9 @@
 			</else>
 		</if>
 		<antcall target="start"/>
+		<!--
 		<antcall target="crypto"/>
+		-->
 		<!-- Installing the ACS tools and commons on Author and Publish only -->
 		<antcall target="acs_instance">
 			<param name="port" value="${demomachine.authorport}"/>
@@ -534,10 +536,7 @@
 				</if>
 			</then>
 		</if>
-		<antcall target="osgi_instance"/>		
-		<!--
-		<sleep seconds="60"/>
-		-->
+		<antcall target="osgi_instance"/>
 		<antcall target="hotfix_osgi_instance"/>
 		<antcall target="hotfix_package_instance"/>
 		<antcall target="community_instance"/>
@@ -736,6 +735,20 @@
 				<property name="startup.options.nofork" value=""/>
 			</else>
 		</if>
+		<if>
+			<or>
+				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+			</or>
+			<then>
+				<!-- This ensures the crypto keys are loaded up from the repo during the first startup -->
+				<property name="demomachine.jvmargs.startupmode" value="-Dcom.adobe.granite.crypto.file.disable=true"/>
+				<echo message="Using key materials from the repo"/>
+			</then>
+			<else>
+				<property name="demomachine.jvmargs.startupmode" value=""/>
+			</else>
+		</if>
 		<property name="startup.options" value="${startup.options.nobrowser} ${startup.options.gui} ${startup.options.nofork}"/>
 		<!-- Compute the JVM debug settings when necessary -->
 		<if>
@@ -783,7 +796,7 @@
 			<then>
 				<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using Mongo DB..."/>
 				<antcall target="aem_start_java">
-					<param name="aem.start.jvmargs" value="-Doak.mongo.db=${demo.mode} -Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port} ${demomachine.jvmargs}"/>
+					<param name="aem.start.jvmargs" value="-Doak.mongo.db=${demo.mode} -Doak.mongo.uri=mongodb://${demo.mongo.host}:${demo.mongo.port} ${demomachine.jvmargs} ${demomachine.jvmargs.startupmode}"/>
 					<param name="aem.start.args" value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
 				</antcall>
 			</then>
@@ -794,7 +807,7 @@
 						<!-- AEM6.x use case -->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
 						<antcall target="aem_start_java">
-							<param name="aem.start.jvmargs" value="${demomachine.jvmargs}"/>
+							<param name="aem.start.jvmargs" value="${demomachine.jvmargs} ${demomachine.jvmargs.startupmode}"/>
 							<param name="aem.start.args" value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
 						</antcall>
 					</then>
@@ -802,7 +815,7 @@
 						<!-- CQ5.x or AEM6.0 use case-->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using CRX2..."/>
 						<antcall target="aem_start_java">
-							<param name="aem.start.jvmargs" value="${demomachine.jvmargs}"/>
+							<param name="aem.start.jvmargs" value="${demomachine.jvmargs} ${demomachine.jvmargs.startupmode}"/>
 							<param name="aem.start.args" value="-r ${demo.mode} ${startup.options}"/>
 						</antcall>
 					</else>
@@ -3685,15 +3698,29 @@
 		<if>
 			<equals arg1="${BrightEdge.install}" arg2="true" casesensitive="false"/>
 			<then>
+				<echo message="Creating Brightedge cloud service"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_brightedge_create.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="--globoff"/>
+					<arg line="-X POST"/>
+					<arg line="-d cmd=createPage"/>
+					<arg line="-d _charset_=utf-8"/>
+					<arg line="-d parentPath=/etc/cloudservices/brightedge"/>
+					<arg line="-d title=DemoMachine"/>
+					<arg line="-d label=DemoMachine"/>
+					<arg line="-d template=/libs/cq/contentinsight/templates/brightedge-cloudservice-config"/>
+					<arg line="http://${demo.host}:${port}/bin/wcmcommand"/>
+				</exec>
 				<echo message="Configuring BrightEdge cloud service"/>
 				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_brightedge.html'"/>
+					<arg line="--output '${logs}/${port}_brightedge_configure.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./password=${BrightEdge.password}"/>
 					<arg line="-d ./password@Encrypted="/>
 					<arg line="-d ./username=${BrightEdge.username}"/>
-					<arg line="http://${demo.host}:${port}/etc/cloudservices/brightedge/demo-brightedge/jcr:content"/>
+					<arg line="http://${demo.host}:${port}/etc/cloudservices/brightedge/DemoMachine/jcr:content"/>
 				</exec>
 			</then>
 		</if>
@@ -4490,7 +4517,10 @@
 	<target name="community_instance" depends="version,configuration" if="aem61orlater">
 		<!-- Booting up with latest available Commnities-uber -->
 		<if>
-			<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			<and>
+				<equals arg1="${demo.communities.upload}" arg2="false" casesensitive="false"/>
+				<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
+			</and>
 			<then>
 				<if>
 					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
@@ -4503,6 +4533,7 @@
 								</resourceexists>
 							</and>
 							<then>
+								<echo message="Upgrading the AEM instance with AEM Communities latest product update uber"/>
 								<copy file="${dist}/downloads/communities-${demo.packages}-latest.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 							</then>
 							<else>
@@ -4511,6 +4542,7 @@
 										<file file="${dist}/downloads/communities-${demo.packages}-release.zip"/>
 									</resourceexists>
 									<then>
+										<echo message="Upgrading the AEM instance with AEM Communities latest product maintenance uber"/>
 										<copy file="${dist}/downloads/communities-${demo.packages}-release.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 									</then>
 								</if>
@@ -4528,6 +4560,7 @@
 								</resourceexists>
 							</and>
 							<then>
+								<echo message="Upgrading the AEM instance with AEM Communities a feature pack uber"/>
 								<copy file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 							</then>
 						</if>
@@ -4578,19 +4611,38 @@
 		<if>
 			<socket server="${demo.host}" port="${port}"/>
 			<then>
-				<echo message="Upgrading the AEM instance on port ${port} with AEM Communities uber"/>
 				<if>
-					<and>
-						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
-						<resourceexists>
-							<file file="${dist}/downloads/communities.zip"/>
-						</resourceexists>
-					</and>
+					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
 					<then>
-						<antcall target="package">
-							<param name="package" value="${dist}/downloads/communities.zip"/>
-						</antcall>
-						<antcall target="community_uber_wait"/>
+						<if>
+							<and>
+								<equals arg1="${demo.communities.uber}" arg2="latest" casesensitive="false"/>
+								<resourceexists>
+									<file file="${dist}/downloads/communities-${demo.packages}-latest.zip"/>
+								</resourceexists>
+							</and>
+							<then>
+								<echo message="Upgrading the AEM instance on port ${port} with AEM Communities latest product update uber"/>
+								<antcall target="package">
+									<param name="package" value="${dist}/downloads/communities-${demo.packages}-latest.zip"/>
+								</antcall>
+								<antcall target="community_uber_wait"/>
+							</then>
+							<else>
+								<if>
+									<resourceexists>
+										<file file="${dist}/downloads/communities-${demo.packages}-release.zip"/>
+									</resourceexists>
+									<then>
+										<echo message="Upgrading the AEM instance on port ${port} with AEM Communities latest product maintenance uber"/>
+										<antcall target="package">
+											<param name="package" value="${dist}/downloads/communities-${demo.packages}-release.zip"/>
+										</antcall>
+										<antcall target="community_uber_wait"/>
+									</then>
+								</if>
+							</else>
+						</if>
 					</then>
 					<else>
 						<if>
@@ -4603,11 +4655,15 @@
 								</resourceexists>
 							</and>
 							<then>
+								<echo message="Upgrading the AEM instance on port ${port} with AEM Communities feature pack"/>
 								<antcall target="package">
 									<param name="package" value="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip"/>
 								</antcall>
 								<antcall target="community_uber_wait"/>
 							</then>
+							<else>
+								<echo message="Not upgrading the AEM Communities uber"/>
+							</else>
 						</if>
 					</else>
 				</if>
@@ -5037,7 +5093,7 @@
 		</if>
 	</target>
 	<!-- Target for configuring the Communities Email importer for Email subscriptions -->
-	<target name="community_email_importer" depends="configuration" if="aem62orlater">
+	<target name="community_email_importer" depends="version,configuration" if="aem62orlater">
 		<if>
 			<and>
 				<socket server="${demo.host}" port="${demomachine.publishport}"/>
@@ -5095,11 +5151,12 @@
 				<!-- Identifying the configuration to update -->
 				<exec executable="curl">
 					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-o '${logs}/${demomachine.publishport}_components.json' http://${demo.host}:${demomachine.publishport}/system/console/components.json"/>
+					<arg line="-o '${logs}/${demomachine.publishport}_components.json' http://${demo.host}:${demomachine.publishport}/system/console/configMgr"/>
 				</exec>
 				<loadfile property="subscription.list" srcFile="${logs}/${demomachine.publishport}_components.json"/>
 				<propertyregex property="subscription.id" input="${subscription.list}" regexp="EmailReplyConfigurationImpl.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
 				<!-- Loading up the first component configuration -->
+				<echo message="First email configuration ID: ${subscription.id}"/>
 				<exec executable="curl">
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-o '${logs}/${demomachine.publishport}_components_email1.json' http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${subscription.id}.json"/>
@@ -5122,6 +5179,7 @@
 				<loadfile property="email.list" srcFile="${logs}/${demomachine.publishport}_components.json"/>
 				<propertyregex property="email.id" input="${email.list}" regexp="EmailReplyConfigurationImpl.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
 				<!-- Loading up the second component configuration -->
+				<echo message="Second email configuration ID: ${email.id}"/>
 				<exec executable="curl">
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-o '${logs}/${demomachine.publishport}_components_email2.json' http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.commons.emailreply.impl.EmailReplyConfigurationImpl.${email.id}.json"/>
