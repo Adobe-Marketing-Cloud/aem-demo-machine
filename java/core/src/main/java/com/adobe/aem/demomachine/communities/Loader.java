@@ -201,6 +201,7 @@ public class Loader {
 		boolean configure = false;
 		boolean minimize = false;
 		boolean noenablement = true;
+		boolean nomultilingual = true;
 		int maxretries = MAXRETRIES;
 
 		// Command line options for this tool
@@ -213,6 +214,7 @@ public class Loader {
 		options.addOption("u", true, "Admin Password");
 		options.addOption("c", false, "Configure");
 		options.addOption("m", false, "Minimize");
+		options.addOption("l", false, "No Multilingual");
 		options.addOption("e", false, "No Enablement");
 		options.addOption("s", true, "Analytics Endpoint");
 		options.addOption("t", false, "Analytics");
@@ -263,6 +265,10 @@ public class Loader {
 				minimize = true;
 			}
 
+			if(cmd.hasOption("l")) {
+				nomultilingual = true;
+			}
+
 			if(cmd.hasOption("e")) {
 				noenablement = false;
 			}
@@ -294,7 +300,7 @@ public class Loader {
 
 						InputStream is = zipFile.getInputStream(zipEntry);
 						BufferedReader in = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, noenablement, csvfile, maxretries);
+						processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, noenablement, nomultilingual, csvfile, maxretries);
 
 					}
 				}
@@ -309,7 +315,7 @@ public class Loader {
 			} else if (csvfile.toLowerCase().endsWith(".csv")) {
 
 				Reader in = new FileReader(csvfile);
-				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, noenablement, csvfile, maxretries);
+				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, noenablement, nomultilingual, csvfile, maxretries);
 
 			}
 
@@ -321,7 +327,7 @@ public class Loader {
 
 	}
 
-	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, boolean minimize, boolean noenablement, String csvfile, int maxretries) {
+	public static void processLoading(ResourceResolver rr, Reader in, String hostname, String port, String altport, String adminPassword, String analytics, boolean reset, boolean configure, boolean minimize, boolean noenablement, boolean nomultilingual, String csvfile, int maxretries) {
 
 		String location = null;
 		String userHome = null;
@@ -428,6 +434,8 @@ public class Loader {
 							if (value.equals("TRUE")) { value = "true"; }
 							if (value.equals("FALSE")) { value = "false"; }	
 							if (name.equals("urlName")) { urlName = value; }
+							
+							// Only create the site when a ROOT path is specified and available
 							if (name.equals(ROOT)) {
 								rootPath = value;
 								logger.debug("Rootpath for subsequent processing is: " + rootPath);
@@ -438,6 +446,15 @@ public class Loader {
 									logger.info("Rootpath " + rootPath + " is available");
 								}
 							}
+							
+							// Only create the site when a non-english language is specified 
+							if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
+								if (!value.startsWith("en") && nomultilingual) {
+									logger.info("Language " + value + " is not desired for this site, proceeding to next record");
+									isValid=false;
+								}
+							}
+							
 							if (name.equals(BANNER)) {
 								addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
 							} else if (name.equals(THUMBNAIL)) {
@@ -447,8 +464,8 @@ public class Loader {
 							} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 
 
-								// Starting with 6.1 FP5 and 6.2 FP1, we can create multiple languages at once
-								if (isCommunities61FP5orlater) {
+								// Starting with 6.1 FP5 and 6.2 FP1, we can create multiple languages at once, if expected by the script parameters
+								if (isCommunities61FP5orlater && !nomultilingual) {
 
 									initialLanguages = value.split(",");
 									for (String initialLanguage : initialLanguages) {
