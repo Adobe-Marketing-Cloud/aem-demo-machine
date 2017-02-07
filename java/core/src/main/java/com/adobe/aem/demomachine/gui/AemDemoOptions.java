@@ -55,7 +55,7 @@ public class AemDemoOptions extends JDialog {
 		int i=0;
 		while (e.hasMoreElements()) {
 			String key = (String) e.nextElement();
-			if (!key.endsWith(".help") && !key.startsWith("demo.download")) i++;
+			if (!key.endsWith(".help") && (!key.startsWith("demo.download.") || key.contains("artifactory"))) i++;
 		}
 
 		Object props[][] = new Object[i][4];
@@ -63,7 +63,7 @@ public class AemDemoOptions extends JDialog {
 		i=0;
 		while (e.hasMoreElements()) {
 			String key = (String) e.nextElement();
-			if (!key.endsWith(".help") && !key.startsWith("demo.download")) {
+			if (!key.endsWith(".help") && (!key.startsWith("demo.download.") || key.contains("artifactory"))) {
 				String value = (String) aemDemo.getDefaultProperties().getProperty(key);
 				Object[] prop = new Object[5];
 				if (aemDemo.getPersonalProperties().containsKey(key)) {
