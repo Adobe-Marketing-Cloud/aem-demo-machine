@@ -126,6 +126,7 @@ public class Loader {
 	private static final String GROUPTEMPLATE = "GroupTemplate";
 	private static final String GROUPMEMBERS = "GroupMembers";
 	private static final String GROUPPUBLISH = "GroupPublish";
+	private static final String GROUPDELETE = "GroupDelete";
 	private static final String SITEMEMBERS = "SiteMembers";
 	private static final String UGCUPVOTE = "Upvote";
 	private static final String UGCDOWNVOTE = "Downvote";
@@ -406,7 +407,7 @@ public class Loader {
 					continue;
 
 				}
-				
+
 				// Let's see if we need to set the current site path
 				if (record.get(0).equals(SITEPATH)) {
 					sitePagePath = record.get(1);
@@ -434,7 +435,7 @@ public class Loader {
 							if (value.equals("TRUE")) { value = "true"; }
 							if (value.equals("FALSE")) { value = "false"; }	
 							if (name.equals("urlName")) { urlName = value; }
-							
+
 							// Only create the site when a ROOT path is specified and available
 							if (name.equals(ROOT)) {
 								rootPath = value;
@@ -446,7 +447,7 @@ public class Loader {
 									logger.info("Rootpath " + rootPath + " is available");
 								}
 							}
-							
+
 							// Only create the site when a non-english language is specified 
 							if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 								if (!value.startsWith("en") && nomultilingual) {
@@ -454,7 +455,7 @@ public class Loader {
 									isValid=false;
 								}
 							}
-							
+
 							if (name.equals(BANNER)) {
 								addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
 							} else if (name.equals(THUMBNAIL)) {
@@ -519,10 +520,10 @@ public class Loader {
 					// Site creation
 					if (isValid)
 						doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
-							null);
+								null);
 					else
 						continue;
-					
+
 					// Waiting for site creation to be complete
 					boolean existingSiteWithLocale = rootPath.indexOf("/"+initialLanguages[0])>0;					
 					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]), maxretries);
@@ -560,14 +561,14 @@ public class Loader {
 					// Let's set if we need to run based on version number
 					Version vRecord = null;
 					if (record.get(2).startsWith(">") || record.get(2).startsWith("<") || record.get(2).startsWith("=")) {
-						
+
 						try {
 							vRecord = new Version(record.get(2).substring(1));
 						} catch (Exception e) {
 							logger.error("Invalid version number specified" + record.get(2));
 						}
 					}
-					
+
 					if (vRecord!=null && record.get(2).startsWith(">") && vBundleCommunitiesSCF.compareTo(vRecord)<=0) {
 						logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
 						continue;
@@ -644,14 +645,14 @@ public class Loader {
 								logger.info("Site update is not compatible with this version of AEM");
 								isValid=false;
 							}
-							
+
 						}
 
 					}
 
 					// Convenient for debugging the site update operation
 					// printPOST(builder.build());	
-					
+
 					if (isValid)
 						doPost(hostname, port,
 								record.get(1),
@@ -965,6 +966,98 @@ public class Loader {
 
 				}
 
+				// Let's see if we need to delete some user groups
+				if (record.get(0).equals(GROUPDELETE) && record.get(1)!=null) {
+
+					// Let's query all the Community sites
+					String siteList = Loader.doGet(hostname, port,
+							"/mnt/overlay/social/console/content-shell3/sites/jcr:content/views/content/items/sitecollection.social.json",
+							"admin", adminPassword,
+							null);					
+
+					// List of orphan entries
+					List<String> orphanKeys = new ArrayList<String>();
+					
+					// Let's query all the groups
+					List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+					nameValuePairs.add(new BasicNameValuePair("type", "rep:Group"));
+					nameValuePairs.add(new BasicNameValuePair("p.limit", "-1"));
+					nameValuePairs.add(new BasicNameValuePair("p.hits", "full"));
+
+					String groupList = Loader.doGet(hostname, port,
+							"/bin/querybuilder.json",
+							"admin", adminPassword,
+							nameValuePairs);
+					JSONArray jsonArray = new JSONObject(groupList).getJSONArray("hits");
+
+					for (int i=0;i<jsonArray.length();i++) {
+
+						JSONObject jsonObject = jsonArray.getJSONObject(i);
+						String groupPath=jsonObject.getString("jcr:path");
+						String groupName=jsonObject.getString("rep:authorizableId");
+
+						boolean deleteGroup=false;
+
+						// First, an explicit delete is requested
+						if (groupName.startsWith(record.get(2)) && groupPath.startsWith(record.get(1))) {
+							deleteGroup = true;
+						}
+
+						// Second, we might be dealing with an orphan group, let's verify
+						String communityGroups = "/home/groups/community/";
+						int indexStartCommunity = groupPath.indexOf(communityGroups);
+						if (indexStartCommunity>=0) {
+							int indexStopCommunity = groupPath.indexOf("/", communityGroups.length() + indexStartCommunity);
+							if (indexStopCommunity>0) {
+								String keyCommunity = groupPath.substring(communityGroups.length() + indexStartCommunity, indexStopCommunity);
+								int indexUrlCommunity = keyCommunity.indexOf("-");
+								if (indexUrlCommunity>0) {
+									String urlCommunity = keyCommunity.substring(0, indexUrlCommunity);
+									if (!siteList.contains(keyCommunity) && !siteList.contains("siteUrlName\":\"" + urlCommunity)) {
+										deleteGroup = true;
+										orphanKeys.add(keyCommunity);
+										orphanKeys.add("community-" + urlCommunity);
+									}
+
+								
+								}
+							}
+						}
+
+						if (deleteGroup) {
+
+							logger.debug("Deleting orphan or desired group " + groupName);
+							
+							List<NameValuePair>  groupDeleteValuePairs = new ArrayList<NameValuePair>();
+							groupDeleteValuePairs.add(new BasicNameValuePair("deleteAuthorizable", groupName));
+
+							// Building the form entity to be posted
+							MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+							builder.setCharset(MIME.UTF8_CHARSET);
+							builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							builder.addTextBody("deleteAuthorizable", groupName, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+							doPost(hostname, port,
+									groupPath,
+									"admin", adminPassword,
+									builder.build(),
+									null);
+
+						}
+						
+					}
+
+					// Let's get rid of all the orphan folders for groups
+					for (String key : orphanKeys) {
+						logger.debug("Deleting folder /home/groups/community/" + key);
+						doDelete(hostname, port,
+								"/home/groups/community/" + key,
+								"admin", adminPassword);
+
+					}
+					
+				}
+
 				// Let's see if we need to delete a Community site
 				if (record.get(0).equals(SITEDELETE) && record.get(1)!=null) {
 
@@ -1257,16 +1350,16 @@ public class Loader {
 									continue;
 
 							}
-							
+
 							// If we're posting to fetch analytics data, let's make sure the analytics host is available
 							int pos3 = configurePath.indexOf("analyticsCommunities");
 							if (pos3>0) {
-								
+
 								if (!Hostname.isReachable("www.adobe.com", "80")) {
 									logger.warn("Analytics cannot be imported since you appear to be offline"); // The things you have to do when coding in airplanes...
 									continue;						
 								}
-								
+
 							}
 
 							// Only do this when really have configuration settings
@@ -1485,7 +1578,7 @@ public class Loader {
 
 				// Creates a new private message
 				if (componentType.equals(MESSAGE)) {
-					
+
 					nameValuePairs.add(new BasicNameValuePair("to", "/social/authors/" + record.get(2)));
 					nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + record.get(2)));
 					nameValuePairs.add(new BasicNameValuePair("toId", ""));
@@ -1657,7 +1750,7 @@ public class Loader {
 						logger.warn("This feature is not supported by this version of AEM");
 						continue;
 					}
-					
+
 					if (subComponentType.equals(UGCANSWER)) {
 						nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));
 					}
@@ -1786,7 +1879,7 @@ public class Loader {
 
 					String createResourceOpName = "se:createResource";
 					String enablementType = "social/enablement/components/hbs/resource";
-					
+
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) createResourceOpName="social:createResource";
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementResourceModel";
 
@@ -1811,7 +1904,7 @@ public class Loader {
 						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
 
 					}
-					
+
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
 						nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/resource/model"));
 						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
@@ -1822,7 +1915,7 @@ public class Loader {
 					}
 
 					nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
-					
+
 					// Adding the site
 					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
 
@@ -1847,7 +1940,7 @@ public class Loader {
 						logger.info("Not processing a SCORM resource for this scenario");
 						continue;
 					}
-					
+
 					String coverPath = "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
 					String coverSource = "dam";
 					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + assetFileName + "\"}]";
@@ -1867,11 +1960,11 @@ public class Loader {
 						logger.info("Ignoring a learning path");
 						continue;
 					}
-					
+
 					String createResourceOpName = "se:editLearningPath";
 					String enablementType = "social/enablement/components/hbs/learningpath";
 					String resourceList = "learningpath-items";
-					
+
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) createResourceOpName="social:editLearningPath";
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementLearningPathModel";
 
@@ -1879,7 +1972,7 @@ public class Loader {
 
 					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
 					nameValuePairs.addAll(otherNameValuePairs);
-						
+
 					// Special processing of lists with multiple users, need to split a String into multiple entries
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) {
 
@@ -2103,7 +2196,7 @@ public class Loader {
 					String publishOpName = "se:publishEnablementContent";
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementLearningPathModel";
 					publishNameValuePairs.add(new BasicNameValuePair(":operation", publishOpName));				
-					
+
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
 					logger.debug("Publishing a learning path from: " + location);					
 					Loader.doPost(hostname, port,
@@ -2136,11 +2229,11 @@ public class Loader {
 					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
 
 					String resourcePath = "/assets/asset";
-					
+
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
 						resourcePath = "/se_assets/se_primary";
 					}
-					
+
 					// Wait for the data to be fully copied
 					doWaitPath(hostname, port, adminPassword, location + resourcePath, maxretries);
 
@@ -2154,12 +2247,12 @@ public class Loader {
 						doSleep(10000, "Processing a SCORM resource");
 
 					}					
-					
+
 					// Wait for the workflows to be completed before publishing the resource
 					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-					
+
 					String publishOpName = "se:publishEnablementContent";
 					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementResourceModel";
 					publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
@@ -2451,16 +2544,16 @@ public class Loader {
 			String resourceRatingsEndpoint = location + "/se_social/se_ratings.social.json";
 			String resourceCommentsEndpoint = location + "/se_social/se_comments.social.json";
 			String assetPath = "assetProperties";
-			
+
 			if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))<=0) {
-				
-				 resourceRatingsEndpoint = resourceJsonObject.getString("ratingsEndPoint") + ".social.json";
-				 resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint")  + ".social.json";
-				
+
+				resourceRatingsEndpoint = resourceJsonObject.getString("ratingsEndPoint") + ".social.json";
+				resourceCommentsEndpoint = resourceJsonObject.getString("commentsEndPoint")  + ".social.json";
+
 			} else {
-				
+
 				assetPath = "primaryAsset";
-				
+
 			}
 
 			String resourceID = resourceJsonObject.getString("id");
@@ -2761,7 +2854,7 @@ public class Loader {
 			credsProvider.setCredentials(new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
 			CloseableHttpClient httpClient = 
-				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
+					HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -2881,7 +2974,7 @@ public class Loader {
 			credsProvider.setCredentials(new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
 			CloseableHttpClient httpClient = 
-				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
+					HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -2937,7 +3030,7 @@ public class Loader {
 					new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
 			CloseableHttpClient httpClient = 
-				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
+					HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -3126,7 +3219,7 @@ public class Loader {
 					new AuthScope(target.getHostName(), target.getPort()),
 					new UsernamePasswordCredentials(user, password));
 			CloseableHttpClient httpClient = 
-				    HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
+					HttpClientBuilder.create().setDefaultCredentialsProvider(credsProvider).build();
 
 			try {
 
@@ -3226,7 +3319,7 @@ public class Loader {
 		return newNameValuePairs;
 	}
 
-	
+
 	// This method builds a list of NVP for a subsequent Sling post
 	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start) {
 
