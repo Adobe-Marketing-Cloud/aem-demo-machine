@@ -2277,7 +2277,7 @@ public class Loader {
 					Calendar cal = Calendar.getInstance();
 					cal.add(Calendar.DATE, REPORTINGDAYS);    
 					List<NameValuePair> publishDateNameValuePairs = new ArrayList<NameValuePair>();
-					publishDateNameValuePairs.add(new BasicNameValuePair("date-first-published", dateFormat.format(cal.getTime())));
+					publishDateNameValuePairs.add(new BasicNameValuePair("se_date-published", dateFormat.format(cal.getTime())));
 					logger.debug("Setting the publish date for a resource at: " + location);
 					doPost(hostname, port,
 							location,
@@ -2542,7 +2542,7 @@ public class Loader {
 
 			JSONObject resourceJsonObject = new JSONObject(resourceJson);
 			String resourceRatingsEndpoint = location + "/se_social/se_ratings.social.json";
-			String resourceCommentsEndpoint = location + "/se_social/se_comments.social.json";
+			String resourceCommentsEndpoint = location + "/se_social/se_discussion.social.json";
 			String assetPath = "assetProperties";
 
 			if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))<=0) {
@@ -2802,6 +2802,7 @@ public class Loader {
 
 			// Posting a Comment for this resource
 			int randomComment = (int) Math.ceil(Math.random()*5);
+			logger.debug("Randomly Posting a Comment " + resourceCommentsEndpoint);
 			List<NameValuePair> commentNameValuePairs = new ArrayList<NameValuePair>();
 			commentNameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
 			commentNameValuePairs.add(new BasicNameValuePair("message", comments[randomComment-1]));
