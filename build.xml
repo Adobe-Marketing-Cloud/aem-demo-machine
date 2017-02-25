@@ -6366,10 +6366,21 @@
 						</exec>
 					</then>
 					<else>
-						<java classname="com.adobe.aem.demomachine.Base64Encoder" outputproperty="screenshot.authorization">
-							<arg line="-v '${this.user}:password'"/>
-							<classpath refid="demo.classpath"/>
-						</java>
+						<if>
+							<equals arg1="${this.user}" arg2="admin" casesensitive="false"/>
+							<then>
+								<java classname="com.adobe.aem.demomachine.Base64Encoder" outputproperty="screenshot.authorization">
+									<arg line="-v '${this.user}:${demo.admin.password}'"/>
+									<classpath refid="demo.classpath"/>
+								</java>
+							</then>
+							<else>
+								<java classname="com.adobe.aem.demomachine.Base64Encoder" outputproperty="screenshot.authorization">
+									<arg line="-v '${this.user}:password'"/>
+									<classpath refid="demo.classpath"/>
+								</java>
+							</else>
+						</if>
 						<exec executable="webkit2png" dir="${validation}/screenshots/${validation.timestamp}" spawn="false" failonerror="false">
 							<arg line="--delay=2 --basic-auth ${screenshot.authorization} -o ${demo}-${screenshot.id} -s 0.2 -W 1280 -H 800 'http://${demo.host}:${AdobeAEM.publishport}${this.url}'"/>
 						</exec>
