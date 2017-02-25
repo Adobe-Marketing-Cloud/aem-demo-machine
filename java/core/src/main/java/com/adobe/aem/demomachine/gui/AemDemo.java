@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright 2016 Adobe Systems Incorporated.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,9 +33,7 @@ import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -129,7 +127,7 @@ public class AemDemo {
 				public void run() {
 					try {
 
-						UIManager.getLookAndFeelDefaults().put("defaultFont", new Font("Arial", Font.BOLD, 14));	
+						UIManager.getLookAndFeelDefaults().put("defaultFont", new Font("Arial", Font.BOLD, 14));
 						AemDemo window = new AemDemo();
 						window.frameMain.setVisible(true);
 					} catch (Exception e) {
@@ -162,6 +160,14 @@ public class AemDemo {
 		frameMain.setBounds(100, 100, 700, 530);
 		frameMain.getContentPane().setLayout(null);
 
+		// Call onExit() when cross is clicked
+		frameMain.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		frameMain.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				onExit();
+			}
+		});
+
 		// Main menu bar for the Frame
 		JMenuBar menuBar = new JMenuBar();
 
@@ -170,7 +176,7 @@ public class AemDemo {
 		menuBar.add(mnAbout);
 
 		JMenuItem mntmUpdates = new JMenuItem("Check for Updates");
-		mntmUpdates.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmUpdates.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmUpdates.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "demo_update");
@@ -179,7 +185,7 @@ public class AemDemo {
 		mnAbout.add(mntmUpdates);
 
 		JMenuItem mntmDoc = new JMenuItem("Help and Documentation");
-		mntmDoc.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmDoc.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmDoc.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.openWebpage(AemDemoUtils.getActualPropertyValue(defaultProperties, personalProperties, AemDemoConstants.OPTIONS_DOCUMENTATION));
@@ -214,13 +220,13 @@ public class AemDemo {
 				props.list(System.out);
 			}
 		});
-		mnAbout.add(mntmDiagnostics);		
+		mnAbout.add(mntmDiagnostics);
 
 		JMenuItem mntmQuit = new JMenuItem("Quit");
-		mntmQuit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmQuit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmQuit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				System.exit(-1);
+				onExit();
 			}
 		});
 		mnAbout.add(mntmQuit);
@@ -230,7 +236,7 @@ public class AemDemo {
 
 		// New Demo Machine
 		JMenuItem mntmNewDemo = new JMenuItem("Demo Environment");
-		mntmNewDemo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmNewDemo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmNewDemo.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
@@ -251,7 +257,7 @@ public class AemDemo {
 		mnNew.add(mntmNewDemo);
 
 		JMenuItem mntmNewOptions = new JMenuItem("Demo Properties");
-		mntmNewOptions.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmNewOptions.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmNewOptions.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
@@ -482,7 +488,7 @@ public class AemDemo {
 		});
 		mnSOLR.add(mntmInfraSOLRStop);
 
-		mnInfrastructure.add(mnSOLR);		
+		mnInfrastructure.add(mnSOLR);
 
 		// MySQL options
 		JMenu mnMySQL = new JMenu("MySQL");
@@ -521,7 +527,7 @@ public class AemDemo {
 		});
 		mnMySQL.add(mntmInfraMysqlStop);
 
-		mnInfrastructure.add(mnMySQL);		
+		mnInfrastructure.add(mnMySQL);
 
 		// James options
 		JMenu mnJames = new JMenu("James SMTP/POP");
@@ -559,7 +565,7 @@ public class AemDemo {
 		});
 		mnJames.add(mntmInfraJamesStop);
 
-		mnInfrastructure.add(mnJames);		
+		mnInfrastructure.add(mnJames);
 
 		// FFMPEPG options
 		JMenu mnFFMPEG = new JMenu("FFMPEG");
@@ -580,7 +586,7 @@ public class AemDemo {
 		});
 		mnFFMPEG.add(mntmInfraFFMPEGInstall);
 
-		mnInfrastructure.add(mnFFMPEG);		
+		mnInfrastructure.add(mnFFMPEG);
 
 		mnInfrastructure.addSeparator();
 
@@ -612,8 +618,8 @@ public class AemDemo {
 			}
 		});
 		mnInDesignServer.add(mntmInfraInDesignServerStop);
-		
-		mnInfrastructure.add(mnInDesignServer);		
+
+		mnInfrastructure.add(mnInDesignServer);
 
 		mnInfrastructure.addSeparator();
 
@@ -631,7 +637,7 @@ public class AemDemo {
 		JMenu mntmAemDownload = new JMenu("AEM & License files (VPN)");
 
 		JMenuItem mntmAemLoad = new JMenuItem("Download Latest AEM Load");
-		mntmAemLoad.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemLoad.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmAemLoad.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_load");
@@ -640,7 +646,7 @@ public class AemDemo {
 		mntmAemDownload.add(mntmAemLoad);
 
 		JMenuItem mntmAemSnapshot = new JMenuItem("Download Latest AEM Snapshot");
-		mntmAemSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmAemSnapshot.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_snapshot");
@@ -648,7 +654,7 @@ public class AemDemo {
 		});
 		mntmAemDownload.add(mntmAemSnapshot);
 
-		
+
 		JMenuItem mntmAemDownloadAEM62 = new JMenuItem("Download AEM 6.2");
 		mntmAemDownloadAEM62.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -700,7 +706,7 @@ public class AemDemo {
 		mnOther.add(mntmAemDownload);
 
 		JMenuItem mntmAemHotfix = new JMenuItem("Download Latest Hotfixes (PackageShare)");
-		mntmAemHotfix.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemHotfix.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmAemHotfix.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_hotfixes_packages");
@@ -709,7 +715,7 @@ public class AemDemo {
 		mnOther.add(mntmAemHotfix);
 
 		JMenuItem mntmAemAcs = new JMenuItem("Download Latest ACS Commons and Tools");
-		mntmAemAcs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));		
+		mntmAemAcs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmAemAcs.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.antTarget(AemDemo.this, "download_acs");
@@ -732,7 +738,7 @@ public class AemDemo {
 		// List of demo machines available
 		JScrollPane scrollDemoList = new JScrollPane();
 		scrollDemoList.setBounds(24, 34, 208, 100);
-		frameMain.getContentPane().add(scrollDemoList);	
+		frameMain.getContentPane().add(scrollDemoList);
 		listModelDemoMachines = AemDemoUtils.listDemoMachines(buildFile.getParentFile().getAbsolutePath());
 		listDemoMachines = new JList(listModelDemoMachines);
 		listDemoMachines.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -756,7 +762,7 @@ public class AemDemo {
 		frameMain.getContentPane().add(btnStart);
 
 		// Set Start as the default button
-		JRootPane rootPane = SwingUtilities.getRootPane(btnStart); 
+		JRootPane rootPane = SwingUtilities.getRootPane(btnStart);
 		rootPane.setDefaultButton(btnStart);
 
 		JButton btnInfo = new JButton("Details");
@@ -794,7 +800,7 @@ public class AemDemo {
 		btnRebuild.setBounds(250, 89, 117, 29);
 		frameMain.getContentPane().add(btnRebuild);
 
-		// Stop action 
+		// Stop action
 		JButton btnStop = new JButton("Stop");
 		btnStop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -813,7 +819,7 @@ public class AemDemo {
 		JButton btnExit = new JButton("Exit");
 		btnExit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				System.exit(-1);
+				onExit();
 			}
 		});
 		btnExit.setBounds(550, 408, 117, 29);
@@ -892,11 +898,11 @@ public class AemDemo {
 				}
 				if (!line.startsWith("Double"))
 					System.out.println(line);
-			}   
-			bufferedReader.close();         
+			}
+			bufferedReader.close();
 		}
 		catch(Exception ex) {
-			logger.error(ex.getMessage());               
+			logger.error(ex.getMessage());
 		}
 
 	}
@@ -943,14 +949,20 @@ public class AemDemo {
 
 	public DefaultListModel<String> getListModelDemoMachines() {
 		return this.listModelDemoMachines;
-	}	
+	}
 
 	public JList<String> getListDemoMachines() {
 		return this.listDemoMachines;
-	}	
+	}
 
 	public String getSelectedDemoMachine() {
 		return this.listDemoMachines.getSelectedValue();
-	}	
+	}
 
+	/**
+	 * Exiting from application without any error
+	 */
+	public void onExit() {
+		System.exit(0);
+	}
 }
