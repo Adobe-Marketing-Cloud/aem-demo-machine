@@ -1919,41 +1919,43 @@
 				<if>
 					<resourcecontains resource="${logs}/packageshare.html" substring="an error occurred while processing your request"/>
 					<then>
-						<fail message="There was a problem downloading a package from PackageShare. Please verify the download properties ${filepath}."/>
-					</then>
-				</if>
-				<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
-				<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
-				<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
-				<basename property="packagename" file="${filepath}"/>
-				<!-- Automatic EULA acceptance -->
-				<exec executable="curl">
-					<arg line="--output '${logs}/download_packageshare_eula.html'"/>
-					<arg line="--cookie '${logs}/packageshare.txt'"/>
-					<arg line="-k"/>
-					<arg line="-X POST"/>
-					<arg line="-d acceptEula=on"/>
-					<arg line="-d cmd=eula"/>
-					<arg line="-d package=${packagename}"/>
-					<arg line="https://www.adobeaemcloud.com/apps/cloudmgr/content/packages/user.json"/>
-				</exec>
-				<mkdir dir="${dist}/downloads"/>
-				<exec executable="curl">
-					<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageShareFileName}.zip' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
-				</exec>
-				<if>
-					<and>
-						<isset property="${packageshare.filename}"/>
-						<not>
-							<equals arg1="${packageshare.filename}" arg2=""/>
-						</not>
-					</and>
-					<then>
-						<propertycopy property="filename" from="${packageshare.filename}"/>
-						<move file="${dist}/downloads/${packageShareFileName}.zip" tofile="${packageshare.target}/${fileversion}/${filename}" overwrite="true"/>
+						<echo message="There was a problem downloading a package, that is either missing or not visible to you. Please verify the download properties for ${filepath}."/>
 					</then>
 					<else>
-						<move file="${dist}/downloads/${packageShareFileName}.zip" tofile="${packageshare.target}/${fileversion}/${packageShareFileName}.zip" overwrite="true"/>
+						<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
+						<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
+						<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
+						<basename property="packagename" file="${filepath}"/>
+						<!-- Automatic EULA acceptance -->
+						<exec executable="curl">
+							<arg line="--output '${logs}/download_packageshare_eula.html'"/>
+							<arg line="--cookie '${logs}/packageshare.txt'"/>
+							<arg line="-k"/>
+							<arg line="-X POST"/>
+							<arg line="-d acceptEula=on"/>
+							<arg line="-d cmd=eula"/>
+							<arg line="-d package=${packagename}"/>
+							<arg line="https://www.adobeaemcloud.com/apps/cloudmgr/content/packages/user.json"/>
+						</exec>
+						<mkdir dir="${dist}/downloads"/>
+						<exec executable="curl">
+							<arg line="--cookie '${logs}/packageshare.txt' -L -s -k -o '${dist}/downloads/${packageShareFileName}.zip' https://www.adobeaemcloud.com${filepath}/jcr:content/package/file.res/${packageShareFileName}.zip"/>
+						</exec>
+						<if>
+							<and>
+								<isset property="${packageshare.filename}"/>
+								<not>
+									<equals arg1="${packageshare.filename}" arg2=""/>
+								</not>
+							</and>
+							<then>
+								<propertycopy property="filename" from="${packageshare.filename}"/>
+								<move file="${dist}/downloads/${packageShareFileName}.zip" tofile="${packageshare.target}/${fileversion}/${filename}" overwrite="true"/>
+							</then>
+							<else>
+								<move file="${dist}/downloads/${packageShareFileName}.zip" tofile="${packageshare.target}/${fileversion}/${packageShareFileName}.zip" overwrite="true"/>
+							</else>
+						</if>
 					</else>
 				</if>
 			</else>
@@ -2351,7 +2353,7 @@
 			<then>
 				<fail message="Please install the Adobe-only properties before using this feature (Search for AEM Demo Machine in Adobe's Wiki for further instructions)"/>
 			</then>
-		</if>		
+		</if>
 	</target>
 	<!-- Target for installing the FFMPEG software -->
 	<target name="install_ffmpeg" if="isMac">
@@ -3094,6 +3096,7 @@
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.authorport##" value="${AdobeAEM.authorport}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.publishport##" value="${AdobeAEM.publishport}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.farmport##" value="${AdobeAEM.farmport}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##demo.loglevel##" value="${demo.loglevel}"/>
 	</target>
 	<!-- Targets for installing the OSGI bundles hotfixes before the first startup -->
 	<target name="hotfix_osgi_instance" depends="version,configuration">
