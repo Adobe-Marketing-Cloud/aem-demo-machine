@@ -285,7 +285,7 @@ public class Loader {
 
 		}
 
-		logger.debug("AEM Demo Loader: Processing file " + csvfile);
+		logger.info("AEM Demo Loader: Processing file " + csvfile);
 
 		try {
 
@@ -347,7 +347,7 @@ public class Loader {
 
 			String componentType = null;
 
-			logger.debug("AEM Demo Loader: Loading bundles versions");
+			logger.info("AEM Demo Loader: Loading bundles versions");
 			String bundlesList = doGet(hostname, port,
 					"/system/console/bundles.json",
 					"admin",adminPassword,
@@ -439,7 +439,7 @@ public class Loader {
 							// Only create the site when a ROOT path is specified and available
 							if (name.equals(ROOT)) {
 								rootPath = value;
-								logger.debug("Rootpath for subsequent processing is: " + rootPath);
+								logger.info("Rootpath for subsequent processing is: " + rootPath);
 								if (!isResourceAvailable(hostname, port, adminPassword, rootPath)) {
 									logger.warn("Rootpath " + rootPath + " is not available, proceeding to next record");
 									isValid=false;
@@ -498,7 +498,7 @@ public class Loader {
 										builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 										builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 										i=i+2;
-										logger.debug("Cloud service: " + cloudValue + " available on this instance");
+										logger.info("Cloud service: " + cloudValue + " available on this instance");
 									}
 
 								} else {
@@ -510,12 +510,6 @@ public class Loader {
 							}
 						}
 					}
-
-					// Printing site creation settings
-					//ByteArrayOutputStream out = new ByteArrayOutputStream();
-					//builder.build().writeTo(out);
-					//String string = out.toString();
-					//logger.debug(string);
 
 					// Site creation
 					if (isValid)
@@ -538,7 +532,7 @@ public class Loader {
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
 							nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguage)));
 
-							logger.debug("Publishing site " + urlName + " for language " + initialLanguage);
+							logger.info("Publishing site " + urlName + " for language " + initialLanguage);
 
 							doPost(hostname, port,
 									"/communities/sites.html",
@@ -546,8 +540,9 @@ public class Loader {
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
+							// Waiting for the path on publish 
 							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage), maxretries);
-
+							
 						}
 
 					}
@@ -580,7 +575,7 @@ public class Loader {
 					}
 
 					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
-						logger.debug("Updating a Community Site " + record.get(1));
+						logger.info("Updating a Community Site " + record.get(1));
 					} else {
 						logger.error("Can't update a Community Site " + record.get(1));
 						continue;
@@ -603,11 +598,27 @@ public class Loader {
 					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 					// Adding the mandatory values for being able to save a site via the JSON endpoint
-					List<String> props = Arrays.asList("urlName", "theme", "moderators", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
+					List<String> props = Arrays.asList("urlName", "theme", "moderators", "communitymanagers", "privilegedmembers", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
 					try {
+						
 						JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
 						for (String prop : props) {
-							if (siteprops.has(prop)) {
+							
+							// Making sure we don't put a value that is otherwise overridden from the CSV record
+							boolean willOverride = false;
+							for (int i=3;i<record.size()-1;i=i+2) {
+
+								if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+
+									String name = record.get(i).trim();
+									if (name.equals(prop)) {
+										willOverride = true;
+									}
+								}
+								
+							}
+
+							if (siteprops.has(prop) && !willOverride) {
 								Object propValue = siteprops.get(prop); 
 								if (propValue instanceof JSONArray) {
 									JSONArray propArray = (JSONArray) propValue;
@@ -617,6 +628,8 @@ public class Loader {
 								} else {
 									builder.addTextBody(prop, propValue.toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));								
 								}
+							} else {
+								logger.info("Not adding property " + prop + " with override status " + willOverride);
 							}
 						}
 
@@ -651,7 +664,7 @@ public class Loader {
 					}
 
 					// Convenient for debugging the site update operation
-					// printPOST(builder.build());	
+					printPOST(builder.build());	
 
 					if (isValid)
 						doPost(hostname, port,
@@ -667,7 +680,7 @@ public class Loader {
 				if (record.get(0).equals(SITEPUBLISH) && record.get(1)!=null) {
 
 					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
-						logger.debug("Publishing a Community Site " + record.get(1));
+						logger.info("Publishing a Community Site " + record.get(1));
 					} else {
 						logger.warn("Can't publish a Community Site " + record.get(1));
 						continue;
@@ -977,7 +990,7 @@ public class Loader {
 
 					// List of orphan entries
 					List<String> orphanKeys = new ArrayList<String>();
-					
+
 					// Let's query all the groups
 					List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 					nameValuePairs.add(new BasicNameValuePair("type", "rep:Group"));
@@ -1019,15 +1032,15 @@ public class Loader {
 										orphanKeys.add("community-" + urlCommunity);
 									}
 
-								
+
 								}
 							}
 						}
 
 						if (deleteGroup) {
 
-							logger.debug("Deleting orphan or desired group " + groupName);
-							
+							logger.info("Deleting orphan or desired group " + groupName);
+
 							List<NameValuePair>  groupDeleteValuePairs = new ArrayList<NameValuePair>();
 							groupDeleteValuePairs.add(new BasicNameValuePair("deleteAuthorizable", groupName));
 
@@ -1044,18 +1057,18 @@ public class Loader {
 									null);
 
 						}
-						
+
 					}
 
 					// Let's get rid of all the orphan folders for groups
 					for (String key : orphanKeys) {
-						logger.debug("Deleting folder /home/groups/community/" + key);
+						logger.info("Deleting folder /home/groups/community/" + key);
 						doDelete(hostname, port,
 								"/home/groups/community/" + key,
 								"admin", adminPassword);
 
 					}
-					
+
 				}
 
 				// Let's see if we need to delete a Community site
@@ -1153,7 +1166,7 @@ public class Loader {
 						else
 							groupName = "community-" + urlName + "-members";
 
-						logger.debug("Site Member group name is " + groupName);
+						logger.info("Site Member group name is " + groupName);
 
 					}
 
@@ -1174,14 +1187,14 @@ public class Loader {
 
 					if (groupList!=null && groupList.indexOf("\"results\":1")>0) {
 
-						logger.debug("Group was found on " + port);
+						logger.info("Group was found on " + port);
 						try {
 							JSONArray jsonArray = new JSONObject(groupList).getJSONArray("hits");
 							if (jsonArray.length()==1) {
 								JSONObject jsonObject = jsonArray.getJSONObject(0);
 								String groupPath= jsonObject.getString("path");
 
-								logger.debug("Group path is " + groupPath);
+								logger.info("Group path is " + groupPath);
 
 								// Constructing a multi-part POST for group membership
 								MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -1256,7 +1269,7 @@ public class Loader {
 				// Let's see if we need to generate analytics events for Assets Insights
 				if (record.get(0).equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
 
-					logger.debug("Generating Assets Analytics for reportsuite " + analytics);
+					logger.info("Generating Assets Analytics for reportsuite " + analytics);
 
 					// Generating Impressions
 					int impressions = new Random().nextInt(21) + 5;
@@ -2118,7 +2131,7 @@ public class Loader {
 
 				if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
 					// Useful for debugging complex POST requests
-					//printPOST(builder.build());	
+					printPOST(builder.build());	
 				}
 
 				if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
@@ -2180,7 +2193,7 @@ public class Loader {
 
 					// Adding the location to a list of a resources for this particular Learning Path
 					if (learningpaths.get(record.get(RESOURCE_INDEX_PATH)) == null) learningpaths.put(record.get(RESOURCE_INDEX_PATH), new ArrayList<String>());
-					logger.debug("Adding resource to Learning path: " + record.get(RESOURCE_INDEX_PATH));
+					logger.info("Adding resource to Learning path: " + record.get(RESOURCE_INDEX_PATH));
 					ArrayList<String> locations = learningpaths.get(record.get(RESOURCE_INDEX_PATH));
 					locations.add(location);
 					learningpaths.put(record.get(RESOURCE_INDEX_PATH), locations);
@@ -2198,7 +2211,7 @@ public class Loader {
 					publishNameValuePairs.add(new BasicNameValuePair(":operation", publishOpName));				
 
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
-					logger.debug("Publishing a learning path from: " + location);					
+					logger.info("Publishing a learning path from: " + location);					
 					Loader.doPost(hostname, port,
 							location,
 							userName, password,
@@ -2258,7 +2271,7 @@ public class Loader {
 					publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
 
 					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
-					logger.debug("Publishing a Resource from: " + location);					
+					logger.info("Publishing a Resource from: " + location);					
 					Loader.doPost(hostname, port,
 							location,
 							userName, password,
@@ -2269,7 +2282,7 @@ public class Loader {
 					doWaitPath(hostname, altport, adminPassword, location, maxretries);
 
 					// Adding comments and ratings for this resource
-					logger.debug("Decorating the resource with comments and ratings");
+					logger.info("Decorating the resource with comments and ratings");
 					doDecorate(hostname, altport, adminPassword, location, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
 
 					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
@@ -2278,7 +2291,7 @@ public class Loader {
 					cal.add(Calendar.DATE, REPORTINGDAYS);    
 					List<NameValuePair> publishDateNameValuePairs = new ArrayList<NameValuePair>();
 					publishDateNameValuePairs.add(new BasicNameValuePair("se_date-published", dateFormat.format(cal.getTime())));
-					logger.debug("Setting the publish date for a resource at: " + location);
+					logger.info("Setting the publish date for a resource at: " + location);
 					doPost(hostname, port,
 							location,
 							userName, password,
@@ -2290,8 +2303,8 @@ public class Loader {
 				// Generating Analytics when needed for the new fragment of UGC content
 				if (analytics!=null && referrer!=null) {
 
-					logger.debug("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
-					logger.debug("Analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
+					logger.info("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
+					logger.info("Analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
 					if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(IDEATION) || componentType.equals(CALENDAR))) {
 						logger.debug("level: " + Integer.parseInt(record.get(1)));
 						if (Integer.parseInt(record.get(1)) == 0) {
@@ -2337,7 +2350,7 @@ public class Loader {
 			File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + value);
 			// Check for file existence
 			if (attachment.exists()) {
-				logger.debug("Adding file named " + value + " to POST");
+				logger.info("Adding file named " + value + " to POST");
 				builder.addBinaryBody(field, attachment, getContentType(value), attachment.getName());
 			} else {
 				attachment = new File(csvfile.substring(0, csvfile.lastIndexOf("/")) + File.separator + "attachments" + File.separator + value);
@@ -2350,7 +2363,7 @@ public class Loader {
 		} else {
 			Resource res = rr.getResource(csvfile + "/attachments/" + value + "/jcr:content");
 			if (res!=null) {
-				logger.debug("Adding resource named " + value + " to POST");
+				logger.info("Adding resource named " + value + " to POST");
 				InputStream is = res.adaptTo(InputStream.class);
 				lIs.add(is);
 				builder.addBinaryBody(field, is, getContentType(value), value);			
@@ -2377,7 +2390,6 @@ public class Loader {
 			int pos = postURL.indexOf(".social.json");
 			if (pos>0) {
 				postURL = postURL.substring(0,pos) + "/voting.social.json";
-				logger.debug("VOTING URL: " + postURL);
 			} else {
 				postURL = postURL + "/voting.social.json";
 			}
@@ -2475,7 +2487,7 @@ public class Loader {
 		addBinaryBody(builder, lIs, rr, "file", csvfile, filename);
 		builder.addTextBody("fileName", filename, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-		logger.debug("Posting file for thumbnails with name: " + filename);
+		logger.info("Posting file for thumbnails with name: " + filename);
 
 		Loader.doPost(hostname, port,
 				pathToFile,
@@ -2504,7 +2516,7 @@ public class Loader {
 
 		}
 
-		logger.debug("Date and time is " + date);
+		logger.debug("Computed date and time is " + date);
 		return date;
 
 	}
@@ -2570,7 +2582,7 @@ public class Loader {
 					while (iter.hasNext()) {
 
 						String key = (String) iter.next();
-						logger.debug("New Resource Enrollee: " + key);
+						logger.info("New Resource Enrollee: " + key);
 
 						// Getting information about this assignment (user or group?)
 						String isGroup = doWait(hostname, altport,"admin", adminPassword, key, 1);
@@ -2775,7 +2787,7 @@ public class Loader {
 			ratingNameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
 			ratingNameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
 			int randomRating = (int) Math.ceil(Math.random()*5);
-			logger.debug("Randomly Generated Rating: " + randomRating);
+			logger.info("Randomly Generated Rating: " + randomRating);
 			ratingNameValuePairs.add(new BasicNameValuePair("referer", referer));
 			ratingNameValuePairs.add(new BasicNameValuePair("response", String.valueOf(randomRating)));
 			doPost(hostname, altport,
@@ -2802,7 +2814,7 @@ public class Loader {
 
 			// Posting a Comment for this resource
 			int randomComment = (int) Math.ceil(Math.random()*5);
-			logger.debug("Randomly Posting a Comment " + resourceCommentsEndpoint);
+			logger.info("Randomly Posting a Comment " + resourceCommentsEndpoint);
 			List<NameValuePair> commentNameValuePairs = new ArrayList<NameValuePair>();
 			commentNameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
 			commentNameValuePairs.add(new BasicNameValuePair("message", comments[randomComment-1]));
@@ -2868,7 +2880,7 @@ public class Loader {
 
 				// Composing the root URL for all subsequent requests
 				String postUrl = "http://" + hostname + ":" + port + url;
-				logger.debug("Posting request as " + user + " to " + postUrl);
+				logger.info("Posting request as " + user + " to " + postUrl);
 
 				// Preparing a standard POST HTTP command
 				HttpPost request = new HttpPost(postUrl);
@@ -2889,14 +2901,13 @@ public class Loader {
 					String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
 					if (returnCode>=500) {
 						logger.error("POST return code: " + returnCode);
-						logger.debug(responseString);
 						return returnCode;
 					}
 					if (returnCode>=400) {
 						logger.warn("POST return code: " + returnCode);
-						logger.debug(responseString);
 						return returnCode;
 					}
+					logger.debug(responseString);
 					if (elements==null)
 						return returnCode;
 					Set<String> keys = elements.keySet();
@@ -2920,14 +2931,14 @@ public class Loader {
 										if (jsonArray.length() == 1) {
 											JSONObject jsonObject = jsonArray.getJSONObject(0);
 											jsonElement = jsonObject.getString(lookup.substring(1 + separatorIndex));
-											//logger.debug("JSON value (jsonArray) returned is " + jsonElement);
+											logger.debug("JSON value (jsonArray) returned is " + jsonElement);
 										}
 
 									} else if (object instanceof JSONObject) {
 
 										JSONObject jsonobject = (JSONObject) object;
 										jsonElement = jsonobject.getString(lookup.substring(1 + separatorIndex));
-										//logger.debug("JSON value (jsonObject) returned is " + jsonElement);
+										logger.debug("JSON value (jsonObject) returned is " + jsonElement);
 
 									}
 								}
@@ -2935,7 +2946,7 @@ public class Loader {
 							} else {
 								// Grabbing element at the top of the JSON response
 								jsonElement = new JSONObject(responseString).getString(lookup);
-								//logger.debug("JSON (top) value returned is " + jsonElement);
+								logger.debug("JSON (top) value returned is " + jsonElement);
 							}
 						}
 						elements.put(lookup, jsonElement);
@@ -3044,7 +3055,7 @@ public class Loader {
 
 				// Composing the root URL for all subsequent requests
 				String postUrl = "http://" + hostname + ":" + port + url;
-				logger.debug("Deleting request as " + user + " to " + postUrl);
+				logger.info("Deleting path as " + user + " to " + postUrl);
 				HttpDelete request = new HttpDelete(postUrl);
 				httpClient.execute(target, request, localContext);
 
@@ -3090,7 +3101,7 @@ public class Loader {
 
 				if (groupList.indexOf("\"results\":1")>0) {
 
-					logger.debug("Group " + group + " was found on " + port);
+					logger.info("Group " + group + " was found on " + port);
 					return groupList;
 
 				} else {
@@ -3147,7 +3158,7 @@ public class Loader {
 				Matcher m = Pattern.compile("<td>([0-9]+)</td>").matcher(runningWorkflows);
 				if (m.find()) {
 					doSleep(2000, m.group(1) + " running workflows for " + context + " were found, waiting for completion, attempt " + retries);
-					logger.debug(runningWorkflows);
+					logger.info(runningWorkflows);
 				} else {
 					break; // no more running workflows
 				}
@@ -3170,7 +3181,7 @@ public class Loader {
 
 			if (isResourceAvailable(hostname, port, adminPassword, path)) {
 
-				logger.debug("Node is found for: " + path + " on port: " + port);
+				logger.info("Node is found for: " + path + " on port: " + port);
 				return;
 
 			} else {
@@ -3244,7 +3255,7 @@ public class Loader {
 				}
 
 				URI uri = uribuilder.build();
-				logger.debug("Getting request at " + uri.toString());
+				logger.info("Getting request at " + uri.toString());
 				HttpGet httpget = new HttpGet(uri);
 				CloseableHttpResponse response = httpClient.execute(httpget, localContext);
 				if (response.getStatusLine().getStatusCode()==200) {
@@ -3269,6 +3280,7 @@ public class Loader {
 			e.printStackTrace();
 		}
 
+		logger.debug(rawResponse);
 		return rawResponse;
 
 	}
@@ -3449,7 +3461,7 @@ public class Loader {
 							// Making it a "clean version"
 							version = version.replace(".SNAPSHOT", "").trim();
 
-							logger.debug(symbolicName + " : " + version);
+							logger.info(symbolicName + " : " + version);
 
 							return new Version( version );
 
