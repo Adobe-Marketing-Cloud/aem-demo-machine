@@ -542,7 +542,7 @@ public class Loader {
 
 							// Waiting for the path on publish 
 							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage), maxretries);
-							
+
 						}
 
 					}
@@ -600,10 +600,10 @@ public class Loader {
 					// Adding the mandatory values for being able to save a site via the JSON endpoint
 					List<String> props = Arrays.asList("urlName", "theme", "moderators", "communitymanagers", "privilegedmembers", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
 					try {
-						
+
 						JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
 						for (String prop : props) {
-							
+
 							// Making sure we don't put a value that is otherwise overridden from the CSV record
 							boolean willOverride = false;
 							for (int i=3;i<record.size()-1;i=i+2) {
@@ -615,7 +615,7 @@ public class Loader {
 										willOverride = true;
 									}
 								}
-								
+
 							}
 
 							if (siteprops.has(prop) && !willOverride) {
@@ -2140,8 +2140,12 @@ public class Loader {
 					elements.put("response/resourceType", "");
 					elements.put("response/id", "");
 				}
+				
+				if (componentType.equals(ASSET)) {
+					elements.put("location", "");
+				}
 
-				// This call generally returns the path to the content fragment that was just created
+				// This call generally returns the path to the content that was just created
 				int returnCode = Loader.doPost(hostname, port, getPostURL(componentType, subComponentType, url[urlLevel], userHome), userName, password, builder.build(), elements, null);
 
 				// Again, Assets being a particular case
@@ -2156,8 +2160,8 @@ public class Loader {
 
 				// In case of Assets or Resources, we are waiting for all workflows to be completed
 				if (componentType.equals(ASSET) && returnCode<400) {
-					doSleep(1000, "Pausing 1s after submitting asset");
-					doWaitWorkflows(hostname, port, adminPassword, "asset", maxretries);
+					doWaitAssetCompleted(hostname, port, adminPassword, elements.get("location"), maxretries);
+					doWaitWorkflowsCompleted(hostname, port, adminPassword, "asset", maxretries);
 				}
 
 				// If we are loading a content fragment, we need to post the actual content next
@@ -2239,7 +2243,7 @@ public class Loader {
 				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
 
 					// Wait for the workflows to be completed
-					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
+					doWaitWorkflowsCompleted(hostname, port, adminPassword, "resource", maxretries);
 
 					String resourcePath = "/assets/asset";
 
@@ -2262,7 +2266,7 @@ public class Loader {
 					}					
 
 					// Wait for the workflows to be completed before publishing the resource
-					doWaitWorkflows(hostname, port, adminPassword, "resource", maxretries);
+					doWaitWorkflowsCompleted(hostname, port, adminPassword, "resource", maxretries);
 
 					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
 
@@ -2495,7 +2499,7 @@ public class Loader {
 				builder.build(),
 				null);
 
-		doWaitWorkflows(hostname, port, adminPassword, "thumbnail", maxretries);
+		doWaitWorkflowsCompleted(hostname, port, adminPassword, "thumbnail", maxretries);
 
 		return pathToFile + "/file";
 
@@ -2907,14 +2911,24 @@ public class Loader {
 						logger.warn("POST return code: " + returnCode);
 						return returnCode;
 					}
+
 					logger.debug(responseString);
+
 					if (elements==null)
 						return returnCode;
 					Set<String> keys = elements.keySet();
+
 					if (!isJSONValid(responseString) && keys.size()>0) {
-						logger.warn("POST operation didn't return a JSON string, hence cannot extract requested value");
+						logger.debug("POST operation didn't return a JSON string, trying to extract the location from HTML results");
+
+						Matcher m = Pattern.compile("<a href=\"(.*)\" id=\"Location\">.*</a>").matcher(responseString);
+						if (m.find()) {
+							logger.info("Location is:" + m.group(1));
+							elements.put("location", m.group(1));
+						} 
 						return returnCode;
 					}
+									
 					for (String lookup : keys) {
 						if (lookup != null) {
 							int separatorIndex = lookup.indexOf("/");
@@ -3146,8 +3160,49 @@ public class Loader {
 		return query;
 	}
 
+	// This method waits for a specific asset status to be processed (since Assets and SCORM workflows were made transient in 6.3)
+	private static void doWaitAssetCompleted(String hostname, String port, String adminPassword, String location, int maxretries) {
+
+		if (location==null) return;
+		
+		int retries = 0;
+		while (retries++ < maxretries) {
+
+			String assetJson = doGet(hostname, port, location + "/jcr:content.json", "admin", adminPassword, null);
+			if (assetJson!=null) {
+
+				try {
+
+					JSONObject assetJsonObject = new JSONObject(assetJson);
+					String assetStatus = assetJsonObject.getString("dam:assetState");
+					
+					// In pre 6.3 versions, asset state might not be there at all
+					if (assetStatus==null || assetStatus.equals("")) break;
+					
+					// In post 6.3 versions, it's there
+					if (assetStatus.equals("processed")) {
+						break;
+					} else {
+						doSleep(2000, "Asset not processed yet, attempt: " + retries);
+					}
+					
+				}
+				catch (Exception ex) {
+					logger.debug("Asset state not available");
+					break;
+				}
+
+			} else {
+				logger.debug("Asset state call not successful");
+				break;
+			}
+
+		}
+
+	}
+
 	// This method waits for all running workflows to be completed
-	private static void doWaitWorkflows(String hostname, String port, String adminPassword, String context, int maxretries) {
+	private static void doWaitWorkflowsCompleted(String hostname, String port, String adminPassword, String context, int maxretries) {
 
 		int retries = 0;
 		while (retries++ < maxretries) {
