@@ -372,6 +372,7 @@ public class Loader {
 
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
+			recordLoop:
 			for (CSVRecord record : records) {
 
 				LinkedList<InputStream> lIs = new LinkedList<InputStream>();
@@ -733,7 +734,7 @@ public class Loader {
 				// Let's see if we need to activate a tree
 				if (record.get(0).equals(ACTIVATE) && record.get(1)!=null) {
 
-					if (!port.equals(altport)) {
+					if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
 
 						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 						nameValuePairs.add(new BasicNameValuePair("cmd", "activate"));
@@ -745,6 +746,8 @@ public class Loader {
 								"admin", adminPassword,
 								new UrlEncodedFormEntity(nameValuePairs),
 								null);
+					} else {
+						logger.warn("Not activating the requested path");
 					}
 
 					continue;
@@ -1324,7 +1327,7 @@ public class Loader {
 					// If it's not a SLINGPOST that could result in nodes to be created, let's make sure the end point is really there.
 					if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getRootPath(record.get(1)))) {
 						ignoreUntilNextComponent = true;
-						continue;
+						continue recordLoop;
 					} else {
 						ignoreUntilNextComponent = false;
 					}
@@ -1351,8 +1354,18 @@ public class Loader {
 							if (pos1>0) {
 
 								if (!isResourceAvailable(hostname, port, adminPassword, configurePath.substring(0, pos1)))
-									continue;
+									continue recordLoop;
 
+							}
+							
+							// If we're posting a /bin/wcmcommand for creating a page, let's make sure the template is there
+							if (record.get(1).equals("/bin/wcmcommand")) {
+								for (NameValuePair nvp:nameValuePairs) {
+									if (nvp.getName().equals("template") && !isResourceAvailable(hostname, port, adminPassword, nvp.getValue())) {
+										logger.warn("Requested template not found for page creation request");
+										continue recordLoop;
+									}
+								}
 							}
 
 							// If we're posting against a configuration node, let's make sure the parent folder is there
@@ -1360,7 +1373,7 @@ public class Loader {
 							if (pos2>0) {
 
 								if (!isResourceAvailable(hostname, port, adminPassword, configurePath))
-									continue;
+									continue recordLoop;
 
 							}
 
@@ -1370,7 +1383,7 @@ public class Loader {
 
 								if (!Hostname.isReachable("www.adobe.com", "80")) {
 									logger.warn("Analytics cannot be imported since you appear to be offline"); // The things you have to do when coding in airplanes...
-									continue;						
+									continue recordLoop;
 								}
 
 							}
