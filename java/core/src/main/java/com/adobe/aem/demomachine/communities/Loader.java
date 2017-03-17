@@ -351,7 +351,7 @@ public class Loader {
 			String bundlesList = doGet(hostname, port,
 					"/system/console/bundles.json",
 					"admin",adminPassword,
-					null);
+					null, false);
 
 			// Some steps are specific to the version number of the Enablement add-on
 			Version vBundleCommunitiesEnablement = getVersion(bundlesList, "com.adobe.cq.social.cq-social-enablement-impl");
@@ -373,167 +373,327 @@ public class Loader {
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
 			recordLoop:
-			for (CSVRecord record : records) {
+				for (CSVRecord record : records) {
 
-				LinkedList<InputStream> lIs = new LinkedList<InputStream>();
-				row = row + 1;
-				logger.info("Row: " + row + ", new record: " + record.get(0));			
-				if (record.size()>2)
-					subComponentType = record.get(2);
-				else
-					logger.info("No subcomponent type to load");
-
-				// Let's see if we deal with a comment
-				if (record.get(0).startsWith("#")) {
-
-					// We can ignore the comment line and move on
-					continue;
-
-				}
-
-				// Let's see if we need to terminate this process
-				if (record.get(0).equals(KILL)) {
-
-					if (rr==null)
-						System.exit(1);
+					LinkedList<InputStream> lIs = new LinkedList<InputStream>();
+					row = row + 1;
+					logger.info("Row: " + row + ", new record: " + record.get(0));			
+					if (record.size()>2)
+						subComponentType = record.get(2);
 					else
-						return;
+						logger.info("No subcomponent type to load");
 
-				}
+					// Let's see if we deal with a comment
+					if (record.get(0).startsWith("#")) {
 
-				// Let's see if we need to pause a little bit
-				if (record.get(0).equals(SLEEP) && record.get(1).length()>0) {
+						// We can ignore the comment line and move on
+						continue;
 
-					doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
-					continue;
+					}
 
-				}
+					// Let's see if we need to terminate this process
+					if (record.get(0).equals(KILL)) {
 
-				// Let's see if we need to set the current site path
-				if (record.get(0).equals(SITEPATH)) {
-					sitePagePath = record.get(1);
-				}
+						if (rr==null)
+							System.exit(1);
+						else
+							return;
 
-				// Let's see if we need to create a new Community site
-				if (record.get(0).equals(SITE)) {
+					}
 
-					// Building the form entity to be posted
-					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody(":operation", "social:createSite", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+					// Let's see if we need to pause a little bit
+					if (record.get(0).equals(SLEEP) && record.get(1).length()>0) {
 
-					String urlName = null;
-					String[] initialLanguages = null;
+						doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
+						continue;
 
-					boolean isValid=true;
-					for (int i=2;i<record.size()-1;i=i+2) {
+					}
 
-						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+					// Let's see if we need to set the current site path
+					if (record.get(0).equals(SITEPATH)) {
+						sitePagePath = record.get(1);
+					}
 
-							String name = record.get(i).trim();
-							String value = record.get(i+1).trim();
-							if (value.equals("TRUE")) { value = "true"; }
-							if (value.equals("FALSE")) { value = "false"; }	
-							if (name.equals("urlName")) { urlName = value; }
+					// Let's see if we need to create a new Community site
+					if (record.get(0).equals(SITE)) {
 
-							// Only create the site when a ROOT path is specified and available
-							if (name.equals(ROOT)) {
-								rootPath = value;
-								logger.info("Rootpath for subsequent processing is: " + rootPath);
-								if (!isResourceAvailable(hostname, port, adminPassword, rootPath)) {
-									logger.warn("Rootpath " + rootPath + " is not available, proceeding to next record");
-									isValid=false;
-								} else {
-									logger.info("Rootpath " + rootPath + " is available");
+						// Building the form entity to be posted
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody(":operation", "social:createSite", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+						String urlName = null;
+						String[] initialLanguages = null;
+
+						boolean isValid=true;
+						for (int i=2;i<record.size()-1;i=i+2) {
+
+							if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+
+								String name = record.get(i).trim();
+								String value = record.get(i+1).trim();
+								if (value.equals("TRUE")) { value = "true"; }
+								if (value.equals("FALSE")) { value = "false"; }	
+								if (name.equals("urlName")) { urlName = value; }
+
+								// Only create the site when a ROOT path is specified and available
+								if (name.equals(ROOT)) {
+									rootPath = value;
+									logger.info("Rootpath for subsequent processing is: " + rootPath);
+									if (!isResourceAvailable(hostname, port, adminPassword, rootPath)) {
+										logger.warn("Rootpath " + rootPath + " is not available, proceeding to next record");
+										isValid=false;
+									} else {
+										logger.info("Rootpath " + rootPath + " is available");
+									}
 								}
-							}
 
-							// Only create the site when a non-english language is specified 
-							if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
-								if (!value.startsWith("en") && nomultilingual) {
-									logger.info("Language " + value + " is not desired for this site, proceeding to next record");
-									isValid=false;
+								// Only create the site when a non-english language is specified 
+								if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
+									if (!value.startsWith("en") && nomultilingual) {
+										logger.info("Language " + value + " is not desired for this site, proceeding to next record");
+										isValid=false;
+									}
 								}
-							}
 
-							if (name.equals(BANNER)) {
-								addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
-							} else if (name.equals(THUMBNAIL)) {
-								addBinaryBody(builder, lIs, rr, THUMBNAIL, csvfile, value);
-							} else if (name.equals(CSS)) {
-								addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
-							} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
+								if (name.equals(BANNER)) {
+									addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
+								} else if (name.equals(THUMBNAIL)) {
+									addBinaryBody(builder, lIs, rr, THUMBNAIL, csvfile, value);
+								} else if (name.equals(CSS)) {
+									addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
+								} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 
 
-								// Starting with 6.1 FP5 and 6.2 FP1, we can create multiple languages at once, if expected by the script parameters
-								if (isCommunities61FP5orlater && !nomultilingual) {
+									// Starting with 6.1 FP5 and 6.2 FP1, we can create multiple languages at once, if expected by the script parameters
+									if (isCommunities61FP5orlater && !nomultilingual) {
 
-									initialLanguages = value.split(",");
-									for (String initialLanguage : initialLanguages) {
-										builder.addTextBody(LANGUAGES, initialLanguage, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+										initialLanguages = value.split(",");
+										for (String initialLanguage : initialLanguages) {
+											builder.addTextBody(LANGUAGES, initialLanguage, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+										}
+
+									} else {
+
+										// Only keep the first language for pre 6.1 FP5 and 6.2 FP1
+										initialLanguages = new String[1];
+										initialLanguages[0] = value.split(",")[0];
+										builder.addTextBody(LANGUAGE, initialLanguages[0], ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
 									}
 
 								} else {
 
-									// Only keep the first language for pre 6.1 FP5 and 6.2 FP1
-									initialLanguages = new String[1];
-									initialLanguages[0] = value.split(",")[0];
-									builder.addTextBody(LANGUAGE, initialLanguages[0], ContentType.create("text/plain", MIME.UTF8_CHARSET));
+									// For cloud services, we verify that they are actually available
+									if ((name.equals(OPTION_TRANSLATION) || name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
 
-								}
+										String cloudName = record.get(i+2).trim();
+										String cloudValue = record.get(i+3).trim();
 
-							} else {
+										if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
+											builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+											logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
+										} else {	
+											// We have a valid cloud service
+											builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+											builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+											i=i+2;
+											logger.info("Cloud service: " + cloudValue + " available on this instance");
+										}
 
-								// For cloud services, we verify that they are actually available
-								if ((name.equals(OPTION_TRANSLATION) || name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
+									} else {
 
-									String cloudName = record.get(i+2).trim();
-									String cloudValue = record.get(i+3).trim();
-
-									if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
-										builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-										logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
-									} else {	
-										// We have a valid cloud service
+										// All other values just get added as is
 										builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-										builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-										i=i+2;
-										logger.info("Cloud service: " + cloudValue + " available on this instance");
+
 									}
-
-								} else {
-
-									// All other values just get added as is
-									builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
 								}
 							}
 						}
+
+						// Site creation
+						if (isValid)
+							doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
+									null);
+						else
+							continue;
+
+						// Waiting for site creation to be complete
+						boolean existingSiteWithLocale = rootPath.indexOf("/"+initialLanguages[0])>0;					
+						doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]), maxretries);
+
+						// Site publishing, if there's a publish instance to publish to
+						if (!port.equals(altport)) {
+
+							for (String initialLanguage : initialLanguages) {
+
+								List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+								nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+								nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
+								nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguage)));
+
+								logger.info("Publishing site " + urlName + " for language " + initialLanguage);
+
+								doPost(hostname, port,
+										"/communities/sites.html",
+										"admin", adminPassword,
+										new UrlEncodedFormEntity(nameValuePairs),
+										null);
+
+								// Waiting for the path on publish 
+								doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage), maxretries);
+
+							}
+
+						}
+
+						continue;
 					}
 
-					// Site creation
-					if (isValid)
-						doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
+					// Let's see if we need to update an existing Community site (this doesn't include republishing the site!)
+					if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
+
+						// Let's set if we need to run based on version number
+						Version vRecord = null;
+						if (record.get(2).startsWith(">") || record.get(2).startsWith("<") || record.get(2).startsWith("=")) {
+
+							try {
+								vRecord = new Version(record.get(2).substring(1));
+							} catch (Exception e) {
+								logger.error("Invalid version number specified" + record.get(2));
+							}
+						}
+
+						if (vRecord!=null && record.get(2).startsWith(">") && vBundleCommunitiesSCF.compareTo(vRecord)<=0) {
+							logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
+							continue;
+						}
+
+						if (vRecord!=null && record.get(2).startsWith("<") && vBundleCommunitiesSCF.compareTo(vRecord)>0) {
+							logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
+							continue;
+						}
+
+						if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
+							logger.info("Updating a Community Site " + record.get(1));
+						} else {
+							logger.error("Can't update a Community Site " + record.get(1));
+							continue;
+						}
+
+						// Let's fetch the theme for this Community Site Url
+						String siteConfig = doGet(hostname, port, record.get(1),
+								"admin",adminPassword,
 								null);
-					else
+
+						if (siteConfig==null) {
+							logger.error("Can't update a Community Site " + record.get(1));
+							continue;
+						}
+
+						// Building the form entity to be posted
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody(":operation", "social:updateSite", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+						// Adding the mandatory values for being able to save a site via the JSON endpoint
+						List<String> props = Arrays.asList("urlName", "theme", "moderators", "communitymanagers", "privilegedmembers", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
+						try {
+
+							JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
+							for (String prop : props) {
+
+								// Making sure we don't put a value that is otherwise overridden from the CSV record
+								boolean willOverride = false;
+								for (int i=3;i<record.size()-1;i=i+2) {
+
+									if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+
+										String name = record.get(i).trim();
+										if (name.equals(prop)) {
+											willOverride = true;
+										}
+									}
+
+								}
+
+								if (siteprops.has(prop) && !willOverride) {
+									Object propValue = siteprops.get(prop); 
+									if (propValue instanceof JSONArray) {
+										JSONArray propArray = (JSONArray) propValue;
+										for (int i=0;i<propArray.length();i++) {
+											builder.addTextBody(prop, propArray.get(i).toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));																	
+										}
+									} else {
+										builder.addTextBody(prop, propValue.toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));								
+									}
+								} else {
+									logger.info("Not adding property " + prop + " with override status " + willOverride);
+								}
+							}
+
+						} catch (Exception e) {
+							logger.error(e.getMessage());
+						}
+
+						// Adding the override values from the CSV record
+						boolean isValid=true;
+						for (int i=3;i<record.size()-1;i=i+2) {
+
+							if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+
+								String name = record.get(i).trim();
+								String value = record.get(i+1).trim();
+								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+								// If the template includes some of the enablement features, then it won't work for 6.1 GA
+								if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
+									logger.info("Site update is not compatible with this version of AEM");
+									isValid=false;
+								}
+
+								// If the template includes some of the ideation features, then it won't work until 6.2 FP2
+								if (name.equals("functions") && value.indexOf("ideation")>0 && !isCommunities61FP6orlater) {
+									logger.info("Site update is not compatible with this version of AEM");
+									isValid=false;
+								}
+
+							}
+
+						}
+
+						// Convenient for debugging the site update operation
+						printPOST(builder.build());	
+
+						if (isValid)
+							doPost(hostname, port,
+									record.get(1),
+									"admin", adminPassword,
+									builder.build(),
+									null);
+
 						continue;
+					}
 
-					// Waiting for site creation to be complete
-					boolean existingSiteWithLocale = rootPath.indexOf("/"+initialLanguages[0])>0;					
-					doWaitPath(hostname, port, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguages[0]), maxretries);
+					// Let's see if we need to publish a site
+					if (record.get(0).equals(SITEPUBLISH) && record.get(1)!=null) {
 
-					// Site publishing, if there's a publish instance to publish to
-					if (!port.equals(altport)) {
+						if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
+							logger.info("Publishing a Community Site " + record.get(1));
+						} else {
+							logger.warn("Can't publish a Community Site " + record.get(1));
+							continue;
+						}
 
-						for (String initialLanguage : initialLanguages) {
+						if (!port.equals(altport)) {
 
 							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 							nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
-							nameValuePairs.add(new BasicNameValuePair("path", rootPath + "/" + urlName + (existingSiteWithLocale?"":"/" + initialLanguage)));
-
-							logger.info("Publishing site " + urlName + " for language " + initialLanguage);
+							nameValuePairs.add(new BasicNameValuePair("nestedActivation", "true"));
+							nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
 
 							doPost(hostname, port,
 									"/communities/sites.html",
@@ -541,1817 +701,1658 @@ public class Loader {
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
 
-							// Waiting for the path on publish 
-							doWaitPath(hostname, altport, adminPassword, rootPath + "/" + urlName + (existingSiteWithLocale?"": "/" + initialLanguage), maxretries);
+							doWaitPath(hostname, altport, adminPassword, record.get(1), maxretries);
 
 						}
 
+						continue;
+
 					}
 
-					continue;
-				}
+					// Let's see if we need to publish a group
+					if (record.get(0).equals(GROUPPUBLISH) && record.get(1)!=null) {
 
-				// Let's see if we need to update an existing Community site (this doesn't include republishing the site!)
-				if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
+						if (!port.equals(altport)) {
 
-					// Let's set if we need to run based on version number
-					Version vRecord = null;
-					if (record.get(2).startsWith(">") || record.get(2).startsWith("<") || record.get(2).startsWith("=")) {
+							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+							nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishCommunityGroup"));
+							nameValuePairs.add(new BasicNameValuePair("nestedActivation", "true"));
+							nameValuePairs.add(new BasicNameValuePair("path", record.get(1) + "/" + record.get(2)));
 
-						try {
-							vRecord = new Version(record.get(2).substring(1));
-						} catch (Exception e) {
-							logger.error("Invalid version number specified" + record.get(2));
+							doPost(hostname, port,
+									"/communities/communitygroups.html/" + record.get(1),
+									"admin", adminPassword,
+									new UrlEncodedFormEntity(nameValuePairs),
+									null);
 						}
-					}
 
-					if (vRecord!=null && record.get(2).startsWith(">") && vBundleCommunitiesSCF.compareTo(vRecord)<=0) {
-						logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
 						continue;
+
 					}
 
-					if (vRecord!=null && record.get(2).startsWith("<") && vBundleCommunitiesSCF.compareTo(vRecord)>0) {
-						logger.info("Ignoring the site update command for this version of AEM" + vBundleCommunitiesSCF.get());
+					// Let's see if we need to activate a tree
+					if (record.get(0).equals(ACTIVATE) && record.get(1)!=null) {
+
+						if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
+
+							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+							nameValuePairs.add(new BasicNameValuePair("cmd", "activate"));
+							nameValuePairs.add(new BasicNameValuePair("ignoreactivated", "true"));
+							nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
+
+							doPost(hostname, port,
+									"/etc/replication/treeactivation.html",
+									"admin", adminPassword,
+									new UrlEncodedFormEntity(nameValuePairs),
+									null);
+						} else {
+							logger.warn("Not activating the requested path");
+						}
+
 						continue;
+
 					}
 
-					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
-						logger.info("Updating a Community Site " + record.get(1));
-					} else {
-						logger.error("Can't update a Community Site " + record.get(1));
-						continue;
-					}
+					// Let's see if we need to create a new Tag
+					if (record.get(0).equals(TAG)) {
 
-					// Let's fetch the theme for this Community Site Url
-					String siteConfig = doGet(hostname, port, record.get(1),
-							"admin",adminPassword,
-							null);
+						// Building the form entity to be posted
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-					if (siteConfig==null) {
-						logger.error("Can't update a Community Site " + record.get(1));
-						continue;
-					}
+						for (int i=1;i<record.size()-1;i=i+2) {
 
-					// Building the form entity to be posted
-					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody(":operation", "social:updateSite", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0 && record.get(i+1).length()>0) {
 
-					// Adding the mandatory values for being able to save a site via the JSON endpoint
-					List<String> props = Arrays.asList("urlName", "theme", "moderators", "communitymanagers", "privilegedmembers", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
-					try {
+								String name = record.get(i).trim();
+								String value = record.get(i+1).trim();
+								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-						JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
-						for (String prop : props) {
-
-							// Making sure we don't put a value that is otherwise overridden from the CSV record
-							boolean willOverride = false;
-							for (int i=3;i<record.size()-1;i=i+2) {
-
-								if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
-
-									String name = record.get(i).trim();
-									if (name.equals(prop)) {
-										willOverride = true;
-									}
-								}
-
-							}
-
-							if (siteprops.has(prop) && !willOverride) {
-								Object propValue = siteprops.get(prop); 
-								if (propValue instanceof JSONArray) {
-									JSONArray propArray = (JSONArray) propValue;
-									for (int i=0;i<propArray.length();i++) {
-										builder.addTextBody(prop, propArray.get(i).toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));																	
-									}
-								} else {
-									builder.addTextBody(prop, propValue.toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));								
-								}
-							} else {
-								logger.info("Not adding property " + prop + " with override status " + willOverride);
 							}
 						}
 
-					} catch (Exception e) {
-						logger.error(e.getMessage());
-					}
-
-					// Adding the override values from the CSV record
-					boolean isValid=true;
-					for (int i=3;i<record.size()-1;i=i+2) {
-
-						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
-
-							String name = record.get(i).trim();
-							String value = record.get(i+1).trim();
-							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
-							// If the template includes some of the enablement features, then it won't work for 6.1 GA
-							if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
-								logger.info("Site update is not compatible with this version of AEM");
-								isValid=false;
-							}
-
-							// If the template includes some of the ideation features, then it won't work until 6.2 FP2
-							if (name.equals("functions") && value.indexOf("ideation")>0 && !isCommunities61FP6orlater) {
-								logger.info("Site update is not compatible with this version of AEM");
-								isValid=false;
-							}
-
-						}
-
-					}
-
-					// Convenient for debugging the site update operation
-					printPOST(builder.build());	
-
-					if (isValid)
+						// Tag creation
 						doPost(hostname, port,
-								record.get(1),
+								"/bin/tagcommand",
 								"admin", adminPassword,
 								builder.build(),
 								null);
 
-					continue;
-				}
-
-				// Let's see if we need to publish a site
-				if (record.get(0).equals(SITEPUBLISH) && record.get(1)!=null) {
-
-					if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
-						logger.info("Publishing a Community Site " + record.get(1));
-					} else {
-						logger.warn("Can't publish a Community Site " + record.get(1));
 						continue;
 					}
 
-					if (!port.equals(altport)) {
+					// Let's see if we need to assign some badges
+					if (record.get(0).equals(BADGE)) {
 
-						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishSite"));
-						nameValuePairs.add(new BasicNameValuePair("nestedActivation", "true"));
-						nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
-
-						doPost(hostname, port,
-								"/communities/sites.html",
-								"admin", adminPassword,
-								new UrlEncodedFormEntity(nameValuePairs),
-								null);
-
-						doWaitPath(hostname, altport, adminPassword, record.get(1), maxretries);
-
-					}
-
-					continue;
-
-				}
-
-				// Let's see if we need to publish a group
-				if (record.get(0).equals(GROUPPUBLISH) && record.get(1)!=null) {
-
-					if (!port.equals(altport)) {
-
-						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:publishCommunityGroup"));
-						nameValuePairs.add(new BasicNameValuePair("nestedActivation", "true"));
-						nameValuePairs.add(new BasicNameValuePair("path", record.get(1) + "/" + record.get(2)));
-
-						doPost(hostname, port,
-								"/communities/communitygroups.html/" + record.get(1),
-								"admin", adminPassword,
-								new UrlEncodedFormEntity(nameValuePairs),
-								null);
-					}
-
-					continue;
-
-				}
-
-				// Let's see if we need to activate a tree
-				if (record.get(0).equals(ACTIVATE) && record.get(1)!=null) {
-
-					if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
-
-						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-						nameValuePairs.add(new BasicNameValuePair("cmd", "activate"));
-						nameValuePairs.add(new BasicNameValuePair("ignoreactivated", "true"));
-						nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
-
-						doPost(hostname, port,
-								"/etc/replication/treeactivation.html",
-								"admin", adminPassword,
-								new UrlEncodedFormEntity(nameValuePairs),
-								null);
-					} else {
-						logger.warn("Not activating the requested path");
-					}
-
-					continue;
-
-				}
-
-				// Let's see if we need to create a new Tag
-				if (record.get(0).equals(TAG)) {
-
-					// Building the form entity to be posted
-					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
-					for (int i=1;i<record.size()-1;i=i+2) {
-
-						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0 && record.get(i+1).length()>0) {
-
-							String name = record.get(i).trim();
-							String value = record.get(i+1).trim();
-							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
+						if (vBundleCommunitiesEnablement==null || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
+							logger.info("Badging operations not available with this version of AEM");
+							continue;
 						}
-					}
 
-					// Tag creation
-					doPost(hostname, port,
-							"/bin/tagcommand",
-							"admin", adminPassword,
-							builder.build(),
-							null);
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
 
-					continue;
-				}
+						String badgePath = record.get(1);
+						if (badgePath.startsWith("/etc") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+							badgePath = badgePath.replaceAll("/jcr:content", "");
+							nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
+							nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
+						}
 
-				// Let's see if we need to assign some badges
-				if (record.get(0).equals(BADGE)) {
+						if (nameValuePairs.size()>2) {
 
-					if (vBundleCommunitiesEnablement==null || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
-						logger.info("Badging operations not available with this version of AEM");
-						continue;
-					}
+							for (int i=0;i<nameValuePairs.size();i=i+1) {
 
-					List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+								String name = nameValuePairs.get(i).getName();
+								String value = nameValuePairs.get(i).getValue();
 
-					String badgePath = record.get(1);
-					if (badgePath.startsWith("/etc") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
-						badgePath = badgePath.replaceAll("/jcr:content", "");
-						nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
-						nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
-					}
-
-					if (nameValuePairs.size()>2) {
-
-						for (int i=0;i<nameValuePairs.size();i=i+1) {
-
-							String name = nameValuePairs.get(i).getName();
-							String value = nameValuePairs.get(i).getValue();
-
-							// Special case to accommodate re-factoring of badging images
-							if (name.equals("badgeContentPath") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
-								value = value.replaceAll("/jcr:content", "");
-								nameValuePairs.set(i, new BasicNameValuePair(name, value));
-							}
-
-							// Special case to accommodate re-factoring of badging images
-							if (name.startsWith("thresholds") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
-								value = value.replaceAll("/jcr:content(.*)", "");
-								nameValuePairs.set(i, new BasicNameValuePair(name, value));
-							}
-
-							// Special case to accommodate re-factoring or scoring and badging resource types
-							if (name.equals("jcr:primaryType") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
-								if (value.equals("cq:PageContent") || value.equals("cq:Page")) {
-									value = "nt:unstructured";
+								// Special case to accommodate re-factoring of badging images
+								if (name.equals("badgeContentPath") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+									value = value.replaceAll("/jcr:content", "");
 									nameValuePairs.set(i, new BasicNameValuePair(name, value));
 								}
-							}
 
-							// Special case for accommodate advanced scoring being installed or not
-							if (name.endsWith("Rules") && value.contains("adv-") && vBundleCommunitiesAdvancedScoring==null) {
-								nameValuePairs.remove(i--);
-							}
-
-						}
-					}
-
-					// Badge rules operation
-					doPost(hostname, port,
-							badgePath,
-							"admin", adminPassword,
-							new UrlEncodedFormEntity(nameValuePairs),
-							null);
-
-					continue;
-				}
-
-				// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
-				if (record.get(0).equals(SITETEMPLATE) || record.get(0).equals(GROUPTEMPLATE)) {
-
-					// Building the form entity to be posted
-					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody(":operation", "social:create" + record.get(0), ContentType.create("text/plain", MIME.UTF8_CHARSET));
-					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
-					boolean isValid=true;
-					for (int i=2;i<record.size()-1;i=i+2) {
-
-						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
-
-							String name = record.get(i).trim();
-							String value = record.get(i+1).trim();
-							builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
-							// If the template is already there, let's not try to create it
-							if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + title2name(value)) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + title2name(value)))) {
-								logger.info("Template " + value + " is already there");
-								isValid=false;
-							}
-
-							// If the template includes some of the enablement features, then it won't work for 6.1 GA
-							if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
-								logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
-								isValid=false;
-							}
-
-							// If the template includes some of the ideation features, then it won't work until 6.2 FP2
-							if (name.equals("functions") && value.indexOf("ideation")>0 && !isCommunities61FP6orlater) {
-								logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
-								isValid=false;
-							}
-
-							// If the group template includes the nested group features, then it won't work until 6.2 FP1
-							if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
-								logger.info("Group template " + record.get(3) + " is not compatible with this version of AEM");
-								isValid=false;
-							}
-
-							// If the group template includes the blogs or calendars, then it won't work with 6.1GA
-							if (name.equals("functions") && (value.indexOf("blog")>0 || value.indexOf("calendar")>0) && vBundleCommunitiesEnablement==null) {
-								logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
-								isValid=false;
-							}
-
-						}
-					}
-
-					// Site or Group template creation
-					if (isValid) doPost(hostname, port,
-							"/content.social.json",
-							"admin", adminPassword,
-							builder.build(),
-							null);
-
-					continue;
-				}
-
-				// Let's see if we need to create a new Community group
-				if (record.get(0).equals(GROUP) || record.get(0).equals(SUBGROUP)) {
-
-					// SubGroups are only supported with 6.1 FP5 and 6.2 FP1 onwards
-					if (record.get(0).equals(SUBGROUP) && !isCommunities61FP5orlater) {
-						logger.warn("Subgroups are not supported with this version of AEM Communities");
-						continue;
-					}
-
-					// Building the form entity to be posted
-					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-					builder.setCharset(MIME.UTF8_CHARSET);
-					builder.addTextBody(":operation", "social:createCommunityGroup", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-					builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
-					String urlName=null;
-					String groupType=null;
-					for (int i=3;i<record.size()-1;i=i+2) {
-
-						if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
-
-							String name = record.get(i).trim();
-							String value = record.get(i+1).trim();
-							if (value.equals("TRUE")) { value = "true"; }
-							if (value.equals("FALSE")) { value = "false"; }	
-							if (name.equals("type")) { groupType = value; }
-							if (name.equals(IMAGE)) {
-								addBinaryBody(builder, lIs, rr, IMAGE, csvfile, value);
-							} else {
-								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-							}
-							if (name.equals("urlName")) {
-								urlName = value;
-							}
-							if (name.equals("siteRoot")) {
-								// Some content root has been provided for the Group. It might result from previous actions and might not be there yet - let's wait for it
-								doWaitPath(hostname, port, adminPassword, value, maxretries);
-							}
-						}
-					}
-
-					// Private groups are only support with 6.1 FP1 onwards
-					if (groupType!=null && groupType.equals("Secret") && isCommunities61) {
-						continue;
-					}
-
-					// Group creation
-					doPost(hostname, port,
-							record.get(1),
-							getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
-							builder.build(),
-							null);
-
-					// Waiting for group to be available either on publish or author
-					int i = (record.get(1).indexOf("/jcr:content")>0)?record.get(1).indexOf("/jcr:content"):record.get(1).indexOf(".social.json");
-					if (urlName!=null && i>0) {
-						doWaitPath(hostname, port, adminPassword, record.get(1).substring(0, i) + "/" + urlName, maxretries);
-					} else {
-						logger.warn("Not waiting for Group to be fully available");
-					}
-
-					continue;
-
-				}
-
-				// Let's see if it's simple Sling Delete request
-				if (record.get(0).equals(SLINGDELETE)) {
-
-					doDelete(hostname, port,
-							record.get(1),
-							"admin", adminPassword);
-
-					continue;
-
-				}
-
-				// Let's see if we need to delete some user groups
-				if (record.get(0).equals(GROUPDELETE) && record.get(1)!=null) {
-
-					// Let's query all the Community sites
-					String siteList = Loader.doGet(hostname, port,
-							"/mnt/overlay/social/console/content-shell3/sites/jcr:content/views/content/items/sitecollection.social.json",
-							"admin", adminPassword,
-							null);					
-
-					// List of orphan entries
-					List<String> orphanKeys = new ArrayList<String>();
-
-					// Let's query all the groups
-					List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-					nameValuePairs.add(new BasicNameValuePair("type", "rep:Group"));
-					nameValuePairs.add(new BasicNameValuePair("p.limit", "-1"));
-					nameValuePairs.add(new BasicNameValuePair("p.hits", "full"));
-
-					String groupList = Loader.doGet(hostname, port,
-							"/bin/querybuilder.json",
-							"admin", adminPassword,
-							nameValuePairs);
-					JSONArray jsonArray = new JSONObject(groupList).getJSONArray("hits");
-
-					for (int i=0;i<jsonArray.length();i++) {
-
-						JSONObject jsonObject = jsonArray.getJSONObject(i);
-						String groupPath=jsonObject.getString("jcr:path");
-						String groupName=jsonObject.getString("rep:authorizableId");
-
-						boolean deleteGroup=false;
-
-						// First, an explicit delete is requested
-						if (groupName.startsWith(record.get(2)) && groupPath.startsWith(record.get(1))) {
-							deleteGroup = true;
-						}
-
-						// Second, we might be dealing with an orphan group, let's verify
-						String communityGroups = "/home/groups/community/";
-						int indexStartCommunity = groupPath.indexOf(communityGroups);
-						if (indexStartCommunity>=0) {
-							int indexStopCommunity = groupPath.indexOf("/", communityGroups.length() + indexStartCommunity);
-							if (indexStopCommunity>0) {
-								String keyCommunity = groupPath.substring(communityGroups.length() + indexStartCommunity, indexStopCommunity);
-								int indexUrlCommunity = keyCommunity.indexOf("-");
-								if (indexUrlCommunity>0) {
-									String urlCommunity = keyCommunity.substring(0, indexUrlCommunity);
-									if (!siteList.contains(keyCommunity) && !siteList.contains("siteUrlName\":\"" + urlCommunity)) {
-										deleteGroup = true;
-										orphanKeys.add(keyCommunity);
-										orphanKeys.add("community-" + urlCommunity);
-									}
-
-
+								// Special case to accommodate re-factoring of badging images
+								if (name.startsWith("thresholds") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+									value = value.replaceAll("/jcr:content(.*)", "");
+									nameValuePairs.set(i, new BasicNameValuePair(name, value));
 								}
+
+								// Special case to accommodate re-factoring or scoring and badging resource types
+								if (name.equals("jcr:primaryType") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
+									if (value.equals("cq:PageContent") || value.equals("cq:Page")) {
+										value = "nt:unstructured";
+										nameValuePairs.set(i, new BasicNameValuePair(name, value));
+									}
+								}
+
+								// Special case for accommodate advanced scoring being installed or not
+								if (name.endsWith("Rules") && value.contains("adv-") && vBundleCommunitiesAdvancedScoring==null) {
+									nameValuePairs.remove(i--);
+								}
+
 							}
 						}
 
-						if (deleteGroup) {
-
-							logger.info("Deleting orphan or desired group " + groupName);
-
-							List<NameValuePair>  groupDeleteValuePairs = new ArrayList<NameValuePair>();
-							groupDeleteValuePairs.add(new BasicNameValuePair("deleteAuthorizable", groupName));
-
-							// Building the form entity to be posted
-							MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-							builder.setCharset(MIME.UTF8_CHARSET);
-							builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-							builder.addTextBody("deleteAuthorizable", groupName, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-
-							doPost(hostname, port,
-									groupPath,
-									"admin", adminPassword,
-									builder.build(),
-									null);
-
-						}
-
-					}
-
-					// Let's get rid of all the orphan folders for groups
-					for (String key : orphanKeys) {
-						logger.info("Deleting folder /home/groups/community/" + key);
-						doDelete(hostname, port,
-								"/home/groups/community/" + key,
-								"admin", adminPassword);
-
-					}
-
-				}
-
-				// Let's see if we need to delete a Community site
-				if (record.get(0).equals(SITEDELETE) && record.get(1)!=null) {
-
-					// Let's fetch the siteId for this Community Site Url
-					String siteConfig = doGet(hostname, port,
-							record.get(1),
-							"admin",adminPassword,
-							null);
-
-					// No site to Delete
-					if (siteConfig==null) continue;
-
-					try {
-
-						String siteRoot = new JSONObject(siteConfig).getString("siteRoot");
-						String urlName = new JSONObject(siteConfig).getString("urlName");
-						String siteId = new JSONObject(siteConfig).getString("siteId");
-						String resourcesRoot = new JSONObject(siteConfig).getString("siteAssetsPath");
-
-						if (siteRoot!=null && urlName!=null && siteId!=null && resourcesRoot!=null) {
-
-							// First, deleting the main JCR path for this site, on author and publish
-							doDelete(hostname, port, siteRoot + "/" + urlName, "admin", adminPassword);
-							doDelete(hostname, altport, siteRoot + "/" + urlName, "admin", adminPassword);
-
-							// Then, deleting the dam resources for this site, on author and publish
-							doDelete(hostname, port, resourcesRoot, "admin", adminPassword);
-							doDelete(hostname, altport, resourcesRoot, "admin", adminPassword);
-
-							// Then, deleting the main UGC path for this site, on author and publish
-							doDelete(hostname, port, "/content/usergenerated/asi/jcr" + siteRoot + "/" + urlName, "admin", adminPassword);
-							doDelete(hostname, altport, "/content/usergenerated/asi/jcr" + siteRoot + "/" + urlName, "admin", adminPassword);
-
-							// Finally, deleting the system groups for this site, on author and publish
-							doDelete(hostname, port, "/home/groups/community-" + siteId, "admin", adminPassword);
-							doDelete(hostname, altport, "/home/groups/community-" + siteId, "admin", adminPassword);
-
-						}
-
-					} catch (Exception e) {
-						logger.error(e.getMessage());
-					}
-				}
-
-				// Let's see if we need to add users to an AEM Group
-				if ((record.get(0).equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
-
-					// Checking if we have a member group for this site
-					String groupName = null;
-					if (record.get(0).equals(SITEMEMBERS)) {
-
-						String configurationPath = record.get(GROUP_INDEX_NAME);
-
-						// Let's make sure the configuration .json is there
-						doWaitPath(hostname, port, adminPassword, configurationPath, maxretries);
-
-						// Let's fetch the siteId for this Community Site Url
-						String siteConfig = doGet(hostname, port,
-								configurationPath,
-								"admin",adminPassword,
+						// Badge rules operation
+						doPost(hostname, port,
+								badgePath,
+								"admin", adminPassword,
+								new UrlEncodedFormEntity(nameValuePairs),
 								null);
 
-						if (siteConfig==null) {
-							logger.error("Can't retrieve site configuration");
-							continue;
-						};
-
-						String siteId = null;
-						try {
-
-							siteId = new JSONObject(siteConfig).getString("siteId");
-
-						} catch (Exception e) {
-
-							logger.warn("No site Id available");
-
-						}
-
-						String urlName = null;
-						try {
-
-							urlName = new JSONObject(siteConfig).getString("urlName");
-
-						} catch (Exception e) {
-
-							logger.error("No site url available");
-							continue;
-
-						}
-
-						if (siteId!=null) 
-							groupName = "community-" + siteId + "-members";
-						else
-							groupName = "community-" + urlName + "-members";
-
-						logger.info("Site Member group name is " + groupName);
-
+						continue;
 					}
 
-					if (record.get(0).equals(GROUPMEMBERS)) {
+					// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
+					if (record.get(0).equals(SITETEMPLATE) || record.get(0).equals(GROUPTEMPLATE)) {
 
-						groupName = record.get(GROUP_INDEX_NAME);	
+						// Building the form entity to be posted
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody(":operation", "social:create" + record.get(0), ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-					}
+						boolean isValid=true;
+						for (int i=2;i<record.size()-1;i=i+2) {
 
-					// We can't proceed if the group name wasn't retrieved from the configuration
-					if (groupName==null) continue;
+							if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
 
-					// Pause until the group can found
-					String groupList = doWait(hostname, port,
-							"admin", adminPassword,
-							groupName, maxretries
-							);
+								String name = record.get(i).trim();
+								String value = record.get(i+1).trim();
+								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-					if (groupList!=null && groupList.indexOf("\"results\":1")>0) {
-
-						logger.info("Group was found on " + port);
-						try {
-							JSONArray jsonArray = new JSONObject(groupList).getJSONArray("hits");
-							if (jsonArray.length()==1) {
-								JSONObject jsonObject = jsonArray.getJSONObject(0);
-								String groupPath= jsonObject.getString("path");
-
-								logger.info("Group path is " + groupPath);
-
-								// Constructing a multi-part POST for group membership
-								MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-								builder.setCharset(MIME.UTF8_CHARSET);
-								builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-
-								List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
-								for (NameValuePair nameValuePair : groupNameValuePairs) {
-									builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
+								// If the template is already there, let's not try to create it
+								if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + title2name(value)) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + title2name(value)))) {
+									logger.info("Template " + value + " is already there");
+									isValid=false;
 								}
 
-								// Adding the list of group members
+								// If the template includes some of the enablement features, then it won't work for 6.1 GA
+								if (name.equals("functions") && value.indexOf("assignments")>0 && vBundleCommunitiesEnablement==null) {
+									logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
+									isValid=false;
+								}
+
+								// If the template includes some of the ideation features, then it won't work until 6.2 FP2
+								if (name.equals("functions") && value.indexOf("ideation")>0 && !isCommunities61FP6orlater) {
+									logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
+									isValid=false;
+								}
+
+								// If the group template includes the nested group features, then it won't work until 6.2 FP1
+								if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
+									logger.info("Group template " + record.get(3) + " is not compatible with this version of AEM");
+									isValid=false;
+								}
+
+								// If the group template includes the blogs or calendars, then it won't work with 6.1GA
+								if (name.equals("functions") && (value.indexOf("blog")>0 || value.indexOf("calendar")>0) && vBundleCommunitiesEnablement==null) {
+									logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
+									isValid=false;
+								}
+
+							}
+						}
+
+						// Site or Group template creation
+						if (isValid) doPost(hostname, port,
+								"/content.social.json",
+								"admin", adminPassword,
+								builder.build(),
+								null);
+
+						continue;
+					}
+
+					// Let's see if we need to create a new Community group
+					if (record.get(0).equals(GROUP) || record.get(0).equals(SUBGROUP)) {
+
+						// SubGroups are only supported with 6.1 FP5 and 6.2 FP1 onwards
+						if (record.get(0).equals(SUBGROUP) && !isCommunities61FP5orlater) {
+							logger.warn("Subgroups are not supported with this version of AEM Communities");
+							continue;
+						}
+
+						// Building the form entity to be posted
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody(":operation", "social:createCommunityGroup", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+						String urlName=null;
+						String groupType=null;
+						for (int i=3;i<record.size()-1;i=i+2) {
+
+							if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
+
+								String name = record.get(i).trim();
+								String value = record.get(i+1).trim();
+								if (value.equals("TRUE")) { value = "true"; }
+								if (value.equals("FALSE")) { value = "false"; }	
+								if (name.equals("type")) { groupType = value; }
+								if (name.equals(IMAGE)) {
+									addBinaryBody(builder, lIs, rr, IMAGE, csvfile, value);
+								} else {
+									builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+								}
+								if (name.equals("urlName")) {
+									urlName = value;
+								}
+								if (name.equals("siteRoot")) {
+									// Some content root has been provided for the Group. It might result from previous actions and might not be there yet - let's wait for it
+									doWaitPath(hostname, port, adminPassword, value, maxretries);
+								}
+							}
+						}
+
+						// Private groups are only support with 6.1 FP1 onwards
+						if (groupType!=null && groupType.equals("Secret") && isCommunities61) {
+							continue;
+						}
+
+						// Group creation
+						doPost(hostname, port,
+								record.get(1),
+								getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
+								builder.build(),
+								null);
+
+						// Waiting for group to be available either on publish or author
+						int i = (record.get(1).indexOf("/jcr:content")>0)?record.get(1).indexOf("/jcr:content"):record.get(1).indexOf(".social.json");
+						if (urlName!=null && i>0) {
+							doWaitPath(hostname, port, adminPassword, record.get(1).substring(0, i) + "/" + urlName, maxretries);
+						} else {
+							logger.warn("Not waiting for Group to be fully available");
+						}
+
+						continue;
+
+					}
+
+					// Let's see if it's simple Sling Delete request
+					if (record.get(0).equals(SLINGDELETE)) {
+
+						doDelete(hostname, port,
+								record.get(1),
+								"admin", adminPassword);
+
+						continue;
+
+					}
+
+					// Let's see if we need to delete some user groups
+					if (record.get(0).equals(GROUPDELETE) && record.get(1)!=null) {
+
+						// Let's query all the Community sites
+						String siteList = Loader.doGet(hostname, port,
+								"/mnt/overlay/social/console/content-shell3/sites/jcr:content/views/content/items/sitecollection.social.json",
+								"admin", adminPassword,
+								null);					
+
+						// List of orphan entries
+						List<String> orphanKeys = new ArrayList<String>();
+
+						// Let's query all the groups
+						List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+						nameValuePairs.add(new BasicNameValuePair("type", "rep:Group"));
+						nameValuePairs.add(new BasicNameValuePair("p.limit", "-1"));
+						nameValuePairs.add(new BasicNameValuePair("p.hits", "full"));
+
+						String groupList = Loader.doGet(hostname, port,
+								"/bin/querybuilder.json",
+								"admin", adminPassword,
+								nameValuePairs);
+						JSONArray jsonArray = new JSONObject(groupList).getJSONArray("hits");
+
+						for (int i=0;i<jsonArray.length();i++) {
+
+							JSONObject jsonObject = jsonArray.getJSONObject(i);
+							String groupPath=jsonObject.getString("jcr:path");
+							String groupName=jsonObject.getString("rep:authorizableId");
+
+							boolean deleteGroup=false;
+
+							// First, an explicit delete is requested
+							if (groupName.startsWith(record.get(2)) && groupPath.startsWith(record.get(1))) {
+								deleteGroup = true;
+							}
+
+							// Second, we might be dealing with an orphan group, let's verify
+							String communityGroups = "/home/groups/community/";
+							int indexStartCommunity = groupPath.indexOf(communityGroups);
+							if (indexStartCommunity>=0) {
+								int indexStopCommunity = groupPath.indexOf("/", communityGroups.length() + indexStartCommunity);
+								if (indexStopCommunity>0) {
+									String keyCommunity = groupPath.substring(communityGroups.length() + indexStartCommunity, indexStopCommunity);
+									int indexUrlCommunity = keyCommunity.indexOf("-");
+									if (indexUrlCommunity>0) {
+										String urlCommunity = keyCommunity.substring(0, indexUrlCommunity);
+										if (!siteList.contains(keyCommunity) && !siteList.contains("siteUrlName\":\"" + urlCommunity)) {
+											deleteGroup = true;
+											orphanKeys.add(keyCommunity);
+											orphanKeys.add("community-" + urlCommunity);
+										}
+
+
+									}
+								}
+							}
+
+							if (deleteGroup) {
+
+								logger.info("Deleting orphan or desired group " + groupName);
+
+								List<NameValuePair>  groupDeleteValuePairs = new ArrayList<NameValuePair>();
+								groupDeleteValuePairs.add(new BasicNameValuePair("deleteAuthorizable", groupName));
+
+								// Building the form entity to be posted
+								MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+								builder.setCharset(MIME.UTF8_CHARSET);
+								builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+								builder.addTextBody("deleteAuthorizable", groupName, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
 								doPost(hostname, port,
-										groupPath + ".rw.userprops.html",
+										groupPath,
 										"admin", adminPassword,
 										builder.build(),
 										null);
 
-							} else {
-								logger.info("We have more than one match for a group with this name!");			
 							}
-						} catch (Exception e) {
-							logger.error(e.getMessage());
+
 						}
-					} else {
-						logger.warn("Group " + groupName + " cannot be updated as expected");
+
+						// Let's get rid of all the orphan folders for groups
+						for (String key : orphanKeys) {
+							logger.info("Deleting folder /home/groups/community/" + key);
+							doDelete(hostname, port,
+									"/home/groups/community/" + key,
+									"admin", adminPassword);
+
+						}
+
 					}
 
-					continue;
+					// Let's see if we need to delete a Community site
+					if (record.get(0).equals(SITEDELETE) && record.get(1)!=null) {
 
-				}
+						// Let's fetch the siteId for this Community Site Url
+						String siteConfig = doGet(hostname, port,
+								record.get(1),
+								"admin",adminPassword,
+								null);
 
-				// Let's see if it's user related
-				if (record.get(0).equals(USERS)) {
-
-					//First we need to get the path to the user node
-					String json = doGet(hostname, port,
-							"/libs/granite/security/currentuser.json",
-							getUserName(record.get(1)), getPassword(record.get(1), adminPassword),
-							null);
-
-					if (json!=null) {
+						// No site to Delete
+						if (siteConfig==null) continue;
 
 						try {
 
-							// Fetching the home property
-							String home = new JSONObject(json).getString("home");
-							if (record.get(2).equals(PREFERENCES)) {
-								home = home + "/preferences";
-							} else {
-								home = home + "/profile";
-							}
+							String siteRoot = new JSONObject(siteConfig).getString("siteRoot");
+							String urlName = new JSONObject(siteConfig).getString("urlName");
+							String siteId = new JSONObject(siteConfig).getString("siteId");
+							String resourcesRoot = new JSONObject(siteConfig).getString("siteAssetsPath");
 
-							// Now we can post all the preferences or the profile
-							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3);
-							doPost(hostname, port,
-									home,
-									"admin", adminPassword,
-									new UrlEncodedFormEntity(nameValuePairs),
-									null);
+							if (siteRoot!=null && urlName!=null && siteId!=null && resourcesRoot!=null) {
+
+								// First, deleting the main JCR path for this site, on author and publish
+								doDelete(hostname, port, siteRoot + "/" + urlName, "admin", adminPassword);
+								doDelete(hostname, altport, siteRoot + "/" + urlName, "admin", adminPassword);
+
+								// Then, deleting the dam resources for this site, on author and publish
+								doDelete(hostname, port, resourcesRoot, "admin", adminPassword);
+								doDelete(hostname, altport, resourcesRoot, "admin", adminPassword);
+
+								// Then, deleting the main UGC path for this site, on author and publish
+								doDelete(hostname, port, "/content/usergenerated/asi/jcr" + siteRoot + "/" + urlName, "admin", adminPassword);
+								doDelete(hostname, altport, "/content/usergenerated/asi/jcr" + siteRoot + "/" + urlName, "admin", adminPassword);
+
+								// Finally, deleting the system groups for this site, on author and publish
+								doDelete(hostname, port, "/home/groups/community-" + siteId, "admin", adminPassword);
+								doDelete(hostname, altport, "/home/groups/community-" + siteId, "admin", adminPassword);
+
+							}
 
 						} catch (Exception e) {
 							logger.error(e.getMessage());
 						}
-
 					}
 
-					continue;
+					// Let's see if we need to add users to an AEM Group
+					if ((record.get(0).equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
 
-				}
+						// Checking if we have a member group for this site
+						String groupName = null;
+						if (record.get(0).equals(SITEMEMBERS)) {
 
-				// Let's see if we need to generate analytics events for Assets Insights
-				if (record.get(0).equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
+							String configurationPath = record.get(GROUP_INDEX_NAME);
 
-					logger.info("Generating Assets Analytics for reportsuite " + analytics);
+							// Let's make sure the configuration .json is there
+							doWaitPath(hostname, port, adminPassword, configurationPath, maxretries);
 
-					// Generating Impressions
-					int impressions = new Random().nextInt(21) + 5;
-					for (int i = 0; i < impressions; i++)
-						doAssetsAnalytics( analytics, "event1", "list1", record.get(1).replace('|',','), "o", "Asset Impression Event");
+							// Let's fetch the siteId for this Community Site Url
+							String siteConfig = doGet(hostname, port,
+									configurationPath,
+									"admin",adminPassword,
+									null);
 
-					// Generating Clicks for each asset
-					List<String> assetIds = Arrays.asList(record.get(1).split("\\|", -1));
-					for (String assetId : assetIds) {
-						int clicks = new Random().nextInt(5) + 2;
-						for (int i = 0; i < clicks; i++)
-							doAssetsAnalytics( analytics, "event2", "eVar4", assetId, "e", "Asset Click Event");
-					}
+							if (siteConfig==null) {
+								logger.error("Can't retrieve site configuration");
+								continue;
+							};
 
-					continue;
+							String siteId = null;
+							try {
 
-				}
+								siteId = new JSONObject(siteConfig).getString("siteId");
 
-				// Let's see if we deal with a new block of content or just a new entry
-				if (record.get(0).equals(CALENDAR)
-						|| record.get(0).equals(SLINGPOST)
-						|| record.get(0).equals(RATINGS) 
-						|| record.get(0).equals(IDEATION) 
-						|| record.get(0).equals(BLOG) 
-						|| record.get(0).equals(JOURNAL) 
-						|| record.get(0).equals(COMMENTS) 
-						|| record.get(0).equals(REVIEWS) 
-						|| record.get(0).equals(FILES) 
-						|| record.get(0).equals(SUMMARY) 
-						|| record.get(0).equals(ACTIVITIES) 
-						|| record.get(0).equals(JOIN) 
-						|| record.get(0).equals(FOLLOW) 
-						|| record.get(0).equals(NOTIFICATION) 
-						|| record.get(0).equals(NOTIFICATIONPREFERENCE) 
-						|| record.get(0).equals(MESSAGE) 
-						|| record.get(0).equals(ASSET) 
-						|| record.get(0).equals(AVATAR) 
-						|| record.get(0).equals(FOLDER) 
-						|| record.get(0).equals(BADGEIMAGE) 
-						|| record.get(0).equals(BADGEASSIGN) 
-						|| record.get(0).equals(FRAGMENT) 
-						|| record.get(0).equals(RESOURCE)
-						|| record.get(0).equals(LEARNING) 
-						|| record.get(0).equals(QNA) 
-						|| record.get(0).equals(FORUM)) {
+							} catch (Exception e) {
 
-					// New block of content, we need to reset the processing to first Level
-					componentType = record.get(0);
-					url[0] = record.get(1);
-					urlLevel=0;
-
-					// If it's not a SLINGPOST that could result in nodes to be created, let's make sure the end point is really there.
-					if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getRootPath(record.get(1)))) {
-						ignoreUntilNextComponent = true;
-						continue recordLoop;
-					} else {
-						ignoreUntilNextComponent = false;
-					}
-
-					if (!componentType.equals(SLINGPOST) && reset) {
-						int pos = record.get(1).indexOf("/jcr:content");
-						if (pos>0) 
-							doDelete(hostname, port,
-									"/content/usergenerated" + record.get(1).substring(0,pos),
-									"admin", adminPassword);
-					}
-
-					// If the Configure command line flag is set, we try to configure the component with all options enabled
-					if (componentType.equals(SLINGPOST) || configure) {
-
-						String configurePath = getConfigurePath(record.get(1));
-						logger.info(configurePath);
-
-						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, configurePath, record, 2);
-						if (nameValuePairs.size()>2) {
-
-							// If we're posting against a jcr:content node, let's make sure the parent folder is there
-							int pos1 = configurePath.indexOf("/jcr:content");
-							if (pos1>0) {
-
-								if (!isResourceAvailable(hostname, port, adminPassword, configurePath.substring(0, pos1)))
-									continue recordLoop;
+								logger.warn("No site Id available");
 
 							}
+
+							String urlName = null;
+							try {
+
+								urlName = new JSONObject(siteConfig).getString("urlName");
+
+							} catch (Exception e) {
+
+								logger.error("No site url available");
+								continue;
+
+							}
+
+							if (siteId!=null) 
+								groupName = "community-" + siteId + "-members";
+							else
+								groupName = "community-" + urlName + "-members";
+
+							logger.info("Site Member group name is " + groupName);
+
+						}
+
+						if (record.get(0).equals(GROUPMEMBERS)) {
+
+							groupName = record.get(GROUP_INDEX_NAME);	
+
+						}
+
+						// We can't proceed if the group name wasn't retrieved from the configuration
+						if (groupName==null) continue;
+
+						// Pause until the group can found
+						String groupList = doWait(hostname, port,
+								"admin", adminPassword,
+								groupName, maxretries
+								);
+
+						if (groupList!=null && groupList.indexOf("\"results\":1")>0) {
+
+							logger.info("Group was found on " + port);
+							try {
+								JSONArray jsonArray = new JSONObject(groupList).getJSONArray("hits");
+								if (jsonArray.length()==1) {
+									JSONObject jsonObject = jsonArray.getJSONObject(0);
+									String groupPath= jsonObject.getString("path");
+
+									logger.info("Group path is " + groupPath);
+
+									// Constructing a multi-part POST for group membership
+									MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+									builder.setCharset(MIME.UTF8_CHARSET);
+									builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+
+									List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+									for (NameValuePair nameValuePair : groupNameValuePairs) {
+										builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
+									}
+
+									// Adding the list of group members
+									doPost(hostname, port,
+											groupPath + ".rw.userprops.html",
+											"admin", adminPassword,
+											builder.build(),
+											null);
+
+								} else {
+									logger.info("We have more than one match for a group with this name!");			
+								}
+							} catch (Exception e) {
+								logger.error(e.getMessage());
+							}
+						} else {
+							logger.warn("Group " + groupName + " cannot be updated as expected");
+						}
+
+						continue;
+
+					}
+
+					// Let's see if it's user related
+					if (record.get(0).equals(USERS)) {
+
+						//First we need to get the path to the user node
+						String json = doGet(hostname, port,
+								"/libs/granite/security/currentuser.json",
+								getUserName(record.get(1)), getPassword(record.get(1), adminPassword),
+								null);
+
+						if (json!=null) {
+
+							try {
+
+								// Fetching the home property
+								String home = new JSONObject(json).getString("home");
+								if (record.get(2).equals(PREFERENCES)) {
+									home = home + "/preferences";
+								} else {
+									home = home + "/profile";
+								}
+
+								// Now we can post all the preferences or the profile
+								List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3);
+								doPost(hostname, port,
+										home,
+										"admin", adminPassword,
+										new UrlEncodedFormEntity(nameValuePairs),
+										null);
+
+							} catch (Exception e) {
+								logger.error(e.getMessage());
+							}
+
+						}
+
+						continue;
+
+					}
+
+					// Let's see if we need to generate analytics events for Assets Insights
+					if (record.get(0).equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
+
+						logger.info("Generating Assets Analytics for reportsuite " + analytics);
+
+						// Generating Impressions
+						int impressions = new Random().nextInt(21) + 5;
+						for (int i = 0; i < impressions; i++)
+							doAssetsAnalytics( analytics, "event1", "list1", record.get(1).replace('|',','), "o", "Asset Impression Event");
+
+						// Generating Clicks for each asset
+						List<String> assetIds = Arrays.asList(record.get(1).split("\\|", -1));
+						for (String assetId : assetIds) {
+							int clicks = new Random().nextInt(5) + 2;
+							for (int i = 0; i < clicks; i++)
+								doAssetsAnalytics( analytics, "event2", "eVar4", assetId, "e", "Asset Click Event");
+						}
+
+						continue;
+
+					}
+
+					// Let's see if we deal with a new block of content or just a new entry
+					if (record.get(0).equals(CALENDAR)
+							|| record.get(0).equals(SLINGPOST)
+							|| record.get(0).equals(RATINGS) 
+							|| record.get(0).equals(IDEATION) 
+							|| record.get(0).equals(BLOG) 
+							|| record.get(0).equals(JOURNAL) 
+							|| record.get(0).equals(COMMENTS) 
+							|| record.get(0).equals(REVIEWS) 
+							|| record.get(0).equals(FILES) 
+							|| record.get(0).equals(SUMMARY) 
+							|| record.get(0).equals(ACTIVITIES) 
+							|| record.get(0).equals(JOIN) 
+							|| record.get(0).equals(FOLLOW) 
+							|| record.get(0).equals(NOTIFICATION) 
+							|| record.get(0).equals(NOTIFICATIONPREFERENCE) 
+							|| record.get(0).equals(MESSAGE) 
+							|| record.get(0).equals(ASSET) 
+							|| record.get(0).equals(AVATAR) 
+							|| record.get(0).equals(FOLDER) 
+							|| record.get(0).equals(BADGEIMAGE) 
+							|| record.get(0).equals(BADGEASSIGN) 
+							|| record.get(0).equals(FRAGMENT) 
+							|| record.get(0).equals(RESOURCE)
+							|| record.get(0).equals(LEARNING) 
+							|| record.get(0).equals(QNA) 
+							|| record.get(0).equals(FORUM)) {
+
+						// New block of content, we need to reset the processing to first Level
+						componentType = record.get(0);
+						url[0] = record.get(1);
+						urlLevel=0;
+
+						// If it's not a SLINGPOST that could result in nodes to be created, let's make sure the end point is really there.
+						if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getRootPath(record.get(1)))) {
+							ignoreUntilNextComponent = true;
+							continue recordLoop;
+						} else {
+							ignoreUntilNextComponent = false;
+						}
+
+						if (!componentType.equals(SLINGPOST) && reset) {
+							int pos = record.get(1).indexOf("/jcr:content");
+							if (pos>0) 
+								doDelete(hostname, port,
+										"/content/usergenerated" + record.get(1).substring(0,pos),
+										"admin", adminPassword);
+						}
+
+						// If the Configure command line flag is set, we try to configure the component with all options enabled
+						if (componentType.equals(SLINGPOST) || configure) {
+
+							String configurePath = getConfigurePath(record.get(1));
 							
-							// If we're posting a /bin/wcmcommand for creating a page, let's make sure the template is there
-							if (record.get(1).equals("/bin/wcmcommand")) {
-								for (NameValuePair nvp:nameValuePairs) {
-									if (nvp.getName().equals("template") && !isResourceAvailable(hostname, port, adminPassword, nvp.getValue())) {
-										logger.warn("Requested template not found for page creation request");
+							logger.debug("Configuration path:" + configurePath);
+
+							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, record.get(1), record, 2);
+							if (nameValuePairs.size()>2) {
+
+								// If we're posting against a jcr:content node, let's make sure the parent folder is there
+								int pos1 = configurePath.indexOf("/jcr:content");
+								if (pos1>0) {
+
+									if (!isResourceAvailable(hostname, port, adminPassword, configurePath.substring(0, pos1)))
 										continue recordLoop;
+
+								}
+
+								// If we're posting a /bin/wcmcommand for creating a page, let's make sure the template is there
+								if (record.get(1).equals("/bin/wcmcommand")) {
+									for (NameValuePair nvp:nameValuePairs) {
+										if (nvp.getName().equals("template") && !isResourceAvailable(hostname, port, adminPassword, nvp.getValue())) {
+											logger.warn("Requested template not found for page creation request");
+											continue recordLoop;
+										}
+									}
+								}
+
+								// If we're posting against a configuration node, let's make sure the parent folder is there
+								int pos2 = configurePath.indexOf("configuration");
+								if (pos2>0) {
+
+									if (!isResourceAvailable(hostname, port, adminPassword, configurePath))
+										continue recordLoop;
+
+								}
+
+								// If we're posting to fetch analytics data, let's make sure the analytics host is available
+								int pos3 = configurePath.indexOf("analyticsCommunities");
+								if (pos3>0) {
+
+									if (!Hostname.isReachable("www.adobe.com", "80")) {
+										logger.warn("Analytics cannot be imported since you appear to be offline"); // The things you have to do when coding in airplanes...
+										continue recordLoop;
+									}
+
+								}
+
+								// Only do this when really have configuration settings
+								doPost(hostname, port,
+										record.get(1),
+										"admin", adminPassword,
+										new UrlEncodedFormEntity(nameValuePairs),
+										null);
+
+							}
+
+							// If the Sling POST touches the system console, then we need to make sure the system is open for business again before we proceed
+							if (record.get(1).indexOf("system/console")>0) {
+								doSleep(10000, "Waiting after a bundle change/restart");
+								doWait(hostname, port,
+										"admin", adminPassword,
+										"administrators", maxretries
+										);
+							}
+
+						}
+
+						// We're done with this line, moving on to the next line in the CSV file
+						continue;
+					}
+
+					// Are we processing until the next component because the end point if not available?
+					if (ignoreUntilNextComponent) {
+						logger.info("Ignoring this record because of unavailable component configuration");
+						continue;
+					}
+
+					// Let's see if we need to indent the list, if it's a reply or a reply to a reply
+					if (record.get(1)==null || record.get(1).length()!=1) continue;  // We need a valid level indicator
+
+					if (Integer.parseInt(record.get(1))>urlLevel) {
+						url[++urlLevel] = location;
+						logger.debug("Incrementing urlLevel to: " + urlLevel + ", with a new location:" + location);
+					} else if (Integer.parseInt(record.get(1))<urlLevel) {
+						urlLevel = Integer.parseInt(record.get(1));
+						logger.debug("Decrementing urlLevel to: " + urlLevel);
+					}
+
+					// Special case for 6.1 GA only with forums and files
+					if (vBundleCommunitiesEnablement==null && (!(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(JOIN)))) continue;
+
+					// Get the credentials or fall back to password
+					String password = getPassword(record.get(0), adminPassword);
+					String userName = getUserName(record.get(0));
+
+					// Adding the generic properties for all POST requests
+					MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+					builder.setCharset(MIME.UTF8_CHARSET);
+					builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
+					List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+
+					if (!componentType.equals(RESOURCE) && !componentType.equals(LEARNING))
+						nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
+
+					nameValuePairs.add(new BasicNameValuePair("_charset_", "UTF-8"));
+
+					if(urlLevel==0 && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(IDEATION) || componentType.equals(BLOG) || componentType.equals(CALENDAR)))
+					{					
+						// Generating a unique hashkey
+						nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
+					}
+
+					// Setting some specific fields depending on the content type
+					if (componentType.equals(COMMENTS)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(2)));
+
+					}
+
+					// Follows a user (followedId) for the user posting the request
+					if (componentType.equals(FOLLOW)) {
+
+						if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.12"))<0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:follow"));
+							nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + userName));
+							nameValuePairs.add(new BasicNameValuePair("followedId", "/social/authors/" + record.get(2)));
+
+						} else {
+
+							logger.info("Ignoring FOLLOW with this version of AEM Communities");
+							continue;
+
+						}
+					}
+
+					// Notifications
+					if (componentType.equals(NOTIFICATION)) {
+
+						if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:updatesubscriptions"));
+							nameValuePairs.add(new BasicNameValuePair("types", "following"));
+							nameValuePairs.add(new BasicNameValuePair("types", "notification"));
+							if (vBundleCommunitiesNotifications.compareTo(new Version("1.1.0"))>0)
+								nameValuePairs.add(new BasicNameValuePair("types", "subscription"));
+							nameValuePairs.add(new BasicNameValuePair("states", record.get(2).toLowerCase()));
+							nameValuePairs.add(new BasicNameValuePair("states", record.get(3).toLowerCase()));
+							if (vBundleCommunitiesNotifications.compareTo(new Version("1.1.0"))>0)
+								nameValuePairs.add(new BasicNameValuePair("states", record.get(4).toLowerCase()));
+							nameValuePairs.add(new BasicNameValuePair("subscribedId", record.get(5)));
+
+						} else {
+
+							logger.info("Ignoring NOTIFICATION with this version of AEM Communities");
+							continue;
+
+						}
+					}
+
+					// Notification preferences
+					if (componentType.equals(NOTIFICATIONPREFERENCE)) {
+
+						if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
+							List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+							nameValuePairs.addAll(otherNameValuePairs);
+
+						}
+
+					}
+
+					// Uploading Avatar picture
+					if (componentType.equals(AVATAR)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:changeAvatar"));
+
+						// Appending the path to the user profile to the target location
+						String userJson = doGet(hostname, port,
+								"/libs/granite/security/currentuser.json",
+								getUserName(record.get(0)), getPassword(record.get(0), adminPassword),
+								null);
+
+						userHome = "";
+						if (userJson!=null) {
+
+							try {
+
+								// Fetching the home property
+								userHome = new JSONObject(userJson).getString("home");
+
+							} catch (Exception e) {
+
+								logger.error("Couldn't figure out home folder for user " + record.get(0));
+
+							}
+
+						}
+
+					}
+
+					// Assigning badge to user
+					if (componentType.equals(BADGEASSIGN)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:assignBadge"));
+
+						// Special case to accommodate re-factoring of badging images
+						String value = record.get(3);
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) {
+							value = value.replaceAll("/jcr:content", "");
+						}
+
+						nameValuePairs.add(new BasicNameValuePair("badgeContentPath", value));
+
+						// Appending the path to the user profile to the target location
+						String userJson = doGet(hostname, altport,
+								"/libs/granite/security/currentuser.json",
+								getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
+								null);
+
+						userHome = "";
+						if (userJson!=null) {
+
+							try {
+
+								// Fetching the home property
+								userHome = new JSONObject(userJson).getString("home");
+
+							} catch (Exception e) {
+
+								logger.error("Couldn't figure out home folder for user " + record.get(2));
+
+							}
+
+						}
+
+					}
+
+					// Uploading Badge image
+					if (componentType.equals(BADGEIMAGE)) {
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createBadge"));
+						nameValuePairs.add(new BasicNameValuePair("jcr:title", record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair("badgeDisplayName", record.get(3)));
+						nameValuePairs.add(new BasicNameValuePair("badgeDescription", record.get(5)));
+						addBinaryBody(builder, lIs, rr, "badgeImage", csvfile, record.get(ASSET_INDEX_NAME));
+
+					}				
+
+					// Joins a user (posting the request) to a Community Group (path)
+					if (componentType.equals(JOIN)) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:joinCommunityGroup"));
+						int pos = url[0].indexOf("/configuration.social.json");
+						if (pos>0)
+							nameValuePairs.add(new BasicNameValuePair("path", url[0].substring(0,pos) + ".html"));
+						else
+							continue; // Invalid record
+					}
+
+					// Creates a new private message
+					if (componentType.equals(MESSAGE)) {
+
+						nameValuePairs.add(new BasicNameValuePair("to", "/social/authors/" + record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair("toId", ""));
+						nameValuePairs.add(new BasicNameValuePair("serviceSelector", "/bin/community"));
+						nameValuePairs.add(new BasicNameValuePair("redirectUrl", "../messaging.html"));
+						nameValuePairs.add(new BasicNameValuePair("attachmentPaths", ""));
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createMessage"));
+						nameValuePairs.add(new BasicNameValuePair("subject", record.get(3)));
+						nameValuePairs.add(new BasicNameValuePair("content", record.get(4)));
+						nameValuePairs.add(new BasicNameValuePair("sendMail", "Sending..."));
+
+					}
+
+					// Creates a forum post (or a reply)
+					if (componentType.equals(FORUM)) {
+
+						if (urlLevel == 0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+							nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+
+						} else if (subComponentType.equals(UGCREPLY)) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+							nameValuePairs.add(new BasicNameValuePair("subject", ""));
+
+						}
+					}
+
+					// Creates a file or a folder
+					if (componentType.equals(FILES)) {
+
+						// Top level is always assumed to be a folder, second level files, and third and subsequent levels comments on files
+						if (urlLevel==0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createFileLibraryFolder"));
+							nameValuePairs.add(new BasicNameValuePair("name", subComponentType));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+
+						} else if (subComponentType.equals(UGCREPLY)) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
+
+						}
+
+					}
+
+					// Creates a question, a reply or mark a reply as the best answer
+					if (componentType.equals(QNA)) {
+
+						if(vBundleCommunitiesEnablement==null) {
+							logger.info("QnAs are not compatible with this version of AEM");
+							continue;
+						}
+
+						if (urlLevel==0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
+							nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
+
+						} else if (subComponentType.equals(UGCREPLY)) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
+							nameValuePairs.add(new BasicNameValuePair("subject", ""));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
+
+						}
+
+					}
+
+					// Creates a Blog article or a comment
+					if (componentType.equals(JOURNAL) || componentType.equals(BLOG)) {
+
+						if(vBundleCommunitiesEnablement==null) {
+							logger.info("Blogs are not compatible with this version of AEM");
+							continue;
+						}
+
+						if (urlLevel==0) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
+							nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+							StringBuffer message = new StringBuffer("<p>" + record.get(3) + "</p>");
+
+							//We might have more paragraphs to add to the blog or journal article
+							for (int i=6; i < record.size();i++) {
+								if (record.get(i).length()>0) {
+									if (record.get(i).startsWith("isDraft")) {
+										nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
+									} else {
+										message.append("<p>" + record.get(i) + "</p>");
 									}
 								}
 							}
 
-							// If we're posting against a configuration node, let's make sure the parent folder is there
-							int pos2 = configurePath.indexOf("configuration");
-							if (pos2>0) {
-
-								if (!isResourceAvailable(hostname, port, adminPassword, configurePath))
-									continue recordLoop;
-
+							//We might have some tags to add to the blog or journal article
+							if (record.get(5).length()>0) {
+								nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
 							}
 
-							// If we're posting to fetch analytics data, let's make sure the analytics host is available
-							int pos3 = configurePath.indexOf("analyticsCommunities");
-							if (pos3>0) {
+							nameValuePairs.add(new BasicNameValuePair("message", message.toString()));		         
 
-								if (!Hostname.isReachable("www.adobe.com", "80")) {
-									logger.warn("Analytics cannot be imported since you appear to be offline"); // The things you have to do when coding in airplanes...
-									continue recordLoop;
+						} else if (subComponentType.equals(UGCREPLY)) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));	
+							nameValuePairs.add(new BasicNameValuePair("subject", ""));
+
+						}
+
+					}
+
+					// Creates an Idea or a comment
+					if (componentType.equals(IDEATION)) {
+
+						if(!isCommunities61FP6orlater) {
+							logger.info("Ideas are not compatible with this version of AEM");
+							continue;
+						}
+
+						if (urlLevel==0) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createIdeationComment"));
+							nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
+							StringBuffer message = new StringBuffer("");
+
+							//We might have more paragraphs to add to the idea
+							for (int i=6; i < record.size();i++) {
+								if (record.get(i).length()>0) {
+									message.append("<p>" + record.get(i) + "</p>");
 								}
-
 							}
 
-							// Only do this when really have configuration settings
-							doPost(hostname, port,
-									configurePath,
-									"admin", adminPassword,
-									new UrlEncodedFormEntity(nameValuePairs),
-									null);
+							if (record.get(5).equals("TRUE")) {
+								nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
+							} else {
+								nameValuePairs.add(new BasicNameValuePair("isDraft", "false"));						
+							}
+
+							//We might have some tags to add to the blog or journal article
+							if (record.get(3).length()>0) {
+								nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
+							}
+
+							nameValuePairs.add(new BasicNameValuePair("message", message.toString()));	
+
+						} else if (subComponentType.equals(UGCREPLY)) {
+
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createIdeationComment"));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));	
+							nameValuePairs.add(new BasicNameValuePair("subject", ""));
 
 						}
 
-						// If the Sling POST touches the system console, then we need to make sure the system is open for business again before we proceed
-						if (record.get(1).indexOf("system/console")>0) {
-							doSleep(10000, "Waiting after a bundle change/restart");
-							doWait(hostname, port,
-									"admin", adminPassword,
-									"administrators", maxretries
-									);
+					}
+
+					// Taking care of moderation actions for all types
+					if (urlLevel>=1 && !subComponentType.equals(UGCREPLY)) {
+
+						if (subComponentType.equals(UGCPIN)  && !isCommunities61FP5orlater) {
+							logger.warn("This feature is not supported by this version of AEM");
+							continue;
+						}
+
+						if ((subComponentType.equals(UGCFEATURE) || subComponentType.equals(UGCLIKE)) && !isCommunities61FP6orlater) {
+							logger.warn("This feature is not supported by this version of AEM");
+							continue;
+						}
+
+						if (subComponentType.equals(UGCANSWER)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));
+						}
+						if (subComponentType.equals(UGCDENY)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
+						}
+						if (subComponentType.equals(UGCFLAG)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
+							nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "Marked as spam"));
+							nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
+						}
+						if (subComponentType.equals(UGCFEATURE)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:featured"));
+							nameValuePairs.add(new BasicNameValuePair("social:markFeatured", "true"));
+						}
+						if (subComponentType.equals(UGCPIN)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:pin"));
+							nameValuePairs.add(new BasicNameValuePair("social:doPin", "true"));
+						}
+						if (subComponentType.equals(UGCUPVOTE)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+							nameValuePairs.add(new BasicNameValuePair("response", "1"));
+							nameValuePairs.add(new BasicNameValuePair("tallyType", "Voting"));					
+						}
+						if (subComponentType.equals(UGCDOWNVOTE)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+							nameValuePairs.add(new BasicNameValuePair("response", "-1"));
+							nameValuePairs.add(new BasicNameValuePair("tallyType", "Voting"));					
+						}
+						if (subComponentType.equals(UGCLIKE)) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+							nameValuePairs.add(new BasicNameValuePair("response", "1"));
+							nameValuePairs.add(new BasicNameValuePair("tallyType", "Liking"));							
 						}
 
 					}
 
-					// We're done with this line, moving on to the next line in the CSV file
-					continue;
-				}
+					// Creates a review or a comment
+					if (componentType.equals(REVIEWS)) {
 
-				// Are we processing until the next component because the end point if not available?
-				if (ignoreUntilNextComponent) {
-					logger.info("Ignoring this record because of unavailable component configuration");
-					continue;
-				}
+						nameValuePairs.add(new BasicNameValuePair("message", record.get(2)));
 
-				// Let's see if we need to indent the list, if it's a reply or a reply to a reply
-				if (record.get(1)==null || record.get(1).length()!=1) continue;  // We need a valid level indicator
-
-				if (Integer.parseInt(record.get(1))>urlLevel) {
-					url[++urlLevel] = location;
-					logger.debug("Incrementing urlLevel to: " + urlLevel + ", with a new location:" + location);
-				} else if (Integer.parseInt(record.get(1))<urlLevel) {
-					urlLevel = Integer.parseInt(record.get(1));
-					logger.debug("Decrementing urlLevel to: " + urlLevel);
-				}
-
-				// Special case for 6.1 GA only with forums and files
-				if (vBundleCommunitiesEnablement==null && (!(componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(JOIN)))) continue;
-
-				// Get the credentials or fall back to password
-				String password = getPassword(record.get(0), adminPassword);
-				String userName = getUserName(record.get(0));
-
-				// Adding the generic properties for all POST requests
-				MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-				builder.setCharset(MIME.UTF8_CHARSET);
-				builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);				
-				List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-
-				if (!componentType.equals(RESOURCE) && !componentType.equals(LEARNING))
-					nameValuePairs.add(new BasicNameValuePair("id", "nobot"));
-
-				nameValuePairs.add(new BasicNameValuePair("_charset_", "UTF-8"));
-
-				if(urlLevel==0 && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(IDEATION) || componentType.equals(BLOG) || componentType.equals(CALENDAR)))
-				{					
-					// Generating a unique hashkey
-					nameValuePairs.add(new BasicNameValuePair("ugcUrl", slugify(record.get(2))));
-				}
-
-				// Setting some specific fields depending on the content type
-				if (componentType.equals(COMMENTS)) {
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
-					nameValuePairs.add(new BasicNameValuePair("message", record.get(2)));
-
-				}
-
-				// Follows a user (followedId) for the user posting the request
-				if (componentType.equals(FOLLOW)) {
-
-					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.12"))<0) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:follow"));
-						nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + userName));
-						nameValuePairs.add(new BasicNameValuePair("followedId", "/social/authors/" + record.get(2)));
-
-					} else {
-
-						logger.info("Ignoring FOLLOW with this version of AEM Communities");
-						continue;
+						// This might be a top level review, or a comment on a review or another comment
+						if (urlLevel==0) {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createReview"));
+							nameValuePairs.add(new BasicNameValuePair("ratings", record.get(3)));
+							if (record.size()>4 &&
+									record.get(4).length()>0) {
+								nameValuePairs.add(new BasicNameValuePair("scf:included",record.get(4)));							
+								if (record.size()>5 &&
+										record.get(5).length()>0) {
+									nameValuePairs.add(new BasicNameValuePair("scf:resourceType",record.get(5)));							
+								} else {
+									nameValuePairs.add(new BasicNameValuePair("scf:resourceType", "social/reviews/components/hbs/reviews"));
+								}
+							}
+						} else {
+							nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
+						}
 
 					}
-				}
 
-				// Notifications
-				if (componentType.equals(NOTIFICATION)) {
+					// Creates a rating
+					if (componentType.equals(RATINGS)) {
 
-					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updatesubscriptions"));
-						nameValuePairs.add(new BasicNameValuePair("types", "following"));
-						nameValuePairs.add(new BasicNameValuePair("types", "notification"));
-						if (vBundleCommunitiesNotifications.compareTo(new Version("1.1.0"))>0)
-							nameValuePairs.add(new BasicNameValuePair("types", "subscription"));
-						nameValuePairs.add(new BasicNameValuePair("states", record.get(2).toLowerCase()));
-						nameValuePairs.add(new BasicNameValuePair("states", record.get(3).toLowerCase()));
-						if (vBundleCommunitiesNotifications.compareTo(new Version("1.1.0"))>0)
-							nameValuePairs.add(new BasicNameValuePair("states", record.get(4).toLowerCase()));
-						nameValuePairs.add(new BasicNameValuePair("subscribedId", record.get(5)));
-
-					} else {
-
-						logger.info("Ignoring NOTIFICATION with this version of AEM Communities");
-						continue;
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
+						nameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
+						nameValuePairs.add(new BasicNameValuePair("response", subComponentType));
 
 					}
-				}
 
-				// Notification preferences
-				if (componentType.equals(NOTIFICATIONPREFERENCE)) {
+					// Creates a DAM asset
+					if (componentType.equals(ASSET) && record.get(ASSET_INDEX_NAME).length()>0) {
 
-					if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
+						nameValuePairs.add(new BasicNameValuePair("fileName", record.get(ASSET_INDEX_NAME)));
 
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
-						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+					}
+
+					// Creates a simple Folder
+					if (componentType.equals(FOLDER)) {
+
+						nameValuePairs.add(new BasicNameValuePair("./jcr:content/jcr:title", record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair(":name", record.get(3)));
+						nameValuePairs.add(new BasicNameValuePair("./jcr:primaryType", "sling:Folder"));
+						nameValuePairs.add(new BasicNameValuePair("./jcr:content/jcr:primaryType", "nt:unstructured"));
+
+					}				
+
+					// Creates a simple Text Fragment
+					if (componentType.equals(FRAGMENT)) {
+
+						nameValuePairs.add(new BasicNameValuePair("template", "/libs/settings/dam/cfm/templates/simple/jcr:content"));
+						nameValuePairs.add(new BasicNameValuePair("name", record.get(2)));
+						nameValuePairs.add(new BasicNameValuePair("parentPath", record.get(3)));
+						nameValuePairs.add(new BasicNameValuePair("./jcr:title", record.get(4)));
+						nameValuePairs.add(new BasicNameValuePair("description", record.get(5)));
+						nameValuePairs.add(new BasicNameValuePair("author", record.get(0)));
+
+						//We might have some tags to add to the content fragment
+						if (record.get(5).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair("tags", record.get(6)));		         				
+							nameValuePairs.add(new BasicNameValuePair("tags@TypeHint", "String[]"));		         				
+							nameValuePairs.add(new BasicNameValuePair("tags@Delete", ""));		         				
+						}
+
+					}				
+
+					// Creates an Enablement resource
+					if (componentType.equals(RESOURCE)) {
+
+						// Making sure it's referencing some existing file
+						if (rr==null) {
+							File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(2));
+							if (!attachment.exists()) {
+								logger.error("Resource cannot be created as the referenced file is missing on the file system");
+								continue;
+							}
+						} else {
+							Resource res = rr.getResource(csvfile + "/attachments/" + record.get(2) + "/jcr:content");
+							if (res==null) {
+								logger.error("A non existent resource named " + record.get(2) + "was referenced");
+								continue;
+							}
+
+						}
+
+						String createResourceOpName = "se:createResource";
+						String enablementType = "social/enablement/components/hbs/resource";
+
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) createResourceOpName="social:createResource";
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementResourceModel";
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
+
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
 						nameValuePairs.addAll(otherNameValuePairs);
 
+						// Assignments only make sense when SCORM is configured
+						if (vBundleCommunitiesSCORM==null) {
+							nameValuePairs.remove("add-learners");
+							nameValuePairs.remove("deltaList");
+							logger.warn("SCORM not configured on this instance, not assigning a resource");
+						}					
+
+						// Special processing of lists with multiple users, need to split a String into multiple entries
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) {
+							// Author, contact and experts always make sense
+							nameValuePairs = convertArrays(nameValuePairs,"add-learners");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-author");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
+
+						}
+
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
+							nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/resource/model"));
+							nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
+							nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
+							nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
+							nameValuePairs = convertKeyName(nameValuePairs, "id", "resource-uid");
+							enablementType = "resource";
+						}
+
+						nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
+
+						// Adding the site
+						nameValuePairs.add(new BasicNameValuePair("site", url[0]));
+
+						// Building the cover image fragment
+						if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE), maxretries)));
+						} else {
+							nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
+						}
+
+						// Building the asset fragment
+						String assetFileName = record.get(2);
+
+						// Replacing videos with images in case it's a minimized installation
+						int assetFileNamePos = assetFileName.indexOf(".mp4");
+						if (assetFileNamePos>0 && minimize) {
+							assetFileName = assetFileName.substring(0,assetFileNamePos) + ".jpg";
+						}
+
+						// Not processing SCORM files if the ignore option is there
+						if (assetFileName.endsWith(".zip") && noenablement) {
+							logger.info("Not processing a SCORM resource for this scenario");
+							continue;
+						}
+
+						String coverPath = "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
+						String coverSource = "dam";
+						String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + assetFileName + "\"}]";
+						nameValuePairs.add(new BasicNameValuePair("assets", assets));
+
+						// If it's a SCORM asset, making sure the output is available before processing
+						if (assetFileName.endsWith(".zip")) {
+							doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output", maxretries);
+						}
+
 					}
 
-				}
+					// Creates a learning path
+					if (componentType.equals(LEARNING)) {
 
-				// Uploading Avatar picture
-				if (componentType.equals(AVATAR)) {
+						if (vBundleCommunitiesSCORM==null || noenablement) {
+							logger.info("Ignoring a learning path");
+							continue;
+						}
 
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:changeAvatar"));
+						String createResourceOpName = "se:editLearningPath";
+						String enablementType = "social/enablement/components/hbs/learningpath";
+						String resourceList = "learningpath-items";
 
-					// Appending the path to the user profile to the target location
-					String userJson = doGet(hostname, port,
-							"/libs/granite/security/currentuser.json",
-							getUserName(record.get(0)), getPassword(record.get(0), adminPassword),
-							null);
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) createResourceOpName="social:editLearningPath";
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementLearningPathModel";
 
-					userHome = "";
-					if (userJson!=null) {
+						nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
-						try {
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
+						nameValuePairs.addAll(otherNameValuePairs);
 
-							// Fetching the home property
-							userHome = new JSONObject(userJson).getString("home");
+						// Special processing of lists with multiple users, need to split a String into multiple entries
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) {
 
-						} catch (Exception e) {
+							nameValuePairs = convertArrays(nameValuePairs,"add-learners");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-author");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
+							nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
 
-							logger.error("Couldn't figure out home folder for user " + record.get(0));
+						}
+
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
+							nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/model/learningpath"));
+							nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
+							nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
+							nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
+							nameValuePairs = convertKeyName(nameValuePairs, "id", "resource-uid");
+							enablementType = "learningpath";
+							resourceList = "resourcelist";
+						}
+
+						nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
+
+						// Adding the site
+						nameValuePairs.add(new BasicNameValuePair("site", url[0]));
+
+						// Building the cover image fragment
+						if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
+							nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE), maxretries)));
+						}
+
+						// Building the learning path fragment
+						StringBuffer assets = new StringBuffer("[");
+						if (learningpaths.get(record.get(2)) != null) {
+
+							assets.append("\"");
+							ArrayList<String> paths = learningpaths.get(record.get(2));
+							int i=0;
+							for (String path : paths) {
+								assets.append("{\\\"type\\\":\\\"linked-resource\\\",\\\"path\\\":\\\"");
+								assets.append(path);
+								assets.append("\\\"}");
+								if (i++<paths.size()-1) { assets.append("\",\""); }
+							}						
+							assets.append("\"");
+
+						} else {						
+							logger.warn("No asset for this learning path");
+						}
+
+						assets.append("]");
+						nameValuePairs.add(new BasicNameValuePair(resourceList , assets.toString()));
+
+					}
+
+					// Creates a calendar event
+					if (componentType.equals(CALENDAR)) {
+
+						if(vBundleCommunitiesEnablement==null) {
+							logger.info("Calendars are not compatible with this version of AEM");
+							continue;
+						}
+
+						String startDate = computeDate(record.get(5), record.get(7));
+						String endDate = computeDate(record.get(6), record.get(7));
+
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createEvent"));
+						if (vBundleCommunitiesCalendar!=null && vBundleCommunitiesCalendar.compareTo(new Version("1.2.29"))>0) {
+
+							// Post AEM Communities 6.1 FP3
+							nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
+							nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
+							nameValuePairs.add(new BasicNameValuePair("location", record.get(4)));		         
+							nameValuePairs.add(new BasicNameValuePair("tags", ""));		         
+							nameValuePairs.add(new BasicNameValuePair("address", ""));		         
+							nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
+							nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
+							nameValuePairs.add(new BasicNameValuePair("end", endDate));	
+
+							// Let's see if we have tags
+							if (record.size()>CALENDAR_INDEX_TAGS && record.get(CALENDAR_INDEX_TAGS).length()>0) {
+								nameValuePairs.add(new BasicNameValuePair("tags", record.get(CALENDAR_INDEX_TAGS)));	
+							}
+
+							// Let's see if we have a cover image
+							if (record.size()>CALENDAR_INDEX_THUMBNAIL && record.get(CALENDAR_INDEX_THUMBNAIL).length()>0) {
+								addBinaryBody(builder, lIs, rr, "coverimage", csvfile, record.get(CALENDAR_INDEX_THUMBNAIL));
+							}
+
+						} else {
+
+							// Pre AEM Communities 6.1 FP3
+							try {
+
+								JSONObject event = new JSONObject();
+
+								// Building the JSON fragment for a new calendar event
+								event.accumulate("subject", record.get(2));
+								event.accumulate("message", record.get(3));
+								event.accumulate("location", record.get(4));
+								event.accumulate("tags", "");
+								event.accumulate("undefined", "update");
+								event.accumulate("start", startDate);
+								event.accumulate("end",endDate);
+
+								nameValuePairs.add(new BasicNameValuePair("event",event.toString()));
+
+							} catch(Exception ex) {
+
+								logger.error(ex.getMessage());
+
+							}
 
 						}
 
 					}
 
-				}
-
-				// Assigning badge to user
-				if (componentType.equals(BADGEASSIGN)) {
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:assignBadge"));
-
-					// Special case to accommodate re-factoring of badging images
-					String value = record.get(3);
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) {
-						value = value.replaceAll("/jcr:content", "");
+					for (NameValuePair nameValuePair : nameValuePairs) {
+						builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 					}
 
-					nameValuePairs.add(new BasicNameValuePair("badgeContentPath", value));
+					// See if we have attachments for this new post - or some other actions require a form nonetheless
+					if ((componentType.equals(ASSET) || 
+							componentType.equals(AVATAR) ||
+							componentType.equals(FORUM) ||
+							componentType.equals(IDEATION) ||
+							componentType.equals(QNA) ||
+							(componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
 
-					// Appending the path to the user profile to the target location
-					String userJson = doGet(hostname, altport,
-							"/libs/granite/security/currentuser.json",
-							getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
-							null);
+						addBinaryBody(builder, lIs, rr, "file", csvfile, record.get(ASSET_INDEX_NAME));
+					}
 
-					userHome = "";
-					if (userJson!=null) {
+					// If it's a resource or a learning path, we need the path to the resource for subsequent publishing
+					Map<String, String> elements = new HashMap<String, String>();
+					String jsonElement = "location";
+					String referrer = null;
+					if (componentType.equals(RESOURCE) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))<=0) {
+						jsonElement = "changes/argument";
 
-						try {
+					}
+					if (componentType.equals(LEARNING) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<=0) {
+						jsonElement = "path";
+					}
 
-							// Fetching the home property
-							userHome = new JSONObject(userJson).getString("home");
+					if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
+						// Useful for debugging complex POST requests
+						printPOST(builder.build());	
+					}
 
-						} catch (Exception e) {
+					if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
+						// Creating an asset doesn't return a JSON string
+						elements.put(jsonElement, "");
+						elements.put("response/resourceType", "");
+						elements.put("response/id", "");
+					}
 
-							logger.error("Couldn't figure out home folder for user " + record.get(2));
+					if (componentType.equals(ASSET)) {
+						elements.put("location", "");
+					}
 
+					// This call generally returns the path to the content that was just created
+					int returnCode = Loader.doPost(hostname, port, getPostURL(componentType, subComponentType, url[urlLevel], userHome), userName, password, builder.build(), elements, null);
+
+					// Again, Assets being a particular case
+					if (!(componentType.equals(ASSET) || componentType.equals(AVATAR))) {
+						location = elements.get(jsonElement);
+						referrer = elements.get("response/id");
+						if (Integer.parseInt(record.get(1)) == 0) {
+							analyticsPagePath = location;
+							resourceType = elements.get("response/resourceType");
 						}
-
 					}
 
-				}
-
-				// Uploading Badge image
-				if (componentType.equals(BADGEIMAGE)) {
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createBadge"));
-					nameValuePairs.add(new BasicNameValuePair("jcr:title", record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair("badgeDisplayName", record.get(3)));
-					nameValuePairs.add(new BasicNameValuePair("badgeDescription", record.get(5)));
-					addBinaryBody(builder, lIs, rr, "badgeImage", csvfile, record.get(ASSET_INDEX_NAME));
-
-				}				
-
-				// Joins a user (posting the request) to a Community Group (path)
-				if (componentType.equals(JOIN)) {
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:joinCommunityGroup"));
-					int pos = url[0].indexOf("/configuration.social.json");
-					if (pos>0)
-						nameValuePairs.add(new BasicNameValuePair("path", url[0].substring(0,pos) + ".html"));
-					else
-						continue; // Invalid record
-				}
-
-				// Creates a new private message
-				if (componentType.equals(MESSAGE)) {
-
-					nameValuePairs.add(new BasicNameValuePair("to", "/social/authors/" + record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair("userId", "/social/authors/" + record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair("toId", ""));
-					nameValuePairs.add(new BasicNameValuePair("serviceSelector", "/bin/community"));
-					nameValuePairs.add(new BasicNameValuePair("redirectUrl", "../messaging.html"));
-					nameValuePairs.add(new BasicNameValuePair("attachmentPaths", ""));
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createMessage"));
-					nameValuePairs.add(new BasicNameValuePair("subject", record.get(3)));
-					nameValuePairs.add(new BasicNameValuePair("content", record.get(4)));
-					nameValuePairs.add(new BasicNameValuePair("sendMail", "Sending..."));
-
-				}
-
-				// Creates a forum post (or a reply)
-				if (componentType.equals(FORUM)) {
-
-					if (urlLevel == 0) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
-						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
-
-					} else if (subComponentType.equals(UGCREPLY)) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createForumPost"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
-						nameValuePairs.add(new BasicNameValuePair("subject", ""));
-
-					}
-				}
-
-				// Creates a file or a folder
-				if (componentType.equals(FILES)) {
-
-					// Top level is always assumed to be a folder, second level files, and third and subsequent levels comments on files
-					if (urlLevel==0) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createFileLibraryFolder"));
-						nameValuePairs.add(new BasicNameValuePair("name", subComponentType));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
-
-					} else if (subComponentType.equals(UGCREPLY)) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
-
+					// In case of Assets or Resources, we are waiting for all workflows to be completed
+					if (componentType.equals(ASSET) && returnCode<400) {
+						doWaitAssetCompleted(hostname, port, adminPassword, elements.get("location"), maxretries);
+						doWaitWorkflowsCompleted(hostname, port, adminPassword, "asset", maxretries);
 					}
 
-				}
+					// If we are loading a content fragment, we need to post the actual content next
+					if (componentType.equals(FRAGMENT)) {
 
-				// Creates a question, a reply or mark a reply as the best answer
-				if (componentType.equals(QNA)) {
+						// Publishing the learning path 
+						List<NameValuePair> fragmentNameValuePairs = new ArrayList<NameValuePair>();
+						fragmentNameValuePairs.add(new BasicNameValuePair("contentType","text/html"));
 
-					if(vBundleCommunitiesEnablement==null) {
-						logger.info("QnAs are not compatible with this version of AEM");
-						continue;
-					}
+						StringBuffer message = new StringBuffer("<p>" + record.get(7) + "</p>");
 
-					if (urlLevel==0) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
-						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
-
-					} else if (subComponentType.equals(UGCREPLY)) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createQnaPost"));
-						nameValuePairs.add(new BasicNameValuePair("subject", ""));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));
-
-					}
-
-				}
-
-				// Creates a Blog article or a comment
-				if (componentType.equals(JOURNAL) || componentType.equals(BLOG)) {
-
-					if(vBundleCommunitiesEnablement==null) {
-						logger.info("Blogs are not compatible with this version of AEM");
-						continue;
-					}
-
-					if (urlLevel==0) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
-						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
-						StringBuffer message = new StringBuffer("<p>" + record.get(3) + "</p>");
-
-						//We might have more paragraphs to add to the blog or journal article
-						for (int i=6; i < record.size();i++) {
-							if (record.get(i).length()>0) {
-								if (record.get(i).startsWith("isDraft")) {
-									nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
-								} else {
+						//We might have more paragraphs to add to the fragment
+						if (record.size()>8) {
+							for (int i=8; i < record.size();i++) {
+								if (record.get(i).length()>0) {
 									message.append("<p>" + record.get(i) + "</p>");
 								}
 							}
 						}
 
-						//We might have some tags to add to the blog or journal article
-						if (record.get(5).length()>0) {
-							nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
-						}
+						fragmentNameValuePairs.add(new BasicNameValuePair("content", message.toString()));		         
 
-						nameValuePairs.add(new BasicNameValuePair("message", message.toString()));		         
-
-					} else if (subComponentType.equals(UGCREPLY)) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createJournalComment"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));	
-						nameValuePairs.add(new BasicNameValuePair("subject", ""));
+						Loader.doPost(hostname, port,
+								record.get(3) + "/" + record.get(2) + ".cfm.content.json",
+								userName, password,
+								new UrlEncodedFormEntity(fragmentNameValuePairs),
+								null);
 
 					}
 
-				}
+					// Let's see if it needs to be added to a learning path
+					if (componentType.equals(RESOURCE) && record.get(RESOURCE_INDEX_PATH).length()>0 && location!=null) {
 
-				// Creates an Idea or a comment
-				if (componentType.equals(IDEATION)) {
-
-					if(!isCommunities61FP6orlater) {
-						logger.info("Ideas are not compatible with this version of AEM");
-						continue;
-					}
-
-					if (urlLevel==0) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createIdeationComment"));
-						nameValuePairs.add(new BasicNameValuePair("subject", subComponentType));
-						StringBuffer message = new StringBuffer("");
-
-						//We might have more paragraphs to add to the idea
-						for (int i=6; i < record.size();i++) {
-							if (record.get(i).length()>0) {
-								message.append("<p>" + record.get(i) + "</p>");
-							}
-						}
-
-						if (record.get(5).equals("TRUE")) {
-							nameValuePairs.add(new BasicNameValuePair("isDraft", "true"));
-						} else {
-							nameValuePairs.add(new BasicNameValuePair("isDraft", "false"));						
-						}
-
-						//We might have some tags to add to the blog or journal article
-						if (record.get(3).length()>0) {
-							nameValuePairs.add(new BasicNameValuePair("tags", record.get(5)));		         				
-						}
-
-						nameValuePairs.add(new BasicNameValuePair("message", message.toString()));	
-
-					} else if (subComponentType.equals(UGCREPLY)) {
-
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createIdeationComment"));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));	
-						nameValuePairs.add(new BasicNameValuePair("subject", ""));
+						// Adding the location to a list of a resources for this particular Learning Path
+						if (learningpaths.get(record.get(RESOURCE_INDEX_PATH)) == null) learningpaths.put(record.get(RESOURCE_INDEX_PATH), new ArrayList<String>());
+						logger.info("Adding resource to Learning path: " + record.get(RESOURCE_INDEX_PATH));
+						ArrayList<String> locations = learningpaths.get(record.get(RESOURCE_INDEX_PATH));
+						locations.add(location);
+						learningpaths.put(record.get(RESOURCE_INDEX_PATH), locations);
 
 					}
 
-				}
+					// If it's a Learning Path, we publish it when possible
+					if (componentType.equals(LEARNING) && !port.equals(altport) && location!=null && vBundleCommunitiesSCORM!=null) {
 
-				// Taking care of moderation actions for all types
-				if (urlLevel>=1 && !subComponentType.equals(UGCREPLY)) {
+						// Publishing the learning path 
+						List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
 
-					if (subComponentType.equals(UGCPIN)  && !isCommunities61FP5orlater) {
-						logger.warn("This feature is not supported by this version of AEM");
-						continue;
-					}
+						String publishOpName = "se:publishEnablementContent";
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementLearningPathModel";
+						publishNameValuePairs.add(new BasicNameValuePair(":operation", publishOpName));				
 
-					if ((subComponentType.equals(UGCFEATURE) || subComponentType.equals(UGCLIKE)) && !isCommunities61FP6orlater) {
-						logger.warn("This feature is not supported by this version of AEM");
-						continue;
-					}
+						publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
+						logger.info("Publishing a learning path from: " + location);					
+						Loader.doPost(hostname, port,
+								location,
+								userName, password,
+								new UrlEncodedFormEntity(publishNameValuePairs),
+								null);
 
-					if (subComponentType.equals(UGCANSWER)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:selectAnswer"));
-					}
-					if (subComponentType.equals(UGCDENY)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:deny"));
-					}
-					if (subComponentType.equals(UGCFLAG)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:flag"));
-						nameValuePairs.add(new BasicNameValuePair("social:flagformtext", "Marked as spam"));
-						nameValuePairs.add(new BasicNameValuePair("social:doFlag", "true"));
-					}
-					if (subComponentType.equals(UGCFEATURE)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:featured"));
-						nameValuePairs.add(new BasicNameValuePair("social:markFeatured", "true"));
-					}
-					if (subComponentType.equals(UGCPIN)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:pin"));
-						nameValuePairs.add(new BasicNameValuePair("social:doPin", "true"));
-					}
-					if (subComponentType.equals(UGCUPVOTE)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
-						nameValuePairs.add(new BasicNameValuePair("response", "1"));
-						nameValuePairs.add(new BasicNameValuePair("tallyType", "Voting"));					
-					}
-					if (subComponentType.equals(UGCDOWNVOTE)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
-						nameValuePairs.add(new BasicNameValuePair("response", "-1"));
-						nameValuePairs.add(new BasicNameValuePair("tallyType", "Voting"));					
-					}
-					if (subComponentType.equals(UGCLIKE)) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
-						nameValuePairs.add(new BasicNameValuePair("response", "1"));
-						nameValuePairs.add(new BasicNameValuePair("tallyType", "Liking"));							
-					}
+						// Waiting for the learning path to be published
+						doWaitPath(hostname, altport, adminPassword, location, maxretries);
 
-				}
-
-				// Creates a review or a comment
-				if (componentType.equals(REVIEWS)) {
-
-					nameValuePairs.add(new BasicNameValuePair("message", record.get(2)));
-
-					// This might be a top level review, or a comment on a review or another comment
-					if (urlLevel==0) {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createReview"));
-						nameValuePairs.add(new BasicNameValuePair("ratings", record.get(3)));
-						if (record.size()>4 &&
-								record.get(4).length()>0) {
-							nameValuePairs.add(new BasicNameValuePair("scf:included",record.get(4)));							
-							if (record.size()>5 &&
-									record.get(5).length()>0) {
-								nameValuePairs.add(new BasicNameValuePair("scf:resourceType",record.get(5)));							
-							} else {
-								nameValuePairs.add(new BasicNameValuePair("scf:resourceType", "social/reviews/components/hbs/reviews"));
-							}
-						}
-					} else {
-						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createComment"));
-					}
-
-				}
-
-				// Creates a rating
-				if (componentType.equals(RATINGS)) {
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:postTallyResponse"));
-					nameValuePairs.add(new BasicNameValuePair("tallyType", "Rating"));
-					nameValuePairs.add(new BasicNameValuePair("response", subComponentType));
-
-				}
-
-				// Creates a DAM asset
-				if (componentType.equals(ASSET) && record.get(ASSET_INDEX_NAME).length()>0) {
-
-					nameValuePairs.add(new BasicNameValuePair("fileName", record.get(ASSET_INDEX_NAME)));
-
-				}
-
-				// Creates a simple Folder
-				if (componentType.equals(FOLDER)) {
-
-					nameValuePairs.add(new BasicNameValuePair("./jcr:content/jcr:title", record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair(":name", record.get(3)));
-					nameValuePairs.add(new BasicNameValuePair("./jcr:primaryType", "sling:Folder"));
-					nameValuePairs.add(new BasicNameValuePair("./jcr:content/jcr:primaryType", "nt:unstructured"));
-
-				}				
-
-				// Creates a simple Text Fragment
-				if (componentType.equals(FRAGMENT)) {
-
-					nameValuePairs.add(new BasicNameValuePair("template", "/libs/settings/dam/cfm/templates/simple/jcr:content"));
-					nameValuePairs.add(new BasicNameValuePair("name", record.get(2)));
-					nameValuePairs.add(new BasicNameValuePair("parentPath", record.get(3)));
-					nameValuePairs.add(new BasicNameValuePair("./jcr:title", record.get(4)));
-					nameValuePairs.add(new BasicNameValuePair("description", record.get(5)));
-					nameValuePairs.add(new BasicNameValuePair("author", record.get(0)));
-
-					//We might have some tags to add to the content fragment
-					if (record.get(5).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("tags", record.get(6)));		         				
-						nameValuePairs.add(new BasicNameValuePair("tags@TypeHint", "String[]"));		         				
-						nameValuePairs.add(new BasicNameValuePair("tags@Delete", ""));		         				
-					}
-
-				}				
-
-				// Creates an Enablement resource
-				if (componentType.equals(RESOURCE)) {
-
-					// Making sure it's referencing some existing file
-					if (rr==null) {
-						File attachment = new File(csvfile.substring(0, csvfile.indexOf(".csv")) + File.separator + record.get(2));
-						if (!attachment.exists()) {
-							logger.error("Resource cannot be created as the referenced file is missing on the file system");
-							continue;
-						}
-					} else {
-						Resource res = rr.getResource(csvfile + "/attachments/" + record.get(2) + "/jcr:content");
-						if (res==null) {
-							logger.error("A non existent resource named " + record.get(2) + "was referenced");
-							continue;
-						}
-
-					}
-
-					String createResourceOpName = "se:createResource";
-					String enablementType = "social/enablement/components/hbs/resource";
-
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) createResourceOpName="social:createResource";
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementResourceModel";
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
-
-					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
-					nameValuePairs.addAll(otherNameValuePairs);
-
-					// Assignments only make sense when SCORM is configured
-					if (vBundleCommunitiesSCORM==null) {
-						nameValuePairs.remove("add-learners");
-						nameValuePairs.remove("deltaList");
-						logger.warn("SCORM not configured on this instance, not assigning a resource");
-					}					
-
-					// Special processing of lists with multiple users, need to split a String into multiple entries
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))>0) {
-						// Author, contact and experts always make sense
-						nameValuePairs = convertArrays(nameValuePairs,"add-learners");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-author");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
-
-					}
-
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
-						nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/resource/model"));
-						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
-						nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
-						nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
-						nameValuePairs = convertKeyName(nameValuePairs, "id", "resource-uid");
-						enablementType = "resource";
-					}
-
-					nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
-
-					// Adding the site
-					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
-
-					// Building the cover image fragment
-					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE), maxretries)));
-					} else {
-						nameValuePairs.add(new BasicNameValuePair("cover-image", ""));			
-					}
-
-					// Building the asset fragment
-					String assetFileName = record.get(2);
-
-					// Replacing videos with images in case it's a minimized installation
-					int assetFileNamePos = assetFileName.indexOf(".mp4");
-					if (assetFileNamePos>0 && minimize) {
-						assetFileName = assetFileName.substring(0,assetFileNamePos) + ".jpg";
-					}
-
-					// Not processing SCORM files if the ignore option is there
-					if (assetFileName.endsWith(".zip") && noenablement) {
-						logger.info("Not processing a SCORM resource for this scenario");
-						continue;
-					}
-
-					String coverPath = "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/jcr:content/renditions/cq5dam.thumbnail.319.319.png";
-					String coverSource = "dam";
-					String assets = "[{\"cover-img-path\":\"" + coverPath + "\",\"thumbnail-source\":\"" + coverSource + "\",\"asset-category\":\"enablementAsset:dam\",\"resource-asset-name\":null,\"state\":\"A\",\"asset-path\":\"/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + assetFileName + "\"}]";
-					nameValuePairs.add(new BasicNameValuePair("assets", assets));
-
-					// If it's a SCORM asset, making sure the output is available before processing
-					if (assetFileName.endsWith(".zip")) {
-						doWaitPath(hostname, port, adminPassword, "/content/dam/resources/" + record.get(RESOURCE_INDEX_SITE) + "/" + record.get(2) + "/output", maxretries);
-					}
-
-				}
-
-				// Creates a learning path
-				if (componentType.equals(LEARNING)) {
-
-					if (vBundleCommunitiesSCORM==null || noenablement) {
-						logger.info("Ignoring a learning path");
-						continue;
-					}
-
-					String createResourceOpName = "se:editLearningPath";
-					String enablementType = "social/enablement/components/hbs/learningpath";
-					String resourceList = "learningpath-items";
-
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) createResourceOpName="social:editLearningPath";
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) createResourceOpName="social:createEnablementLearningPathModel";
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
-
-					List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
-					nameValuePairs.addAll(otherNameValuePairs);
-
-					// Special processing of lists with multiple users, need to split a String into multiple entries
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0) {
-
-						nameValuePairs = convertArrays(nameValuePairs,"add-learners");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-author");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-contact");
-						nameValuePairs = convertArrays(nameValuePairs,"resource-expert");
-
-					}
-
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
-						nameValuePairs.add(new BasicNameValuePair("sling:resourceType", "social/enablement/components/hbs/model/learningpath"));
-						nameValuePairs = convertKeyName(nameValuePairs, "add-learners", "resource-assignees");
-						nameValuePairs = convertKeyName(nameValuePairs, "jcr:title", "resource-name");
-						nameValuePairs = convertKeyName(nameValuePairs, "resourceTags", "resource-tags");
-						nameValuePairs = convertKeyName(nameValuePairs, "id", "resource-uid");
-						enablementType = "learningpath";
-						resourceList = "resourcelist";
-					}
-
-					nameValuePairs.add(new BasicNameValuePair("enablement-type", enablementType));
-
-					// Adding the site
-					nameValuePairs.add(new BasicNameValuePair("site", url[0]));
-
-					// Building the cover image fragment
-					if (record.get(RESOURCE_INDEX_THUMBNAIL).length()>0) {
-						nameValuePairs.add(new BasicNameValuePair(vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))>0?"cover-image":"card-image", doThumbnail(rr, lIs, hostname, port, adminPassword, csvfile, record.get(RESOURCE_INDEX_THUMBNAIL), record.get(RESOURCE_INDEX_SITE), maxretries)));
-					}
-
-					// Building the learning path fragment
-					StringBuffer assets = new StringBuffer("[");
-					if (learningpaths.get(record.get(2)) != null) {
-
-						assets.append("\"");
+						// Decorate the resources within the learning path with comments and ratings, randomly generated
 						ArrayList<String> paths = learningpaths.get(record.get(2));
-						int i=0;
 						for (String path : paths) {
-							assets.append("{\\\"type\\\":\\\"linked-resource\\\",\\\"path\\\":\\\"");
-							assets.append(path);
-							assets.append("\\\"}");
-							if (i++<paths.size()-1) { assets.append("\",\""); }
+							doDecorate(hostname, altport, adminPassword, path, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
 						}						
-						assets.append("\"");
 
-					} else {						
-						logger.warn("No asset for this learning path");
 					}
 
-					assets.append("]");
-					nameValuePairs.add(new BasicNameValuePair(resourceList , assets.toString()));
+					// If it's an Enablement Resource that is not part of a learning path, a lot of things need to happen...
+					// Step 1. If it's a SCORM resource, we wait for the SCORM metadata workflow to be complete before proceeding
+					// Step 2. We publish the resource
+					// Step 3. We set a new first published date on the resource (3 weeks earlier) so that reporting data is more meaningful
+					// Step 4. We wait for the resource to be available on publish (checking that associated groups are available)
+					// Step 5. We retrieve the json for the resource on publish to retrieve the Social endpoints
+					// Step 6. We post ratings and comments for each of the enrollees on publish
+					if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
 
-				}
+						// Wait for the workflows to be completed
+						doWaitWorkflowsCompleted(hostname, port, adminPassword, "resource", maxretries);
 
-				// Creates a calendar event
-				if (componentType.equals(CALENDAR)) {
+						String resourcePath = "/assets/asset";
 
-					if(vBundleCommunitiesEnablement==null) {
-						logger.info("Calendars are not compatible with this version of AEM");
-						continue;
-					}
-
-					String startDate = computeDate(record.get(5), record.get(7));
-					String endDate = computeDate(record.get(6), record.get(7));
-
-					nameValuePairs.add(new BasicNameValuePair(":operation", "social:createEvent"));
-					if (vBundleCommunitiesCalendar!=null && vBundleCommunitiesCalendar.compareTo(new Version("1.2.29"))>0) {
-
-						// Post AEM Communities 6.1 FP3
-						nameValuePairs.add(new BasicNameValuePair("subject", record.get(2)));
-						nameValuePairs.add(new BasicNameValuePair("message", record.get(3)));		         
-						nameValuePairs.add(new BasicNameValuePair("location", record.get(4)));		         
-						nameValuePairs.add(new BasicNameValuePair("tags", ""));		         
-						nameValuePairs.add(new BasicNameValuePair("address", ""));		         
-						nameValuePairs.add(new BasicNameValuePair("isDate", "false"));		         
-						nameValuePairs.add(new BasicNameValuePair("start", startDate));		         
-						nameValuePairs.add(new BasicNameValuePair("end", endDate));	
-
-						// Let's see if we have tags
-						if (record.size()>CALENDAR_INDEX_TAGS && record.get(CALENDAR_INDEX_TAGS).length()>0) {
-							nameValuePairs.add(new BasicNameValuePair("tags", record.get(CALENDAR_INDEX_TAGS)));	
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
+							resourcePath = "/se_assets/se_primary";
 						}
 
-						// Let's see if we have a cover image
-						if (record.size()>CALENDAR_INDEX_THUMBNAIL && record.get(CALENDAR_INDEX_THUMBNAIL).length()>0) {
-							addBinaryBody(builder, lIs, rr, "coverimage", csvfile, record.get(CALENDAR_INDEX_THUMBNAIL));
-						}
+						// Wait for the data to be fully copied
+						doWaitPath(hostname, port, adminPassword, location + resourcePath, maxretries);
 
-					} else {
+						// If we are dealing with a SCORM asset, we wait for the SCORM workflow to be completed before publishing the resource
+						if (record.get(2).indexOf(".zip")>0) {
 
-						// Pre AEM Communities 6.1 FP3
-						try {
+							// Wait for the output to be available
+							doWaitPath(hostname, port, adminPassword, location + resourcePath + "/" + record.get(2) + "/output", maxretries);
 
-							JSONObject event = new JSONObject();
+							// Wait for 10 seconds
+							doSleep(10000, "Processing a SCORM resource");
 
-							// Building the JSON fragment for a new calendar event
-							event.accumulate("subject", record.get(2));
-							event.accumulate("message", record.get(3));
-							event.accumulate("location", record.get(4));
-							event.accumulate("tags", "");
-							event.accumulate("undefined", "update");
-							event.accumulate("start", startDate);
-							event.accumulate("end",endDate);
+						}					
 
-							nameValuePairs.add(new BasicNameValuePair("event",event.toString()));
+						// Wait for the workflows to be completed before publishing the resource
+						doWaitWorkflowsCompleted(hostname, port, adminPassword, "resource", maxretries);
 
-						} catch(Exception ex) {
+						List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
 
-							logger.error(ex.getMessage());
+						String publishOpName = "se:publishEnablementContent";
+						if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementResourceModel";
+						publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
 
-						}
+						publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
+						logger.info("Publishing a Resource from: " + location);					
+						Loader.doPost(hostname, port,
+								location,
+								userName, password,
+								new UrlEncodedFormEntity(publishNameValuePairs),
+								null);
+
+						// Waiting for the resource to be published
+						doWaitPath(hostname, altport, adminPassword, location, maxretries);
+
+						// Adding comments and ratings for this resource
+						logger.info("Decorating the resource with comments and ratings");
+						doDecorate(hostname, altport, adminPassword, location, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
+
+						// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
+						DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+						Calendar cal = Calendar.getInstance();
+						cal.add(Calendar.DATE, REPORTINGDAYS);    
+						List<NameValuePair> publishDateNameValuePairs = new ArrayList<NameValuePair>();
+						publishDateNameValuePairs.add(new BasicNameValuePair("se_date-published", dateFormat.format(cal.getTime())));
+						logger.info("Setting the publish date for a resource at: " + location);
+						doPost(hostname, port,
+								location,
+								userName, password,
+								new UrlEncodedFormEntity(publishDateNameValuePairs),
+								null);
 
 					}
 
-				}
+					// Generating Analytics when needed for the new fragment of UGC content
+					if (analytics!=null && referrer!=null) {
 
-				for (NameValuePair nameValuePair : nameValuePairs) {
-					builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
-				}
-
-				// See if we have attachments for this new post - or some other actions require a form nonetheless
-				if ((componentType.equals(ASSET) || 
-						componentType.equals(AVATAR) ||
-						componentType.equals(FORUM) ||
-						componentType.equals(IDEATION) ||
-						componentType.equals(QNA) ||
-						(componentType.equals(JOURNAL)) || componentType.equals(BLOG)) && record.size()>4 && record.get(ASSET_INDEX_NAME).length()>0) {
-
-					addBinaryBody(builder, lIs, rr, "file", csvfile, record.get(ASSET_INDEX_NAME));
-				}
-
-				// If it's a resource or a learning path, we need the path to the resource for subsequent publishing
-				Map<String, String> elements = new HashMap<String, String>();
-				String jsonElement = "location";
-				String referrer = null;
-				if (componentType.equals(RESOURCE) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP2))<=0) {
-					jsonElement = "changes/argument";
-
-				}
-				if (componentType.equals(LEARNING) && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<=0) {
-					jsonElement = "path";
-				}
-
-				if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
-					// Useful for debugging complex POST requests
-					printPOST(builder.build());	
-				}
-
-				if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
-					// Creating an asset doesn't return a JSON string
-					elements.put(jsonElement, "");
-					elements.put("response/resourceType", "");
-					elements.put("response/id", "");
-				}
-				
-				if (componentType.equals(ASSET)) {
-					elements.put("location", "");
-				}
-
-				// This call generally returns the path to the content that was just created
-				int returnCode = Loader.doPost(hostname, port, getPostURL(componentType, subComponentType, url[urlLevel], userHome), userName, password, builder.build(), elements, null);
-
-				// Again, Assets being a particular case
-				if (!(componentType.equals(ASSET) || componentType.equals(AVATAR))) {
-					location = elements.get(jsonElement);
-					referrer = elements.get("response/id");
-					if (Integer.parseInt(record.get(1)) == 0) {
-						analyticsPagePath = location;
-						resourceType = elements.get("response/resourceType");
-					}
-				}
-
-				// In case of Assets or Resources, we are waiting for all workflows to be completed
-				if (componentType.equals(ASSET) && returnCode<400) {
-					doWaitAssetCompleted(hostname, port, adminPassword, elements.get("location"), maxretries);
-					doWaitWorkflowsCompleted(hostname, port, adminPassword, "asset", maxretries);
-				}
-
-				// If we are loading a content fragment, we need to post the actual content next
-				if (componentType.equals(FRAGMENT)) {
-
-					// Publishing the learning path 
-					List<NameValuePair> fragmentNameValuePairs = new ArrayList<NameValuePair>();
-					fragmentNameValuePairs.add(new BasicNameValuePair("contentType","text/html"));
-
-					StringBuffer message = new StringBuffer("<p>" + record.get(7) + "</p>");
-
-					//We might have more paragraphs to add to the fragment
-					if (record.size()>8) {
-						for (int i=8; i < record.size();i++) {
-							if (record.get(i).length()>0) {
-								message.append("<p>" + record.get(i) + "</p>");
-							}
-						}
-					}
-
-					fragmentNameValuePairs.add(new BasicNameValuePair("content", message.toString()));		         
-
-					Loader.doPost(hostname, port,
-							record.get(3) + "/" + record.get(2) + ".cfm.content.json",
-							userName, password,
-							new UrlEncodedFormEntity(fragmentNameValuePairs),
-							null);
-
-				}
-
-				// Let's see if it needs to be added to a learning path
-				if (componentType.equals(RESOURCE) && record.get(RESOURCE_INDEX_PATH).length()>0 && location!=null) {
-
-					// Adding the location to a list of a resources for this particular Learning Path
-					if (learningpaths.get(record.get(RESOURCE_INDEX_PATH)) == null) learningpaths.put(record.get(RESOURCE_INDEX_PATH), new ArrayList<String>());
-					logger.info("Adding resource to Learning path: " + record.get(RESOURCE_INDEX_PATH));
-					ArrayList<String> locations = learningpaths.get(record.get(RESOURCE_INDEX_PATH));
-					locations.add(location);
-					learningpaths.put(record.get(RESOURCE_INDEX_PATH), locations);
-
-				}
-
-				// If it's a Learning Path, we publish it when possible
-				if (componentType.equals(LEARNING) && !port.equals(altport) && location!=null && vBundleCommunitiesSCORM!=null) {
-
-					// Publishing the learning path 
-					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-
-					String publishOpName = "se:publishEnablementContent";
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementLearningPathModel";
-					publishNameValuePairs.add(new BasicNameValuePair(":operation", publishOpName));				
-
-					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
-					logger.info("Publishing a learning path from: " + location);					
-					Loader.doPost(hostname, port,
-							location,
-							userName, password,
-							new UrlEncodedFormEntity(publishNameValuePairs),
-							null);
-
-					// Waiting for the learning path to be published
-					doWaitPath(hostname, altport, adminPassword, location, maxretries);
-
-					// Decorate the resources within the learning path with comments and ratings, randomly generated
-					ArrayList<String> paths = learningpaths.get(record.get(2));
-					for (String path : paths) {
-						doDecorate(hostname, altport, adminPassword, path, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
-					}						
-
-				}
-
-				// If it's an Enablement Resource that is not part of a learning path, a lot of things need to happen...
-				// Step 1. If it's a SCORM resource, we wait for the SCORM metadata workflow to be complete before proceeding
-				// Step 2. We publish the resource
-				// Step 3. We set a new first published date on the resource (3 weeks earlier) so that reporting data is more meaningful
-				// Step 4. We wait for the resource to be available on publish (checking that associated groups are available)
-				// Step 5. We retrieve the json for the resource on publish to retrieve the Social endpoints
-				// Step 6. We post ratings and comments for each of the enrollees on publish
-				if (componentType.equals(RESOURCE) && !port.equals(altport) && location!=null && !location.equals("")) {
-
-					// Wait for the workflows to be completed
-					doWaitWorkflowsCompleted(hostname, port, adminPassword, "resource", maxretries);
-
-					String resourcePath = "/assets/asset";
-
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) {
-						resourcePath = "/se_assets/se_primary";
-					}
-
-					// Wait for the data to be fully copied
-					doWaitPath(hostname, port, adminPassword, location + resourcePath, maxretries);
-
-					// If we are dealing with a SCORM asset, we wait for the SCORM workflow to be completed before publishing the resource
-					if (record.get(2).indexOf(".zip")>0) {
-
-						// Wait for the output to be available
-						doWaitPath(hostname, port, adminPassword, location + resourcePath + "/" + record.get(2) + "/output", maxretries);
-
-						// Wait for 10 seconds
-						doSleep(10000, "Processing a SCORM resource");
-
-					}					
-
-					// Wait for the workflows to be completed before publishing the resource
-					doWaitWorkflowsCompleted(hostname, port, adminPassword, "resource", maxretries);
-
-					List<NameValuePair> publishNameValuePairs = new ArrayList<NameValuePair>();
-
-					String publishOpName = "se:publishEnablementContent";
-					if (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62FP1))>0) publishOpName="social:publishEnablementResourceModel";
-					publishNameValuePairs.add(new BasicNameValuePair(":operation",publishOpName));				
-
-					publishNameValuePairs.add(new BasicNameValuePair("replication-action","activate"));
-					logger.info("Publishing a Resource from: " + location);					
-					Loader.doPost(hostname, port,
-							location,
-							userName, password,
-							new UrlEncodedFormEntity(publishNameValuePairs),
-							null);
-
-					// Waiting for the resource to be published
-					doWaitPath(hostname, altport, adminPassword, location, maxretries);
-
-					// Adding comments and ratings for this resource
-					logger.info("Decorating the resource with comments and ratings");
-					doDecorate(hostname, altport, adminPassword, location, record, analytics, sitePagePath, vBundleCommunitiesEnablement);
-
-					// Setting the first published timestamp so that reporting always comes with 3 weeks of data after building a new demo instance
-					DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-					Calendar cal = Calendar.getInstance();
-					cal.add(Calendar.DATE, REPORTINGDAYS);    
-					List<NameValuePair> publishDateNameValuePairs = new ArrayList<NameValuePair>();
-					publishDateNameValuePairs.add(new BasicNameValuePair("se_date-published", dateFormat.format(cal.getTime())));
-					logger.info("Setting the publish date for a resource at: " + location);
-					doPost(hostname, port,
-							location,
-							userName, password,
-							new UrlEncodedFormEntity(publishDateNameValuePairs),
-							null);
-
-				}
-
-				// Generating Analytics when needed for the new fragment of UGC content
-				if (analytics!=null && referrer!=null) {
-
-					logger.info("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
-					logger.info("Analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
-					if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(IDEATION) || componentType.equals(CALENDAR))) {
-						logger.debug("level: " + Integer.parseInt(record.get(1)));
-						if (Integer.parseInt(record.get(1)) == 0) {
-							// We just created a UGC page that gets viewed. simulate view events.
-							int views = new Random().nextInt(21) + 10;
-							for (int i = 0; i < views; i++) {
-								doUGCAnalytics(analytics, "event11", analyticsPagePath, resourceType, sitePagePath,
+						logger.info("Component type: " + componentType + ", Analytics page path: " + analyticsPagePath + ", referrer: " + referrer);
+						logger.info("Analytics: " + analytics + ", resourceType: " + resourceType + ", sitePagePath: " + sitePagePath + ", userName: " + userName);
+						if (analyticsPagePath != null && (componentType.equals(FORUM) || componentType.equals(FILES) || componentType.equals(QNA) || componentType.equals(BLOG) || componentType.equals(IDEATION) || componentType.equals(CALENDAR))) {
+							logger.debug("level: " + Integer.parseInt(record.get(1)));
+							if (Integer.parseInt(record.get(1)) == 0) {
+								// We just created a UGC page that gets viewed. simulate view events.
+								int views = new Random().nextInt(21) + 10;
+								for (int i = 0; i < views; i++) {
+									doUGCAnalytics(analytics, "event11", analyticsPagePath, resourceType, sitePagePath,
+											userName, referrer);
+								}
+							} else {
+								// We just posted to a UGC page (comment, reply, etc.). simulate post event.
+								doUGCAnalytics(analytics, "event13", analyticsPagePath, resourceType, sitePagePath,
 										userName, referrer);
 							}
-						} else {
-							// We just posted to a UGC page (comment, reply, etc.). simulate post event.
-							doUGCAnalytics(analytics, "event13", analyticsPagePath, resourceType, sitePagePath,
-									userName, referrer);
 						}
+
+					}
+
+					// Closing all the input streams where applicable
+					for (InputStream is : lIs) {
+
+						try {
+							is.close();
+						} catch (IOException e) {
+							//Omitted
+						}
+
 					}
 
 				}
-
-				// Closing all the input streams where applicable
-				for (InputStream is : lIs) {
-
-					try {
-						is.close();
-					} catch (IOException e) {
-						//Omitted
-					}
-
-				}
-
-			}
 
 		} catch (Exception e) {
 
@@ -2901,7 +2902,9 @@ public class Loader {
 
 				// Preparing a standard POST HTTP command
 				HttpPost request = new HttpPost(postUrl);
+
 				request.setEntity(entity);
+
 				if (!entity.getContentType().toString().contains("multipart")) {
 					request.addHeader("content-type", "application/x-www-form-urlencoded");
 				}
@@ -2941,7 +2944,7 @@ public class Loader {
 						} 
 						return returnCode;
 					}
-									
+
 					for (String lookup : keys) {
 						if (lookup != null) {
 							int separatorIndex = lookup.indexOf("/");
@@ -3177,7 +3180,7 @@ public class Loader {
 	private static void doWaitAssetCompleted(String hostname, String port, String adminPassword, String location, int maxretries) {
 
 		if (location==null) return;
-		
+
 		int retries = 0;
 		while (retries++ < maxretries) {
 
@@ -3188,17 +3191,17 @@ public class Loader {
 
 					JSONObject assetJsonObject = new JSONObject(assetJson);
 					String assetStatus = assetJsonObject.getString("dam:assetState");
-					
+
 					// In pre 6.3 versions, asset state might not be there at all
 					if (assetStatus==null || assetStatus.equals("")) break;
-					
+
 					// In post 6.3 versions, it's there
 					if (assetStatus.equals("processed")) {
 						break;
 					} else {
 						doSleep(2000, "Asset not processed yet, attempt: " + retries);
 					}
-					
+
 				}
 				catch (Exception ex) {
 					logger.debug("Asset state not available");
@@ -3287,8 +3290,14 @@ public class Loader {
 
 	}
 
-	// This method GETs a request to the server, returning the location JSON attribute, when available
 	private static String doGet(String hostname, String port, String url, String user, String password, List<NameValuePair> params) {
+
+		return doGet(hostname, port, url, user, password, params, true);
+
+	}
+
+	// This method GETs a request to the server, returning the location JSON attribute, when available
+	private static String doGet(String hostname, String port, String url, String user, String password, List<NameValuePair> params, boolean debug) {
 
 		String rawResponse = null;
 		try {
@@ -3348,7 +3357,8 @@ public class Loader {
 			e.printStackTrace();
 		}
 
-		logger.debug(rawResponse);
+		if (debug) logger.debug(rawResponse);
+
 		return rawResponse;
 
 	}
@@ -3477,7 +3487,9 @@ public class Loader {
 					nameValuePairs.add(new BasicNameValuePair(name.substring(0,hint) + "@TypeHint", name.substring(1+hint)));					            		
 					name = name.substring(0,hint);
 				} else {
-					nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
+					// Only adding the hint if not posting to a .json endpoint
+					if (path==null || path.indexOf(".json")<0)
+							nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
 				}
 
 				// We have multiple values to pass to the POST servlet, e.g. for a String[]
