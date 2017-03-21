@@ -986,11 +986,19 @@ public class Loader {
 					if (record.get(0).equals(GROUPDELETE) && record.get(1)!=null) {
 
 						// Let's query all the Community sites
-						String siteList = Loader.doGet(hostname, port,
-								"/mnt/overlay/social/console/content-shell3/sites/jcr:content/views/content/items/sitecollection.social.json",
-								"admin", adminPassword,
-								null);					
+						List<NameValuePair> sitesNameValuePairs = new ArrayList<NameValuePair>();
+						sitesNameValuePairs.add(new BasicNameValuePair("path", "/content"));
+						sitesNameValuePairs.add(new BasicNameValuePair("1_property", "sling:resourceType"));
+						sitesNameValuePairs.add(new BasicNameValuePair("1_property.value", "social/console/components/hbs/sitecollection/site"));
+						sitesNameValuePairs.add(new BasicNameValuePair("1_property.operation", "like"));
+						sitesNameValuePairs.add(new BasicNameValuePair("p.limit", "-1"));
+						sitesNameValuePairs.add(new BasicNameValuePair("p.hits", "full"));
 
+						String siteList = Loader.doGet(hostname, port,
+								"/bin/querybuilder.json",
+								"admin", adminPassword,
+								sitesNameValuePairs);
+						
 						// List of orphan entries
 						List<String> orphanKeys = new ArrayList<String>();
 
@@ -1391,7 +1399,7 @@ public class Loader {
 
 								// Only do this when really have configuration settings
 								doPost(hostname, port,
-										record.get(1),
+										componentType.equals(SLINGPOST)?record.get(1):configurePath,
 										"admin", adminPassword,
 										new UrlEncodedFormEntity(nameValuePairs),
 										null);
@@ -3482,7 +3490,7 @@ public class Loader {
 				}
 
 				// We default to String unless specified otherwise
-				int hint = name.indexOf("@");
+				int hint = name.indexOf("@");	
 				if (hint>0) {
 					nameValuePairs.add(new BasicNameValuePair(name.substring(0,hint) + "@TypeHint", name.substring(1+hint)));					            		
 					name = name.substring(0,hint);
