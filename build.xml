@@ -2922,6 +2922,9 @@
 				<antcall target="scene7_registration">
 					<param name="port" value="${port}"/>
 				</antcall>
+				<antcall target="solution_switcher">
+					<param name="port" value="${port}"/>
+				</antcall>
 			</then>
 		</if>
 		<antcall target="community_srp">
@@ -3250,6 +3253,261 @@
 			</then>
 		</if>
 	</target>
+
+	<!-- Marketing Cloud Solution Switcher -->
+	<target name="solution_switcher">
+		<if>
+			<equals arg1="${SolutionSwitcher.customize}" arg2="true" casesensitive="false"/>
+			<then>
+				<!-- primary switcher -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./sling:resourceType=granite/ui/components/shell/solutionswitcher"/>
+					<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+					<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher"/>
+				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+					<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary"/>
+				</exec>
+				<!-- secondary (rhs vertical) switcher -->
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+					<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary"/>
+				</exec>
+
+				<if>
+					<length string="${SolutionSwitcher.analytics.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Analytics Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.analytics.url}'"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="-d ./icon=adobeAnalyticsColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/analytics"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.audiencemanager.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Audience Manager Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.audiencemanager.url}'"/>
+							<arg line="-d ./icon=adobeAudienceManagerColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/audiencemanager"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.campaign.url}" trim="true" when="greater" length="0" />
+					<then>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.campaign.url}'"/>
+							<arg line="-d ./icon=adobeCampaignColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/campaign"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.social.url}" trim="true" when="greater" length="0" />
+					<then>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.social.url}'"/>
+							<arg line="-d ./icon=adobeSocialColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/social"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.aem.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring AEM Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.aem.url}'"/>
+							<arg line="-d ./icon=adobeExperienceManagerColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/aem"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.mediaoptimizer.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Media Optimizer Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.mediaoptimizer.url}'"/>
+							<arg line="-d ./icon=adobeMediaOptimizerColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/mediaoptimizer"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.primetime.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Primetime Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.primetime.url}'"/>
+							<arg line="-d ./icon=adobePrimetimeColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/primetime"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.target.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Target Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.target.url}'"/>
+							<arg line="-d ./icon=adobeTargetColor"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/primary/target"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.activation.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Activation Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.activation.url}'"/>
+							<arg line="-d ./icon=launch"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary/activation"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.assets.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Assets Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.assets.url}'"/>
+							<arg line="-d ./icon=asset"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary/assets"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.exchange.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring exchange Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.exchange.url}'"/>
+							<arg line="-d ./icon=sync"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary/exchange"/>
+						</exec>
+					</then>
+				</if>
+
+				<if>
+					<length string="${SolutionSwitcher.mobileservices.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring mobileservices Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.mobileservices.url}'"/>
+							<arg line="-d ./icon=mobileServices"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary/mobileservices"/>
+						</exec>
+					</then>
+				</if>
+				<if>
+					<length string="${SolutionSwitcher.feed.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring mobileservices Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.feed.url}'"/>
+							<arg line="-d ./icon=feed"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary/feed"/>
+						</exec>
+					</then>
+				</if>
+				<if>
+					<length string="${SolutionSwitcher.profilesaudiences.url}" trim="true" when="greater" length="0" />
+					<then>
+						<echo message="Configuring Activation Switcher"/>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./jcr:primaryType=nt:unstructured"/>
+							<arg line="--data-urlencode './href_i18n=${SolutionSwitcher.profilesaudiences.url}'"/>
+							<arg line="-d ./icon=user"/>
+							<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary/profilesaudiences"/>
+						</exec>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+
+
 	<!-- Adobe Analytics: posting username, password and secret key for encryption wiht local instance keys -->
 	<target name="analytics">
 		<if>
