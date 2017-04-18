@@ -2299,6 +2299,16 @@
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/communities-aem63-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.11.${latest111}/cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
 		</exec>
+		<propertyregex property="latest112" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.12\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.12.${latest112}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem63-latest.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.12.${latest112}/cq-socialcommunities-pkg-1.12.${latest112}.zip"/>
+		</exec>
+		<propertyregex property="latest113" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.13\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.13.${latest113}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem64-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.13.${latest113}/cq-socialcommunities-pkg-1.13.${latest113}.zip"/>
+		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -2337,6 +2347,10 @@
 		<echo message="Downloading cq-social-scorm-pkg-1.1.${latest11}.zip"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem63.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
+		</exec>
+		<echo message="Downloading cq-social-scorm-pkg-1.1.${latest11}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
@@ -2611,6 +2625,9 @@
 			</else>
 		</if>
 		<!-- These conditions are used to run specitic targets only on certain releases -->
+		<condition property="aem64">
+			<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+		</condition>
 		<condition property="aem63">
 			<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 		</condition>
@@ -2627,6 +2644,12 @@
 			<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
 		</condition>
 		<!-- This property determines where to load the demo packages from -->
+		<if>
+			<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem64"/>
+			</then>
+		</if>
 		<if>
 			<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 			<then>
@@ -2658,17 +2681,25 @@
 			</then>
 		</if>
 		<!-- These conditions are used to run specitic targets starting with a certain release or later -->
+		<condition property="aem64orlater">
+			<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+		</condition>
 		<condition property="aem63orlater">
-			<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+			<or>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+			</or>
 		</condition>
 		<condition property="aem62orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 			</or>
 		</condition>
 		<condition property="aem61orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
@@ -2676,6 +2707,7 @@
 		</condition>
 		<condition property="aem60orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
@@ -2684,6 +2716,7 @@
 		</condition>
 		<condition property="cq56orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.1" casesensitive="false"/>
@@ -3253,7 +3286,6 @@
 			</then>
 		</if>
 	</target>
-
 	<!-- Marketing Cloud Solution Switcher -->
 	<target name="solution_switcher">
 		<if>
@@ -3283,9 +3315,8 @@
 					<arg line="-d ./jcr:primaryType=nt:unstructured"/>
 					<arg line="http://${demo.host}:${port}/apps/granite/ui/content/shell/solutionswitcher/secondary"/>
 				</exec>
-
 				<if>
-					<length string="${SolutionSwitcher.analytics.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.analytics.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Analytics Switcher"/>
 						<exec executable="curl">
@@ -3299,9 +3330,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.audiencemanager.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.audiencemanager.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Audience Manager Switcher"/>
 						<exec executable="curl">
@@ -3315,9 +3345,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.campaign.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.campaign.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<exec executable="curl">
 							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
@@ -3330,9 +3359,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.social.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.social.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<exec executable="curl">
 							<arg line="--output '${logs}/${port}_solution_switcher.html'"/>
@@ -3345,9 +3373,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.aem.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.aem.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring AEM Switcher"/>
 						<exec executable="curl">
@@ -3361,9 +3388,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.mediaoptimizer.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.mediaoptimizer.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Media Optimizer Switcher"/>
 						<exec executable="curl">
@@ -3377,9 +3403,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.primetime.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.primetime.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Primetime Switcher"/>
 						<exec executable="curl">
@@ -3393,9 +3418,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.target.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.target.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Target Switcher"/>
 						<exec executable="curl">
@@ -3409,9 +3433,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.activation.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.activation.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Activation Switcher"/>
 						<exec executable="curl">
@@ -3425,9 +3448,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.assets.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.assets.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Assets Switcher"/>
 						<exec executable="curl">
@@ -3441,9 +3463,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.exchange.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.exchange.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring exchange Switcher"/>
 						<exec executable="curl">
@@ -3457,9 +3478,8 @@
 						</exec>
 					</then>
 				</if>
-
 				<if>
-					<length string="${SolutionSwitcher.mobileservices.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.mobileservices.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring mobileservices Switcher"/>
 						<exec executable="curl">
@@ -3474,7 +3494,7 @@
 					</then>
 				</if>
 				<if>
-					<length string="${SolutionSwitcher.feed.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.feed.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring mobileservices Switcher"/>
 						<exec executable="curl">
@@ -3489,7 +3509,7 @@
 					</then>
 				</if>
 				<if>
-					<length string="${SolutionSwitcher.profilesaudiences.url}" trim="true" when="greater" length="0" />
+					<length string="${SolutionSwitcher.profilesaudiences.url}" trim="true" when="greater" length="0"/>
 					<then>
 						<echo message="Configuring Activation Switcher"/>
 						<exec executable="curl">
@@ -3506,8 +3526,6 @@
 			</then>
 		</if>
 	</target>
-
-
 	<!-- Adobe Analytics: posting username, password and secret key for encryption wiht local instance keys -->
 	<target name="analytics">
 		<if>
@@ -6690,6 +6708,28 @@
 				<echo file="${validation}/${results}.html" append="true">&lt;span class="label label-${validation.log.style}"&gt;n/a&lt;/span&gt;&amp;nbsp;</echo>
 			</else>
 		</if>
+	</target>
+	<!-- Target that cleanly uninstalls all built demos so far -->
+	<target name="cleanslate">
+		<foreach target="cleanslate_doit" param="demopath" inheritall="true">
+			<path>
+				<sort>
+					<dirset dir="${demos}">
+						<include name="*"/>
+					</dirset>
+					<reverse xmlns="antlib:org.apache.tools.ant.types.resources.comparators">
+						<name/>
+					</reverse>
+				</sort>
+			</path>
+		</foreach>
+	</target>
+	<target name="cleanslate_doit">
+		<basename property="demo" file="${demopath}"/>
+		<echo message="Cleaning demo environment: ${demo}"/>
+		<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+			<arg line="-Ddemo.build=${demo} cleanup"/>
+		</exec>
 	</target>
 	<!-- Default target when no target name is provided to ANT -->
 	<target name="default">
