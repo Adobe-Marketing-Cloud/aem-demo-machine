@@ -1703,6 +1703,15 @@
 		</if>
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
+	<target name="download_aem63" depends="download_prereqs">
+		<echo message="Downloading AEM 6.3"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -L -o '${dist}/downloads/aem63.jar' ${demo.download.aem.artifactory}${demo.download.aem.63}"/>
+		</exec>
+		<echo message="AEM 6.3 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/aem63.jar" todir="${dist}/bin"/>
+	</target>
 	<target name="download_aem62" depends="download_prereqs">
 		<echo message="Downloading AEM 6.2"/>
 		<mkdir dir="${dist}/downloads"/>
