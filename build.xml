@@ -2374,7 +2374,7 @@
 				<equals arg1="${demo.scripts}" arg2="AdobeOnlyValueRequired" casesensitive="false"/>
 			</or>
 			<then>
-				<fail message="Please install the Adobe-only properties before using this feature (Search for AEM Demo Machine in Adobe's Wiki for further instructions)"/>
+				<fail message="Please install the Adobe-only properties before using this feature (Search for the main AEM Demo Machine page in Adobe's corporate Wiki for detailed instructions and the attached set of properties). The following properties need new values: demo.download.aem.artifactory, demo.download and demo.scripts."/>
 			</then>
 		</if>
 	</target>
