@@ -2984,6 +2984,9 @@
 		<antcall target="externalizer">
 			<param name="port" value="${port}"/>
 		</antcall>
+		<antcall target="content_services">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<!--
 		<antcall target="serialization_firewall">
 			<param name="port" value="${port}"/>
@@ -4446,6 +4449,30 @@
 			</then>
 		</if>
 		<antcall target="stepbystep"/>
+	</target>
+	<!-- Target for configuring the Content Services -->
+	<target name="content_services" if="aem63orlater" depends="version,configuration">
+		<if>
+			<and>
+				<equals arg1="${demo.contentservices}" arg2="true" casesensitive="false"/>
+			</and>
+			<then>
+				<echo message="Configuring the content services"/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_content_services.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d feature.flag.show.status=true"/>
+					<arg line="-d feature.flag.show.status=false"/>
+					<arg line="-d propertylist=feature.flag.show.status"/>
+					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.caas.impl.feature.ContentServicesFeatureFlag"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring the We.Retail Community subsite -->
 	<target name="weretail" if="aem62orlater" depends="version,configuration">
