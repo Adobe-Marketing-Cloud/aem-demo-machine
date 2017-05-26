@@ -3280,6 +3280,26 @@
 					<arg line="-d ./registrationID@Encrypted="/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/dynamicmediaservices/DemoMachine/jcr:content"/>
 				</exec>
+
+				<!-- set image server URL, if present -->
+				<if>
+					<and>
+						<not>
+							<equals arg1="${AdobeScene7.imageService}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+						</not>
+						<length string="${AdobeScene7.imageService}" trim="true" when="greater" length="0"/>
+					</and>
+					<then>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_scene7_imgvr.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="-d ./imageServiceUrl=${AdobeScene7.imageService}"/>
+							<arg line="http://${demo.host}:${port}/etc/cloudservices/dynamicmediaservices/DemoMachine/jcr:content"/>
+						</exec>
+					</then>
+				</if>
+
 			</then>
 		</if>
 	</target>
