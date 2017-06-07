@@ -443,7 +443,7 @@
 		<mkdir dir="${demos}/${demo.build}/${demo.instance}"/>
 		<copy file="${dist}/license/license-${demo.license}.properties" tofile="${demos}/${demo.build}/${demo.instance}/license.properties"/>
 		<copy file="${dist}/bin/${demo.jar}.jar" tofile="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar"/>
-		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" output="${logs}/${demo.port}_${demo.instance}_unpack.txt" fork="true" spawn="false">
+		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" output="${logs}/${demo.port}_${demo.instance}_unpack.txt" jvm="${demo.jvm}" fork="true" spawn="false">
 			<arg line="-unpack"/>
 			<jvmarg value="-Djava.awt.headless=true"/>
 		</java>
@@ -825,7 +825,7 @@
 		</if>
 	</target>
 	<target name="aem_start_java">
-		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
+		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" jvm="${demo.jvm}" fork="true" spawn="true">
 			<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
 			<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
 			<jvmarg value="-XX:MaxPermSize=256m"/>
@@ -5140,6 +5140,7 @@
 		<antcall target="community_tunnel"/>
 		<antcall target="community_email_importer"/>
 		<antcall target="community_fragment"/>
+		<antcall target="community_spamdetector"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
 		<antcall target="community_livefyre"/>
@@ -5431,6 +5432,30 @@
 					<arg line="-d auth.loginselector.mappings=/content/we-retail/us/en/community/signin:/content/we-retail/us/en"/>
 					<arg line="-d propertylist=auth.loginselector.mappings"/>
 					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.day.cq.auth.impl.LoginSelectorHandler"/>
+				</exec>
+			</then>
+		</if>
+	</target>
+	<!-- Target for configuring the Communities Default Login pages, for each site -->
+	<target name="community_spamdetector" if="aem64orlater">
+		<if>
+			<equals arg1="${demo.communities.spamdetector}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring AEM Communities Spam detection on port ${demomachine.publishport}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${demomachine.publishport}_spamdetector.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d automoderation.sequence=SentimentProcess"/>
+					<arg line="-d automoderation.sequence=ProfanityFilter"/>
+					<arg line="-d automoderation.onfailurestop=true"/>
+					<arg line="-d automoderation.onfailurestop=false"/>
+					<arg line="-d propertylist=automoderation.onfailurestop,automoderation.sequence"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.ugcbase.moderation.impl.AutoModerationImpl"/>
 				</exec>
 			</then>
 		</if>
@@ -6235,6 +6260,7 @@
 		<echo message="Java version in use: ${ant.java.version}"/>
 		<if>
 			<and>
+				<equals arg1="${demo.jvm}" arg2="java" casesensitive="false"/>
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
 				<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
 			</and>
@@ -6245,6 +6271,7 @@
 		<if>
 			<and>
 				<equals arg1="${ant.java.version}" arg2="1.8" casesensitive="false"/>
+				<equals arg1="${demo.jvm}" arg2="java" casesensitive="false"/>
 				<or>
 					<equals arg1="${demo.packages}" arg2="aem60" casesensitive="false"/>
 					<equals arg1="${demo.packages}" arg2="cq56" casesensitive="false"/>
