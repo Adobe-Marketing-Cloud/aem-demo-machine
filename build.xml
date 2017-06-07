@@ -9,6 +9,7 @@
 	<property name="ant" location="./ant"/>
 	<property name="packages" location="./dist/packages"/>
 	<property name="hotfixes" location="./dist/hotfixes"/>
+	<property name="certificates" location="./dist/certificates"/>
 	<property name="demos" location="./demos"/>
 	<property name="logs" location="./logs/${demo.build}"/>
 	<property name="validation" location="./logs/validation"/>
@@ -2948,9 +2949,6 @@
 		<antcall target="brightedge">
 			<param name="port" value="${port}"/>
 		</antcall>
-		<antcall target="notifications">
-			<param name="port" value="${port}"/>
-		</antcall>
 		<antcall target="community-moderators">
 			<param name="port" value="${port}"/>
 		</antcall>
@@ -3172,18 +3170,7 @@
 		<mkdir dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/osgi/${startlevel}"/>
 		<copy file="${package}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/osgi/${startlevel}"/>
 	</target>
-	<!-- Adobe Social Communities - setting waiting time to 10s for notifications -->
-	<target name="notifications">
-		<exec executable="curl">
-			<arg line="--output '${logs}/${port}_notifications.html'"/>
-			<arg line="-u admin:${demo.admin.password}"/>
-			<arg line="-X POST"/>
-			<arg line="-d ./waiting.time=10"/>
-			<arg line="-d ./waiting.time@TypeHint=Long"/>
-			<arg line="http://${demo.host}:${port}/libs/wcm/notification/config/com.day.cq.wcm.notification.impl.NotificationManagerImpl"/>
-		</exec>
-	</target>
-	<!-- Adobe Social Communities - setting waiting time to 10s for notifications -->
+	<!-- AEM User Management - OAK user group caching (not used currently in default scenarios) -->
 	<target name="user_configuration" if="aem62orlater">
 		<echo message="Configuring OAK Users and Groups cache settings (30s pause)"/>
 		<exec executable="curl">
@@ -3906,6 +3893,54 @@
 		<if>
 			<equals arg1="${demo.assets.smarttags.install}" arg2="true" casesensitive="false"/>
 			<then>
+				<if>
+					<or>
+						<equals arg1="${demo.assets.smarttags.keystorepassword}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.keystorepassword}" arg2="" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.authorizationserver}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.authorizationserver}" arg2="" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.apikey}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.apikey}" arg2="" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.clientsecret}" arg2="replaceWithYourOwnValue" casesensitive="false"/>
+						<equals arg1="${demo.assets.smarttags.clientsecret}" arg2="" casesensitive="false"/>
+					</or>
+					<then>
+						<fail message="Please configure your demo.assets.smarttags.* properties with required security settings"/>
+					</then>
+				</if>
+				<if>
+					<resourceexists>
+						<file file="${certificates}/${demo.assets.smarttags.certificate}"/>
+					</resourceexists>
+					<then>
+						<echo message="Configuring the DAM service user for Security"/>
+						<exec executable="curl" output="${logs}/${port}_smarttag_createkeystorecurl.html">
+							<arg line="--output '${logs}/${port}_smarttag_createkeystore.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="--data-urlencode 'newPassword=${demo.assets.smarttags.keystorepassword}'"/>
+							<arg line="--data-urlencode 'rePassword=${demo.assets.smarttags.keystorepassword}'"/>
+							<arg line="-d :operation=createStore"/>
+							<arg line="http://${demo.host}:${port}/home/users/system/dam/dam-update-service.ks.html"/>
+						</exec>
+						<echo message="Configuring the Key"/>
+						<exec executable="curl" output="${logs}/${port}_smarttag_configurekeystorecurl.html">
+							<arg line="--output '${logs}/${port}_smarttag_configurekeystore.html'"/>
+							<arg line="-X POST"/>
+							<arg line="-v"/>
+							<arg line="-i"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-F newAlias=similaritysearch"/>
+							<arg line="-F keyStorePass=${demo.assets.smarttags.keystorepassword}"/>
+							<arg line="-F alias=similaritysearch"/>
+							<arg line="-F keyPassword=${demo.assets.smarttags.keystorepassword}"/>
+							<arg line="-F 'keyStore=@${certificates}/${demo.assets.smarttags.certificate}'"/>
+							<arg line="http://${demo.host}:${port}/home/users/system/dam/dam-update-service.ks.html"/>
+						</exec>
+					</then>
+					<else>
+						<echo message="ERROR: A required certificate file in /dist/certificates is not available"/>
+					</else>
+				</if>
 				<echo message="Configuring AEM Assets Smart Tags"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetsfeatureflag.html'"/>
@@ -3940,11 +3975,11 @@
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="--data-urlencode './serviceUrl=${demo.assets.smarttags.url}'"/>
-					<arg line="--data-urlencode './authServerUrl=none'"/>
-					<arg line="--data-urlencode './apiKey=none'"/>
-					<arg line="--data-urlencode './techAcctId=none'"/>
-					<arg line="--data-urlencode './orgId=none'"/>
-					<arg line="--data-urlencode './clientSecret=none'"/>
+					<arg line="--data-urlencode './authServerUrl=${demo.assets.smarttags.authorizationserver}'"/>
+					<arg line="--data-urlencode './apiKey=${demo.assets.smarttags.apikey}'"/>
+					<arg line="--data-urlencode './techAcctId=${demo.assets.smarttags.technicalaccountid}'"/>
+					<arg line="--data-urlencode './orgId=${demo.assets.smarttags.organizationid}'"/>
+					<arg line="--data-urlencode './clientSecret=${demo.assets.smarttags.clientsecret}'"/>
 					<arg line="--data-urlencode './clientSecret@Encrypted='"/>
 					<arg line="-d ./sling:resourceType=dam/components/smarttaggingservicepage"/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/smarttagging/DemoMachine/jcr:content"/>
@@ -3957,7 +3992,7 @@
 					<arg line="-d apply=true"/>
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
-					<arg line="-d bypass.auth=true"/>
+					<arg line="-d bypass.auth=false"/>
 					<arg line="-d indexed.rendition=cq5dam.thumbnail.319.319.png"/>
 					<arg line="-d max.tags=${demo.assets.smarttags.maxtags}"/>
 					<arg line="-d min.tag.confidence=${demo.assets.smarttags.minconfidence}"/>
@@ -6547,7 +6582,7 @@
 				</exec>
 				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="soco.version.zip">
 					<arg line="-f '${validation}/build/${AdobeAEM.publishport}_${demo}_packages.json'"/>
-					<arg line="-r 'cq-socialcommunities-pkg-([0-9.]+).zip'"/>
+					<arg line="-r 'cq-socialcommunities-(.*)([0-9.]+).zip'"/>
 					<arg line="-p last"/>
 					<classpath refid="demo.classpath"/>
 				</java>
