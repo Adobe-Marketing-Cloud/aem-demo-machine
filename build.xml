@@ -4506,6 +4506,19 @@
 					<arg line="-d propertylist=feature.flag.show.status"/>
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.caas.impl.feature.ContentServicesFeatureFlag"/>
 				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_content_services_models.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d './jcr:title=We.Retail'"/>
+					<arg line="-d 'configCapabilities=Data Models'"/>
+					<arg line="-d 'configCapabilities@Delete'"/>
+					<arg line="-d 'read@Delete'"/>
+					<arg line="-d 'modify@Delete'"/>
+					<arg line="-d 'delete@Delete'"/>
+					<arg line="http://${demo.host}:${port}/conf/we-retail.updateconf.json"/>
+				</exec>
 			</then>
 		</if>
 	</target>
