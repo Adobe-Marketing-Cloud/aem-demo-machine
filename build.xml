@@ -341,9 +341,6 @@
 			</else>
 		</if>
 		<antcall target="start"/>
-		<!--
-		<antcall target="crypto"/>
-		-->
 		<!-- Installing the ACS tools and commons on Author and Publish only -->
 		<antcall target="acs_instance">
 			<param name="port" value="${demomachine.authorport}"/>
@@ -354,37 +351,6 @@
 				<antcall target="acs_instance">
 					<param name="port" value="${demomachine.publishport}"/>
 				</antcall>
-			</then>
-		</if>
-	</target>
-	<!-- Crypto support -->
-	<target name="crypto" if="aem63orlater" depends="version,configuration">
-		<!-- For now, TarMK on 6.3 requires a restart so enforce the /etc/keys to be loaded from JCR -->
-		<if>
-			<equals arg1="${demomachine.store}" arg2="crx3" casesensitive="false"/>
-			<then>
-				<echo message="Updating crypto keys on file system for TarMK"/>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/publish/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="hmac"/>
-				</antcall>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/publish/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="master"/>
-				</antcall>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/farm/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="hmac"/>
-				</antcall>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/farm/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="master"/>
-				</antcall>
-				<antcall target="restart"/>
 			</then>
 		</if>
 	</target>
@@ -618,25 +584,33 @@
 				</antcall>
 			</then>
 		</if>
-		<echo message="Waiting for the Author instance to be started..."/>
+		<echo message="Waiting for the AUTHOR instance to be started..."/>
 		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 			<and>
 				<socket server="${demo.host}" port="${demomachine.authorport}"/>
 				<resourcecontains resource="${demos}/${demo.build}/author/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
 			</and>
 		</waitfor>
+		<antcall target="canlogin">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<echo message="AUTHOR instance has started..."/>
 		<if>
 			<resourceexists>
 				<file file="${demos}/${demo.build}/publish/aem-publish-p${demomachine.publishport}.jar"/>
 			</resourceexists>
 			<then>
-				<echo message="Waiting for the Publish instance to be started..."/>
+				<echo message="Waiting for the PUBLISH instance to be started..."/>
 				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<and>
 						<socket server="${demo.host}" port="${demomachine.publishport}"/>
 						<resourcecontains resource="${demos}/${demo.build}/publish/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
 					</and>
 				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+				<echo message="PUBLISH instance has started..."/>
 			</then>
 		</if>
 		<if>
@@ -651,13 +625,17 @@
 					<param name="demo.port" value="${demomachine.farmport}"/>
 					<param name="demo.portdebug" value="${AdobeAEM.farmportdebug}"/>
 				</antcall>
-				<echo message="Waiting for the Farm instance to be started..."/>
-				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+				<echo message="Waiting for the FARM instance to be started..."/>
+				<waitfor maxwait="900" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<and>
 						<socket server="${demo.host}" port="${demomachine.farmport}"/>
 						<resourcecontains resource="${demos}/${demo.build}/farm/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
 					</and>
 				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.farmport}"/>
+				</antcall>
+				<echo message="FARM instance has started..."/>
 				<antcall target="configure_farm"/>
 			</then>
 		</if>
@@ -1547,8 +1525,14 @@
 				</antcall>
 			</then>
 		</if>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		<antcall target="canlogin">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+	</target>
+	<!-- Target for login screen to be available -->
+	<target name="canlogin">
+		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 		</waitfor>
 	</target>
 	<!-- Target for installing the Packages demo -->
@@ -1934,7 +1918,7 @@
 					<else>
 						<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
 						<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
-						<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
+						<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until download is completed"/>
 						<basename property="packagename" file="${filepath}"/>
 						<!-- Automatic EULA acceptance -->
 						<exec executable="curl">
@@ -2609,9 +2593,9 @@
 				</exec>
 				<!-- Many bundles are restarting after the Externalizer is changed -->
 				<sleep seconds="30"/>
-				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-					<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${port}"/>
+				</antcall>
 			</then>
 		</if>
 	</target>
@@ -3025,10 +3009,10 @@
 			</or>
 		</condition>
 		<!-- Making sure the instance is available for uploads -->
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
 		<echo message="Uploading ${packagefilename} on port ${port}"/>
+		<antcall target="canlogin">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_${packagefilename}.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -3199,9 +3183,9 @@
 		</exec>
 		<!-- Making sure the instance is available for uploads -->
 		<sleep seconds="10"/>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
+		<antcall target="canlogin">
+			<param name="port" value="${port}"/>
+		</antcall>
 	</target>
 	<!-- Configure the dispatcher flush on Publish -->
 	<target name="dispatcher">
@@ -4763,9 +4747,9 @@
 		<echo message="Waiting 60 seconds..."/>
 		<sleep seconds="60"/>
 		<echo message="Waiting for login URL..."/>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
+		<antcall target="canlogin">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<echo message="Waiting 10 more seconds..."/>
 		<sleep seconds="10"/>
 	</target>
@@ -5496,9 +5480,9 @@
 					<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.user.impl.transport.HttpToPublisher"/>
 				</exec>
 				<sleep seconds="5"/>
-				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-					<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.authorport}"/>
+				</antcall>
 			</then>
 		</if>
 	</target>
