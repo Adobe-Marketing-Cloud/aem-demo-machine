@@ -187,6 +187,8 @@ public class Loader {
 	private static final String COMMUNITIES61FP5 = "2.0.7";
 	private static final String COMMUNITIES61FP6 = "2.0.14";
 	private static final String COMMUNITIES61FP7 = "2.0.15";
+	private static final String COMMUNITIES61FP8 = "2.0.16";
+	private static final String COMMUNITIES64 = "2.2.0";
 
 	private static String[] comments = {"This course deserves some improvements", "The conclusion is not super clear", "Very crisp, love it", "Interesting, but I need to look at this course again", "Good course, I'll recommend it.", "Really nice done. Sharing with my peers", "Excellent course. Giving it a top rating."};
 
@@ -362,6 +364,7 @@ public class Loader {
 			Version vBundleCommunitiesNotifications = getVersion(bundlesList, "com.adobe.cq.social.cq-social-notifications-impl");
 			Version vBundleCommunitiesSCORM = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scorm-dam");
 			Version vBundleCommunitiesSCF = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scf-impl");
+			Version vBundleCommunitiesScoring = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scoring-impl");
 			Version vBundleCommunitiesAdvancedScoring = getVersion(bundlesList, "com.adobe.cq.social.cq-social-scoring-advanced-impl");
 
 			// Versions related methods
@@ -369,7 +372,9 @@ public class Loader {
 			boolean isCommunities61FP5orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP5))>=0;
 			boolean isCommunities61FP6orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP6))>=0;
 			boolean isCommunities61FP7orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP7))>=0;
-
+			boolean isCommunities61FP8orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP8))>=0;
+			boolean isCommunities64orlater = vBundleCommunitiesScoring!=null && vBundleCommunitiesScoring.compareTo(new Version(COMMUNITIES64))>=0;
+			
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
 			recordLoop:
@@ -383,8 +388,25 @@ public class Loader {
 					else
 						logger.info("No subcomponent type to load");
 
+					// Let's get the desired action
+					String action = record.get(0);
+					int versionBound=action.indexOf("@");
+					if (versionBound>0) {
+						
+						// We are bound to a specific version
+						String version = action.substring(1+versionBound);
+						if (version.equals("6.4") && !isCommunities64orlater) {
+							logger.info("Not processing this action on this version");
+							continue;
+						}
+						
+						// Proceeding with correct action name
+						action = action.substring(0, versionBound);
+					
+					}
+					
 					// Let's see if we deal with a comment
-					if (record.get(0).startsWith("#")) {
+					if (action.startsWith("#")) {
 
 						// We can ignore the comment line and move on
 						continue;
@@ -392,7 +414,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to terminate this process
-					if (record.get(0).equals(KILL)) {
+					if (action.equals(KILL)) {
 
 						if (rr==null)
 							System.exit(1);
@@ -402,7 +424,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to pause a little bit
-					if (record.get(0).equals(SLEEP) && record.get(1).length()>0) {
+					if (action.equals(SLEEP) && record.get(1).length()>0) {
 
 						doSleep(Long.valueOf(record.get(1)).longValue(), "Pausing " + record.get(1) + " ms");
 						continue;
@@ -410,12 +432,12 @@ public class Loader {
 					}
 
 					// Let's see if we need to set the current site path
-					if (record.get(0).equals(SITEPATH)) {
+					if (action.equals(SITEPATH)) {
 						sitePagePath = record.get(1);
 					}
 
 					// Let's see if we need to create a new Community site
-					if (record.get(0).equals(SITE)) {
+					if (action.equals(SITE)) {
 
 						// Building the form entity to be posted
 						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -433,10 +455,17 @@ public class Loader {
 
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
+	
 								if (value.equals("TRUE")) { value = "true"; }
 								if (value.equals("FALSE")) { value = "false"; }	
 								if (name.equals("urlName")) { urlName = value; }
 
+								// Special case for 64 and later
+								if (isCommunities64orlater) {
+									value = value.replaceAll("/etc/community/templates/sites/custom", "/conf/global/settings/community/templates/sites");
+									value = value.replaceAll("/etc/cloudservices/", "/conf/global/settings/");
+								}
+								
 								// Only create the site when a ROOT path is specified and available
 								if (name.equals(ROOT)) {
 									rootPath = value;
@@ -552,7 +581,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to update an existing Community site (this doesn't include republishing the site!)
-					if (record.get(0).equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
+					if (action.equals(SITEUPDATE) && record.get(1)!=null && record.get(2)!=null) {
 
 						// Let's set if we need to run based on version number
 						Version vRecord = null;
@@ -678,7 +707,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to publish a site
-					if (record.get(0).equals(SITEPUBLISH) && record.get(1)!=null) {
+					if (action.equals(SITEPUBLISH) && record.get(1)!=null) {
 
 						if (isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
 							logger.info("Publishing a Community Site " + record.get(1));
@@ -710,7 +739,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to publish a group
-					if (record.get(0).equals(GROUPPUBLISH) && record.get(1)!=null) {
+					if (action.equals(GROUPPUBLISH) && record.get(1)!=null) {
 
 						if (!port.equals(altport)) {
 
@@ -732,20 +761,20 @@ public class Loader {
 					}
 
 					// Let's see if we need to activate a tree
-					if (record.get(0).equals(ACTIVATE) && record.get(1)!=null) {
+					if (action.equals(ACTIVATE) && record.get(1)!=null) {
 
 						if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
 
 							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 							nameValuePairs.add(new BasicNameValuePair("cmd", "activate"));
-							nameValuePairs.add(new BasicNameValuePair("ignoreactivated", "true"));
 							nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
 
 							doPost(hostname, port,
-									"/etc/replication/treeactivation.html",
+									(isCommunities64orlater?"/libs":"/etc") + "/replication/treeactivation.html",
 									"admin", adminPassword,
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
+							
 						} else {
 							logger.warn("Not activating the requested path");
 						}
@@ -755,7 +784,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to create a new Tag
-					if (record.get(0).equals(TAG)) {
+					if (action.equals(TAG)) {
 
 						// Building the form entity to be posted
 						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -784,7 +813,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to assign some badges
-					if (record.get(0).equals(BADGE)) {
+					if (action.equals(BADGE)) {
 
 						if (vBundleCommunitiesEnablement==null || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP3))<0) {
 							logger.info("Badging operations not available with this version of AEM");
@@ -794,10 +823,15 @@ public class Loader {
 						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
 
 						String badgePath = record.get(1);
+
 						if (badgePath.startsWith("/etc") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
 							badgePath = badgePath.replaceAll("/jcr:content", "");
-							nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
-							nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
+							//nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
+							//nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
+						}
+						
+						if (isCommunities64orlater) {
+							badgePath = badgePath.replaceAll("/etc/community", "/conf/global/settings/community");
 						}
 
 						if (nameValuePairs.size()>2) {
@@ -807,31 +841,38 @@ public class Loader {
 								String name = nameValuePairs.get(i).getName();
 								String value = nameValuePairs.get(i).getValue();
 
+								// Special case for 64 and later
+								if (isCommunities64orlater) {
+									// Images remain absolute
+									value = value.replaceAll("/etc/community/badging/images", "/libs/community/badging/images");
+									// Everything else is relative
+									value = value.replaceAll("/etc/community", "community");
+								}
+
 								// Special case to accommodate re-factoring of badging images
 								if (name.equals("badgeContentPath") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
 									value = value.replaceAll("/jcr:content", "");
-									nameValuePairs.set(i, new BasicNameValuePair(name, value));
 								}
 
 								// Special case to accommodate re-factoring of badging images
 								if (name.startsWith("thresholds") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
 									value = value.replaceAll("/jcr:content(.*)", "");
-									nameValuePairs.set(i, new BasicNameValuePair(name, value));
 								}
 
 								// Special case to accommodate re-factoring or scoring and badging resource types
 								if (name.equals("jcr:primaryType") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
 									if (value.equals("cq:PageContent") || value.equals("cq:Page")) {
 										value = "nt:unstructured";
-										nameValuePairs.set(i, new BasicNameValuePair(name, value));
 									}
 								}
-
+								
+								nameValuePairs.set(i, new BasicNameValuePair(name, value));
+															
 								// Special case for accommodate advanced scoring being installed or not
 								if (name.endsWith("Rules") && value.contains("adv-") && vBundleCommunitiesAdvancedScoring==null) {
 									nameValuePairs.remove(i--);
 								}
-
+							
 							}
 						}
 
@@ -846,7 +887,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
-					if (record.get(0).equals(SITETEMPLATE) || record.get(0).equals(GROUPTEMPLATE)) {
+					if (action.equals(SITETEMPLATE) || record.get(0).equals(GROUPTEMPLATE)) {
 
 						// Building the form entity to be posted
 						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -861,10 +902,15 @@ public class Loader {
 
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
-								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
-								// If the template is already there, let's not try to create it
-								if (name.equals("templateName") && (isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + title2name(value)) || isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + title2name(value)))) {
+								// If the site/group template is already there, let's not try to create it
+								if (name.equals("templateName") && (
+										isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + title2name(value)) ||
+										isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + title2name(value)) ||
+										isResourceAvailable(hostname, port, adminPassword, "/conf/global/settings/community/templates/sites/" + title2name(value)) ||
+										isResourceAvailable(hostname, port, adminPassword, "/conf/global/settings/community/templates/groups/" + title2name(value)) 
+										)
+								) {
 									logger.info("Template " + value + " is already there");
 									isValid=false;
 								}
@@ -892,6 +938,15 @@ public class Loader {
 									logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
 									isValid=false;
 								}
+								
+								// If the group or site template is meant to be created in 6.4 and beyond, there's a change of paths
+								if (name.equals("functions") && isCommunities64orlater) {
+									value = value.replaceAll("/etc/community/templates/functions/reference", "/libs/settings/community/templates/functions");
+									value = value.replaceAll("/etc/community/templates/groups/reference", "/libs/settings/community/templates/groups");
+									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");									
+								}
+
+								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 							}
 						}
@@ -907,10 +962,10 @@ public class Loader {
 					}
 
 					// Let's see if we need to create a new Community group
-					if (record.get(0).equals(GROUP) || record.get(0).equals(SUBGROUP)) {
+					if (action.equals(GROUP) || record.get(0).equals(SUBGROUP)) {
 
 						// SubGroups are only supported with 6.1 FP5 and 6.2 FP1 onwards
-						if (record.get(0).equals(SUBGROUP) && !isCommunities61FP5orlater) {
+						if (action.equals(SUBGROUP) && !isCommunities61FP5orlater) {
 							logger.warn("Subgroups are not supported with this version of AEM Communities");
 							continue;
 						}
@@ -929,6 +984,12 @@ public class Loader {
 
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
+
+								// Special case for 64 and later
+								if (isCommunities64orlater) {
+									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");
+								}
+								
 								if (value.equals("TRUE")) { value = "true"; }
 								if (value.equals("FALSE")) { value = "false"; }	
 								if (name.equals("type")) { groupType = value; }
@@ -972,7 +1033,7 @@ public class Loader {
 					}
 
 					// Let's see if it's simple Sling Delete request
-					if (record.get(0).equals(SLINGDELETE)) {
+					if (action.equals(SLINGDELETE)) {
 
 						doDelete(hostname, port,
 								record.get(1),
@@ -983,7 +1044,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to delete some user groups
-					if (record.get(0).equals(GROUPDELETE) && record.get(1)!=null) {
+					if (action.equals(GROUPDELETE) && record.get(1)!=null) {
 
 						// Let's query all the Community sites
 						List<NameValuePair> sitesNameValuePairs = new ArrayList<NameValuePair>();
@@ -1083,7 +1144,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to delete a Community site
-					if (record.get(0).equals(SITEDELETE) && record.get(1)!=null) {
+					if (action.equals(SITEDELETE) && record.get(1)!=null) {
 
 						// Let's fetch the siteId for this Community Site Url
 						String siteConfig = doGet(hostname, port,
@@ -1127,11 +1188,11 @@ public class Loader {
 					}
 
 					// Let's see if we need to add users to an AEM Group
-					if ((record.get(0).equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
+					if ((action.equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
 
 						// Checking if we have a member group for this site
 						String groupName = null;
-						if (record.get(0).equals(SITEMEMBERS)) {
+						if (action.equals(SITEMEMBERS)) {
 
 							String configurationPath = record.get(GROUP_INDEX_NAME);
 
@@ -1239,7 +1300,7 @@ public class Loader {
 					}
 
 					// Let's see if it's user related
-					if (record.get(0).equals(USERS)) {
+					if (action.equals(USERS)) {
 
 						//First we need to get the path to the user node
 						String json = doGet(hostname, port,
@@ -1278,7 +1339,7 @@ public class Loader {
 					}
 
 					// Let's see if we need to generate analytics events for Assets Insights
-					if (record.get(0).equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
+					if (action.equals(ASSETINSIGHTS) && record.size()>1 && analytics!=null) {
 
 						logger.info("Generating Assets Analytics for reportsuite " + analytics);
 
@@ -1300,40 +1361,40 @@ public class Loader {
 					}
 
 					// Let's see if we deal with a new block of content or just a new entry
-					if (record.get(0).equals(CALENDAR)
-							|| record.get(0).equals(SLINGPOST)
-							|| record.get(0).equals(RATINGS) 
-							|| record.get(0).equals(IDEATION) 
-							|| record.get(0).equals(BLOG) 
-							|| record.get(0).equals(JOURNAL) 
-							|| record.get(0).equals(COMMENTS) 
-							|| record.get(0).equals(REVIEWS) 
-							|| record.get(0).equals(FILES) 
-							|| record.get(0).equals(SUMMARY) 
-							|| record.get(0).equals(ACTIVITIES) 
-							|| record.get(0).equals(JOIN) 
-							|| record.get(0).equals(FOLLOW) 
-							|| record.get(0).equals(NOTIFICATION) 
-							|| record.get(0).equals(NOTIFICATIONPREFERENCE) 
-							|| record.get(0).equals(MESSAGE) 
-							|| record.get(0).equals(ASSET) 
-							|| record.get(0).equals(AVATAR) 
-							|| record.get(0).equals(FOLDER) 
-							|| record.get(0).equals(BADGEIMAGE) 
-							|| record.get(0).equals(BADGEASSIGN) 
-							|| record.get(0).equals(FRAGMENT) 
-							|| record.get(0).equals(RESOURCE)
-							|| record.get(0).equals(LEARNING) 
-							|| record.get(0).equals(QNA) 
-							|| record.get(0).equals(FORUM)) {
+					if (action.equals(CALENDAR)
+							|| action.equals(SLINGPOST)
+							|| action.equals(RATINGS) 
+							|| action.equals(IDEATION) 
+							|| action.equals(BLOG) 
+							|| action.equals(JOURNAL) 
+							|| action.equals(COMMENTS) 
+							|| action.equals(REVIEWS) 
+							|| action.equals(FILES) 
+							|| action.equals(SUMMARY) 
+							|| action.equals(ACTIVITIES) 
+							|| action.equals(JOIN) 
+							|| action.equals(FOLLOW) 
+							|| action.equals(NOTIFICATION) 
+							|| action.equals(NOTIFICATIONPREFERENCE) 
+							|| action.equals(MESSAGE) 
+							|| action.equals(ASSET) 
+							|| action.equals(AVATAR) 
+							|| action.equals(FOLDER) 
+							|| action.equals(BADGEIMAGE) 
+							|| action.equals(BADGEASSIGN) 
+							|| action.equals(FRAGMENT) 
+							|| action.equals(RESOURCE)
+							|| action.equals(LEARNING) 
+							|| action.equals(QNA) 
+							|| action.equals(FORUM)) {
 
 						// New block of content, we need to reset the processing to first Level
-						componentType = record.get(0);
+						componentType = action;
 						url[0] = record.get(1);
 						urlLevel=0;
 
 						// If it's not a SLINGPOST that could result in nodes to be created, let's make sure the end point is really there.
-						if (!record.get(0).equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getRootPath(record.get(1)))) {
+						if (!action.equals(SLINGPOST) && record.get(1)!=null && !isResourceAvailable(hostname, port, adminPassword, getRootPath(record.get(1)))) {
 							ignoreUntilNextComponent = true;
 							continue recordLoop;
 						} else {
@@ -1351,7 +1412,13 @@ public class Loader {
 						// If the Configure command line flag is set, we try to configure the component with all options enabled
 						if (componentType.equals(SLINGPOST) || configure) {
 
-							String configurePath = getConfigurePath(record.get(1));
+							String postPath = record.get(1);
+							
+							if (isCommunities64orlater) {
+								postPath= postPath.replaceAll("/etc/cloudservices/", "/conf/global/settings/");
+							}
+							
+							String configurePath = getConfigurePath(postPath);
 							
 							logger.debug("Configuration path:" + configurePath);
 
@@ -1368,7 +1435,7 @@ public class Loader {
 								}
 
 								// If we're posting a /bin/wcmcommand for creating a page, let's make sure the template is there
-								if (record.get(1).equals("/bin/wcmcommand")) {
+								if (postPath.equals("/bin/wcmcommand")) {
 									for (NameValuePair nvp:nameValuePairs) {
 										if (nvp.getName().equals("template") && !isResourceAvailable(hostname, port, adminPassword, nvp.getValue())) {
 											logger.warn("Requested template not found for page creation request");
@@ -1399,7 +1466,7 @@ public class Loader {
 
 								// Only do this when really have configuration settings
 								doPost(hostname, port,
-										componentType.equals(SLINGPOST)?record.get(1):configurePath,
+										componentType.equals(SLINGPOST)?postPath:configurePath,
 										"admin", adminPassword,
 										new UrlEncodedFormEntity(nameValuePairs),
 										null);
@@ -1564,6 +1631,11 @@ public class Loader {
 							value = value.replaceAll("/jcr:content", "");
 						}
 
+						// Special case for 64 and later
+						if (isCommunities64orlater) {
+							value = value.replaceAll("/etc/community", "/libs/community");
+						}
+						
 						nameValuePairs.add(new BasicNameValuePair("badgeContentPath", value));
 
 						// Appending the path to the user profile to the target location

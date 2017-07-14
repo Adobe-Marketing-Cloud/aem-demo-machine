@@ -2744,6 +2744,16 @@
 				<antcall target="configure_admin">
 					<param name="port" value="${demomachine.farmport}"/>
 				</antcall>
+				<echo message="Configuring the User Sync service"/>
+				<antcall target="configure_usersync_author">
+					<param name="port" value="${demomachine.authorport}"/>
+				</antcall>
+				<antcall target="configure_usersync_publish">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+				<antcall target="configure_usersync_publish">
+					<param name="port" value="${demomachine.farmport}"/>
+				</antcall>
 			</then>
 		</if>
 		<antcall target="configure_replication"/>
@@ -2827,6 +2837,141 @@
 				</exec>
 			</then>
 		</if>
+	</target>
+	<!-- Target for configuring the User Sync service -->
+	<target name="configure_usersync_author" if="aem61orlater" depends="version,configuration">
+		<!-- Identifying the configuration to update -->
+		<exec executable="curl">
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-o '${logs}/${port}_components.json' http://${demo.host}:${port}/system/console/configMgr"/>
+		</exec>
+		<loadfile property="configuration.list" srcFile="${logs}/${port}_components.json"/>
+		<propertyregex property="usersync.id" input="${configuration.list}" regexp="SyncDistributionAgentFactory.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="UserSyncID: ${usersync.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_author.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled=false"/>
+			<arg line="-d packageExporter.endpoints=http://${demo.host}:${demomachine.publishport}/libs/sling/distribution/services/exporters/socialpubsync-reverse"/>
+			<arg line="-d packageExporter.endpoints=http://${demo.host}:${demomachine.farmport}/libs/sling/distribution/services/exporters/socialpubsync-reverse"/>
+			<arg line="-d packageImporter.endpoints=http://${demo.host}:${demomachine.publishport}/libs/sling/distribution/services/importers/socialpubsync"/>
+			<arg line="-d packageImporter.endpoints=http://${demo.host}:${demomachine.farmport}/libs/sling/distribution/services/importers/socialpubsync"/>
+			<arg line="-d name=socialpubsync"/>
+			<arg line="-d title='Social Publisher Sync'"/>
+			<arg line="-d details='Coordinating agent to synchronize social data between publishers'"/>
+			<arg line="-d serviceName=socialpubsync-distributionService"/>
+			<arg line="-d log.level=info"/>
+			<arg line="-d queue.processing.enabled=true"/>
+			<arg line="-d queue.processing.enabled=false"/>
+			<arg line="-d passiveQueues="/>
+			<arg line="-d retry.strategy=none"/>
+			<arg line="-d retry.attempts=100"/>
+			<arg line="-d pull.items=100"/>
+			<arg line="-d http.conn.timeout=10"/>
+			<arg line="-d requestAuthorizationStrategy.target=(|(name=privilegeReplicate)(name=default))"/>
+			<arg line="-d transportSecretProvider.target=(name=socialpubsync-publishUser)"/>
+			<arg line="-d packageBuilder.target=(name=socialpubsync-vlt)"/>
+			<arg line="-d triggers.target=(name=socialpubsync-scheduled-trigger)"/>
+			<arg line="-d propertylist=useMultipleQueues,name,title,details,enabled,serviceName,log.level,queue.processing.enabled,passiveQueues,packageExporter.endpoints,packageImporter.endpoints,retry.strategy,retry.attempts,pull.items,http.conn.timeout,requestAuthorizationStrategy.target,transportSecretProvider.target,packageBuilder.target,triggers.target"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.agent.impl.SyncDistributionAgentFactory.${usersync.id}"/>
+		</exec>
+	</target>
+	<target name="configure_usersync_publish" if="aem61orlater" depends="version,configuration">
+		<!-- Identifying the configuration to update -->
+		<exec executable="curl">
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-o '${logs}/${port}_components.json' http://${demo.host}:${port}/system/console/configMgr"/>
+		</exec>
+		<loadfile property="configuration.list" srcFile="${logs}/${port}_components.json"/>
+		<propertyregex property="usersync.id" input="${configuration.list}" regexp="QueueDistributionAgentFactory.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="UserSyncID: ${usersync.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_publish.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d factoryPid=org.apache.sling.distribution.agent.impl.QueueDistributionAgentFactory"/>
+			<arg line="-d $location="/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled=false"/>
+			<arg line="-d name=socialpubsync-reverse"/>
+			<arg line="-d title='Social Publisher Sync'"/>
+			<arg line="-d details='Agent that distributes social data out of this publisher'"/>
+			<arg line="-d serviceName=socialpubsync-distributionService"/>
+			<arg line="-d log.level=info"/>
+			<arg line="-d allowed.roots=/home/users"/>
+			<arg line="-d allowed.roots=/home/groups"/>
+			<arg line="-d allowed.roots=/var/community/distribution/diff"/>
+			<arg line="-d requestAuthorizationStrategy.target=(|(name=privilegeReplicate)(name=default))"/>
+			<arg line="-d packageBuilder.target=(name=socialpubsync-vlt)"/>
+			<arg line="-d triggers.target=(name=)"/>
+			<arg line="-d priorityQueues="/>
+			<arg line="-d propertylist=name,title,details,enabled,serviceName,log.level,allowed.roots,requestAuthorizationStrategy.target,packageBuilder.target,triggers.target,priorityQueues"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.agent.impl.QueueDistributionAgentFactory.${usersync.id}"/>
+		</exec>
+		<propertyregex property="diffchanges.id" input="${configuration.list}" regexp="DiffChangesObserver.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="DiffChangesID: ${diffchanges.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_publish_diff.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=com.adobe.granite.distribution.core.impl.diff.DiffChangesObserver"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled=false"/>
+			<arg line="-d agentName=socialpubsync-reverse"/>
+			<arg line="-d diffPath=/var/community/distribution/diff"/>
+			<arg line="-d observedPath=/home/groups"/>
+			<arg line="-d serviceName=socialpubsync-distributionService"/>
+			<arg line="-d propertyNames=rep:members"/>
+			<arg line="-d distributionDelay=5"/>
+			<arg line="-d serviceUser.target="/>
+			<arg line="-d propertylist=enabled,agentName,diffPath,observedPath,serviceName,propertyNames,distributionDelay,serviceUser.target"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.granite.distribution.core.impl.diff.DiffChangesObserver.${diffchanges.id}"/>
+		</exec>
+		<propertyregex property="vltfilter.id" input="${configuration.list}" regexp="VaultDistributionPackageBuilderFactory.([-a-zA-Z0-9_/]*)&quot;,&quot;has_config&quot;:true,&quot;nameHint&quot;:&quot;Builder name: socialpubsync-vlt" select="\1"/>
+		<echo message="VaultFilterID: ${vltfilter.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_publish_vault.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=org.apache.sling.distribution.serialization.impl.vlt.VaultDistributionPackageBuilderFactory"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d name=socialpubsync-vlt"/>
+			<arg line="-d type=jcrvlt"/>
+			<arg line="-d importMode="/>
+			<arg line="-d aclHandling="/>
+			<arg line="-d package.roots="/>
+			<arg line="-d package.filters=/home/users|-.*/.tokens"/>
+			<arg line="-d package.filters=/home/users|-.*/rep:cache"/>
+			<arg line="-d package.filters=/home/users|+.*/rep:policy"/>
+			<arg line="-d property.filters="/>
+			<arg line="-d tempFsFolder="/>
+			<arg line="-d useBinaryReferences=false"/>
+			<arg line="-d autoSaveThreshold=-1"/>
+			<arg line="-d cleanupDelay=60"/>
+			<arg line="-d fileThreshold=1"/>
+			<arg line="-d MEGA_BYTES=MEGA_BYTES"/>
+			<arg line="-d useOffHeapMemory=false"/>
+			<arg line="-d digestAlgorithm=NONE"/>
+			<arg line="-d monitoringQueueSize=0"/>
+			<arg line="-d propertylist=name,type,importMode,aclHandling,package.roots,package.filters,property.filters,tempFsFolder,useBinaryReferences,autoSaveThreshold,cleanupDelay,fileThreshold,MEGA_BYTES,useOffHeapMemory,digestAlgorithm,monitoringQueueSize"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.serialization.impl.vlt.VaultDistributionPackageBuilderFactory.${vltfilter.id}"/>
+		</exec>
 	</target>
 	<!-- Target for configuring the Admin account -->
 	<target name="configure_admin" if="aem60orlater">
@@ -6586,7 +6731,7 @@
 				</exec>
 				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="soco.version.zip">
 					<arg line="-f '${validation}/build/${AdobeAEM.publishport}_${demo}_packages.json'"/>
-					<arg line="-r 'cq-socialcommunities-(.*)([0-9.]+).zip'"/>
+					<arg line="-r 'cq-socialcommunities(-content)?-pkg-([0-9.]+).zip'"/>
 					<arg line="-p last"/>
 					<classpath refid="demo.classpath"/>
 				</java>
