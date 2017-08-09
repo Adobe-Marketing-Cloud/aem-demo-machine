@@ -463,7 +463,6 @@ public class Loader {
 								// Special case for 64 and later
 								if (isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/sites/custom", "/conf/global/settings/community/templates/sites");
-									value = value.replaceAll("/etc/cloudservices/", "/conf/global/settings/");
 								}
 								
 								// Only create the site when a ROOT path is specified and available
@@ -515,11 +514,16 @@ public class Loader {
 								} else {
 
 									// For cloud services, we verify that they are actually available
-									if ((name.equals(OPTION_TRANSLATION) || name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
+									if ( (record.size()>i+3) && (name.equals(OPTION_TRANSLATION) || name.equals(OPTION_ANALYTICS) || name.equals(OPTION_FACEBOOK) || name.equals(OPTION_TWITTER)) && value.equals("true")) {
 
 										String cloudName = record.get(i+2).trim();
 										String cloudValue = record.get(i+3).trim();
 
+										// Special case for 64 and later
+										if (isCommunities64orlater) {
+											cloudValue = cloudValue.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+										}
+										
 										if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
 											builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 											logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
@@ -763,11 +767,16 @@ public class Loader {
 					// Let's see if we need to activate a tree
 					if (action.equals(ACTIVATE) && record.get(1)!=null) {
 
-						if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, record.get(1))) {
+						String activatePath = record.get(1);
+						if (isCommunities64orlater) {
+							activatePath= activatePath.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+						}
+
+						if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, activatePath)) {
 
 							List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 							nameValuePairs.add(new BasicNameValuePair("cmd", "activate"));
-							nameValuePairs.add(new BasicNameValuePair("path", record.get(1)));
+							nameValuePairs.add(new BasicNameValuePair("path", activatePath));
 
 							doPost(hostname, port,
 									(isCommunities64orlater?"/libs":"/etc") + "/replication/treeactivation.html",
@@ -820,7 +829,7 @@ public class Loader {
 							continue;
 						}
 
-						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater);
 
 						String badgePath = record.get(1);
 
@@ -1035,8 +1044,10 @@ public class Loader {
 					// Let's see if it's simple Sling Delete request
 					if (action.equals(SLINGDELETE)) {
 
+						String deletePath = record.get(1);
+						
 						doDelete(hostname, port,
-								record.get(1),
+								deletePath,
 								"admin", adminPassword);
 
 						continue;
@@ -1273,7 +1284,7 @@ public class Loader {
 									builder.setCharset(MIME.UTF8_CHARSET);
 									builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
 
-									List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+									List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater);
 									for (NameValuePair nameValuePair : groupNameValuePairs) {
 										builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 									}
@@ -1321,7 +1332,7 @@ public class Loader {
 								}
 
 								// Now we can post all the preferences or the profile
-								List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3);
+								List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3, isCommunities64orlater);
 								doPost(hostname, port,
 										home,
 										"admin", adminPassword,
@@ -1415,14 +1426,14 @@ public class Loader {
 							String postPath = record.get(1);
 							
 							if (isCommunities64orlater) {
-								postPath= postPath.replaceAll("/etc/cloudservices/", "/conf/global/settings/");
+								postPath= postPath.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
 							}
 							
 							String configurePath = getConfigurePath(postPath);
 							
 							logger.debug("Configuration path:" + configurePath);
 
-							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, record.get(1), record, 2);
+							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, record.get(1), record, 2, isCommunities64orlater);
 							if (nameValuePairs.size()>2) {
 
 								// If we're posting against a jcr:content node, let's make sure the parent folder is there
@@ -1440,7 +1451,7 @@ public class Loader {
 										if (nvp.getName().equals("template") && !isResourceAvailable(hostname, port, adminPassword, nvp.getValue())) {
 											logger.warn("Requested template not found for page creation request");
 											continue recordLoop;
-										}
+										}									
 									}
 								}
 
@@ -1584,7 +1595,7 @@ public class Loader {
 						if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
 
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
-							List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2);
+							List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater);
 							nameValuePairs.addAll(otherNameValuePairs);
 
 						}
@@ -1992,7 +2003,7 @@ public class Loader {
 
 						nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
-						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES, isCommunities64orlater);
 						nameValuePairs.addAll(otherNameValuePairs);
 
 						// Assignments only make sense when SCORM is configured
@@ -2077,7 +2088,7 @@ public class Loader {
 
 						nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
-						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES);
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES, isCommunities64orlater);
 						nameValuePairs.addAll(otherNameValuePairs);
 
 						// Special processing of lists with multiple users, need to split a String into multiple entries
@@ -3492,7 +3503,7 @@ public class Loader {
 
 
 	// This method builds a list of NVP for a subsequent Sling post
-	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start) {
+	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start, boolean isCommunities64orlater) {
 
 		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 		List<String> alreadyLoaded = new ArrayList<String>();
@@ -3509,12 +3520,23 @@ public class Loader {
 				if (value.equals("TRUE")) { value = "true"; }
 				if (value.equals("FALSE")) { value = "false"; }		
 
+				// If we're posting with 6.4 and beyond, some paths have moved
+				if (isCommunities64orlater) {
+					if (name.equals("parentPath") && value.contains("/etc/cloudservices")) {
+						// Location for getting new cloud configs created
+						value = "/conf/global/settings/cloudconfigs";
+					} else if (value.contains("/etc/cloudservices")) {
+						// Location for referencing the cloud configs by name
+						value= value.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+					}
+				}
+				
 				// If it's a reference to a resource, let's make sure it's available first
 				if (name.startsWith("cq:cloudserviceconfigs") && !isResourceAvailable(hostname, port, adminPassword, value) ) {
 					logger.warn("Resource " + value + " is not available");
 					continue;
 				}
-
+								
 				// We are adding to an existing property supporting multiple values (might not exist yet)
 				int addition = name.indexOf("+");
 				if (addition>0 && path!=null) {
