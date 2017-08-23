@@ -55,16 +55,19 @@ public class CreateCommunities extends org.apache.sling.api.servlets.SlingAllMet
 
 		// Checking the version of GraniteUI to be loaded (2 or 3 depending on AEM version)
 		String coralVersion = "3";
-		Resource resCoral = resourceResolver.getResource("/libs/clientlibs/granite/coralui3.js");
-		if (resCoral==null) coralVersion = "2";
-
+		String coralPath = "/etc";
+		Resource resCoral63 = resourceResolver.getResource("/etc/clientlibs/granite/coralui3.js");
+		Resource resCoral64 = resourceResolver.getResource("/libs/clientlibs/granite/coralui3.js");
+		if (resCoral63==null && resCoral64==null) coralVersion = "2";
+		if (resCoral64!=null) coralPath = "/libs";
+		
 		out.println("<html><head>");
-		out.println("<link rel=\"stylesheet\" href=\"/libs/clientlibs/granite/coralui" + coralVersion + ".css\" type=\"text/css\">");
-		out.println("<script type=\"text/javascript\" src=\"/libs/clientlibs/granite/typekit.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/libs/clientlibs/granite/jquery.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/libs/clientlibs/granite/utils.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/libs/clientlibs/granite/moment.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/libs/clientlibs/granite/coralui" + coralVersion + ".js\"></script>");
+		out.println("<link rel=\"stylesheet\" href=\"" + coralPath + "/clientlibs/granite/coralui" + coralVersion + ".css\" type=\"text/css\">");
+		out.println("<script type=\"text/javascript\" src=\"" + coralPath + "/clientlibs/granite/typekit.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"" + coralPath + "/clientlibs/granite/jquery.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"" + coralPath + "/clientlibs/granite/utils.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"" + coralPath + "/clientlibs/granite/moment.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"" + coralPath + "/clientlibs/granite/coralui" + coralVersion + ".js\"></script>");
 		out.println("</head><body class=\"coral--light u-coral-clearFix\" style=\"margin:40px\">");
 		out.println("<div><h1>");
 		if (coralVersion.equals("3")) {
