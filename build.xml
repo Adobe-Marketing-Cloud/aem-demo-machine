@@ -341,9 +341,6 @@
 			</else>
 		</if>
 		<antcall target="start"/>
-		<!--
-		<antcall target="crypto"/>
-		-->
 		<!-- Installing the ACS tools and commons on Author and Publish only -->
 		<antcall target="acs_instance">
 			<param name="port" value="${demomachine.authorport}"/>
@@ -354,37 +351,6 @@
 				<antcall target="acs_instance">
 					<param name="port" value="${demomachine.publishport}"/>
 				</antcall>
-			</then>
-		</if>
-	</target>
-	<!-- Crypto support -->
-	<target name="crypto" if="aem63orlater" depends="version,configuration">
-		<!-- For now, TarMK on 6.3 requires a restart so enforce the /etc/keys to be loaded from JCR -->
-		<if>
-			<equals arg1="${demomachine.store}" arg2="crx3" casesensitive="false"/>
-			<then>
-				<echo message="Updating crypto keys on file system for TarMK"/>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/publish/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="hmac"/>
-				</antcall>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/publish/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="master"/>
-				</antcall>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/farm/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="hmac"/>
-				</antcall>
-				<antcall target="findandreplace">
-					<param name="search.sourcefolder" value="${demos}/${demo.build}/author/crx-quickstart/launchpad/felix"/>
-					<param name="search.targetfolder" value="${demos}/${demo.build}/farm/crx-quickstart/launchpad/felix"/>
-					<param name="search.filename" value="master"/>
-				</antcall>
-				<antcall target="restart"/>
 			</then>
 		</if>
 	</target>
@@ -443,7 +409,7 @@
 		<mkdir dir="${demos}/${demo.build}/${demo.instance}"/>
 		<copy file="${dist}/license/license-${demo.license}.properties" tofile="${demos}/${demo.build}/${demo.instance}/license.properties"/>
 		<copy file="${dist}/bin/${demo.jar}.jar" tofile="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar"/>
-		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" output="${logs}/${demo.port}_${demo.instance}_unpack.txt" fork="true" spawn="false">
+		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" output="${logs}/${demo.port}_${demo.instance}_unpack.txt" jvm="${demo.jvm}" fork="true" spawn="false">
 			<arg line="-unpack"/>
 			<jvmarg value="-Djava.awt.headless=true"/>
 		</java>
@@ -618,25 +584,33 @@
 				</antcall>
 			</then>
 		</if>
-		<echo message="Waiting for the Author instance to be started..."/>
+		<echo message="Waiting for the AUTHOR instance to be started..."/>
 		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 			<and>
 				<socket server="${demo.host}" port="${demomachine.authorport}"/>
 				<resourcecontains resource="${demos}/${demo.build}/author/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
 			</and>
 		</waitfor>
+		<antcall target="canlogin">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<echo message="AUTHOR instance has started..."/>
 		<if>
 			<resourceexists>
 				<file file="${demos}/${demo.build}/publish/aem-publish-p${demomachine.publishport}.jar"/>
 			</resourceexists>
 			<then>
-				<echo message="Waiting for the Publish instance to be started..."/>
+				<echo message="Waiting for the PUBLISH instance to be started..."/>
 				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<and>
 						<socket server="${demo.host}" port="${demomachine.publishport}"/>
 						<resourcecontains resource="${demos}/${demo.build}/publish/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
 					</and>
 				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+				<echo message="PUBLISH instance has started..."/>
 			</then>
 		</if>
 		<if>
@@ -651,13 +625,17 @@
 					<param name="demo.port" value="${demomachine.farmport}"/>
 					<param name="demo.portdebug" value="${AdobeAEM.farmportdebug}"/>
 				</antcall>
-				<echo message="Waiting for the Farm instance to be started..."/>
-				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+				<echo message="Waiting for the FARM instance to be started..."/>
+				<waitfor maxwait="900" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 					<and>
 						<socket server="${demo.host}" port="${demomachine.farmport}"/>
 						<resourcecontains resource="${demos}/${demo.build}/farm/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
 					</and>
 				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.farmport}"/>
+				</antcall>
+				<echo message="FARM instance has started..."/>
 				<antcall target="configure_farm"/>
 			</then>
 		</if>
@@ -825,7 +803,7 @@
 		</if>
 	</target>
 	<target name="aem_start_java">
-		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" fork="true" spawn="true">
+		<java dir="${demos}/${demo.build}/${demo.instance}" jar="${demos}/${demo.build}/${demo.instance}/aem-${demo.mode}-p${demo.port}.jar" jvm="${demo.jvm}" fork="true" spawn="true">
 			<jvmarg value="-Xms${AdobeAEM.memorymin}"/>
 			<jvmarg value="-Xmx${AdobeAEM.memorymax}"/>
 			<jvmarg value="-XX:MaxPermSize=256m"/>
@@ -1547,8 +1525,14 @@
 				</antcall>
 			</then>
 		</if>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
+		<antcall target="canlogin">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+	</target>
+	<!-- Target for login screen to be available -->
+	<target name="canlogin">
+		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 		</waitfor>
 	</target>
 	<!-- Target for installing the Packages demo -->
@@ -1934,7 +1918,7 @@
 					<else>
 						<loadfile property="packageShareFile" srcFile="${logs}/packageshare.html"/>
 						<propertyregex property="packageShareFileName" input="${packageShareFile}" regexp="/file.res/([-a-zA-Z0-9_\\.]*).zip\&quot;;" select="\1"/>
-						<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until build is successful"/>
+						<echo message="Download ${packageShareFileName}.zip (${fileversion}) in progress, please wait until download is completed"/>
 						<basename property="packagename" file="${filepath}"/>
 						<!-- Automatic EULA acceptance -->
 						<exec executable="curl">
@@ -2609,9 +2593,9 @@
 				</exec>
 				<!-- Many bundles are restarting after the Externalizer is changed -->
 				<sleep seconds="30"/>
-				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-					<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${port}"/>
+				</antcall>
 			</then>
 		</if>
 	</target>
@@ -2760,6 +2744,16 @@
 				<antcall target="configure_admin">
 					<param name="port" value="${demomachine.farmport}"/>
 				</antcall>
+				<echo message="Configuring the User Sync service"/>
+				<antcall target="configure_usersync_author">
+					<param name="port" value="${demomachine.authorport}"/>
+				</antcall>
+				<antcall target="configure_usersync_publish">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+				<antcall target="configure_usersync_publish">
+					<param name="port" value="${demomachine.farmport}"/>
+				</antcall>
 			</then>
 		</if>
 		<antcall target="configure_replication"/>
@@ -2843,6 +2837,141 @@
 				</exec>
 			</then>
 		</if>
+	</target>
+	<!-- Target for configuring the User Sync service -->
+	<target name="configure_usersync_author" if="aem61orlater" depends="version,configuration">
+		<!-- Identifying the configuration to update -->
+		<exec executable="curl">
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-o '${logs}/${port}_components.json' http://${demo.host}:${port}/system/console/configMgr"/>
+		</exec>
+		<loadfile property="configuration.list" srcFile="${logs}/${port}_components.json"/>
+		<propertyregex property="usersync.id" input="${configuration.list}" regexp="SyncDistributionAgentFactory.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="UserSyncID: ${usersync.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_author.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled=false"/>
+			<arg line="-d packageExporter.endpoints=http://${demo.host}:${demomachine.publishport}/libs/sling/distribution/services/exporters/socialpubsync-reverse"/>
+			<arg line="-d packageExporter.endpoints=http://${demo.host}:${demomachine.farmport}/libs/sling/distribution/services/exporters/socialpubsync-reverse"/>
+			<arg line="-d packageImporter.endpoints=http://${demo.host}:${demomachine.publishport}/libs/sling/distribution/services/importers/socialpubsync"/>
+			<arg line="-d packageImporter.endpoints=http://${demo.host}:${demomachine.farmport}/libs/sling/distribution/services/importers/socialpubsync"/>
+			<arg line="-d name=socialpubsync"/>
+			<arg line="-d title='Social Publisher Sync'"/>
+			<arg line="-d details='Coordinating agent to synchronize social data between publishers'"/>
+			<arg line="-d serviceName=socialpubsync-distributionService"/>
+			<arg line="-d log.level=info"/>
+			<arg line="-d queue.processing.enabled=true"/>
+			<arg line="-d queue.processing.enabled=false"/>
+			<arg line="-d passiveQueues="/>
+			<arg line="-d retry.strategy=none"/>
+			<arg line="-d retry.attempts=100"/>
+			<arg line="-d pull.items=100"/>
+			<arg line="-d http.conn.timeout=10"/>
+			<arg line="-d requestAuthorizationStrategy.target=(|(name=privilegeReplicate)(name=default))"/>
+			<arg line="-d transportSecretProvider.target=(name=socialpubsync-publishUser)"/>
+			<arg line="-d packageBuilder.target=(name=socialpubsync-vlt)"/>
+			<arg line="-d triggers.target=(name=socialpubsync-scheduled-trigger)"/>
+			<arg line="-d propertylist=useMultipleQueues,name,title,details,enabled,serviceName,log.level,queue.processing.enabled,passiveQueues,packageExporter.endpoints,packageImporter.endpoints,retry.strategy,retry.attempts,pull.items,http.conn.timeout,requestAuthorizationStrategy.target,transportSecretProvider.target,packageBuilder.target,triggers.target"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.agent.impl.SyncDistributionAgentFactory.${usersync.id}"/>
+		</exec>
+	</target>
+	<target name="configure_usersync_publish" if="aem61orlater" depends="version,configuration">
+		<!-- Identifying the configuration to update -->
+		<exec executable="curl">
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-o '${logs}/${port}_components.json' http://${demo.host}:${port}/system/console/configMgr"/>
+		</exec>
+		<loadfile property="configuration.list" srcFile="${logs}/${port}_components.json"/>
+		<propertyregex property="usersync.id" input="${configuration.list}" regexp="QueueDistributionAgentFactory.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="UserSyncID: ${usersync.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_publish.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d factoryPid=org.apache.sling.distribution.agent.impl.QueueDistributionAgentFactory"/>
+			<arg line="-d $location="/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled=false"/>
+			<arg line="-d name=socialpubsync-reverse"/>
+			<arg line="-d title='Social Publisher Sync'"/>
+			<arg line="-d details='Agent that distributes social data out of this publisher'"/>
+			<arg line="-d serviceName=socialpubsync-distributionService"/>
+			<arg line="-d log.level=info"/>
+			<arg line="-d allowed.roots=/home/users"/>
+			<arg line="-d allowed.roots=/home/groups"/>
+			<arg line="-d allowed.roots=/var/community/distribution/diff"/>
+			<arg line="-d requestAuthorizationStrategy.target=(|(name=privilegeReplicate)(name=default))"/>
+			<arg line="-d packageBuilder.target=(name=socialpubsync-vlt)"/>
+			<arg line="-d triggers.target=(name=)"/>
+			<arg line="-d priorityQueues="/>
+			<arg line="-d propertylist=name,title,details,enabled,serviceName,log.level,allowed.roots,requestAuthorizationStrategy.target,packageBuilder.target,triggers.target,priorityQueues"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.agent.impl.QueueDistributionAgentFactory.${usersync.id}"/>
+		</exec>
+		<propertyregex property="diffchanges.id" input="${configuration.list}" regexp="DiffChangesObserver.([-a-zA-Z0-9_/]*)&quot;" select="\1"/>
+		<echo message="DiffChangesID: ${diffchanges.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_publish_diff.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=com.adobe.granite.distribution.core.impl.diff.DiffChangesObserver"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d enabled=true"/>
+			<arg line="-d enabled=false"/>
+			<arg line="-d agentName=socialpubsync-reverse"/>
+			<arg line="-d diffPath=/var/community/distribution/diff"/>
+			<arg line="-d observedPath=/home/groups"/>
+			<arg line="-d serviceName=socialpubsync-distributionService"/>
+			<arg line="-d propertyNames=rep:members"/>
+			<arg line="-d distributionDelay=5"/>
+			<arg line="-d serviceUser.target="/>
+			<arg line="-d propertylist=enabled,agentName,diffPath,observedPath,serviceName,propertyNames,distributionDelay,serviceUser.target"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.granite.distribution.core.impl.diff.DiffChangesObserver.${diffchanges.id}"/>
+		</exec>
+		<propertyregex property="vltfilter.id" input="${configuration.list}" regexp="VaultDistributionPackageBuilderFactory.([-a-zA-Z0-9_/]*)&quot;,&quot;has_config&quot;:true,&quot;nameHint&quot;:&quot;Builder name: socialpubsync-vlt" select="\1"/>
+		<echo message="VaultFilterID: ${vltfilter.id}"/>
+		<exec executable="curl">
+			<arg line="--output '${logs}/${port}_usersync_publish_vault.html'"/>
+			<arg line="-u admin:${demo.admin.password}"/>
+			<arg line="-X POST"/>
+			<arg line="--globoff"/>
+			<arg line="-d apply=true"/>
+			<arg line="-d factoryPid=org.apache.sling.distribution.serialization.impl.vlt.VaultDistributionPackageBuilderFactory"/>
+			<arg line="-d action=ajaxConfigManager"/>
+			<arg line="-d $location="/>
+			<arg line="-d name=socialpubsync-vlt"/>
+			<arg line="-d type=jcrvlt"/>
+			<arg line="-d importMode="/>
+			<arg line="-d aclHandling="/>
+			<arg line="-d package.roots="/>
+			<arg line="-d package.filters=/home/users|-.*/.tokens"/>
+			<arg line="-d package.filters=/home/users|-.*/rep:cache"/>
+			<arg line="-d package.filters=/home/users|+.*/rep:policy"/>
+			<arg line="-d property.filters="/>
+			<arg line="-d tempFsFolder="/>
+			<arg line="-d useBinaryReferences=false"/>
+			<arg line="-d autoSaveThreshold=-1"/>
+			<arg line="-d cleanupDelay=60"/>
+			<arg line="-d fileThreshold=1"/>
+			<arg line="-d MEGA_BYTES=MEGA_BYTES"/>
+			<arg line="-d useOffHeapMemory=false"/>
+			<arg line="-d digestAlgorithm=NONE"/>
+			<arg line="-d monitoringQueueSize=0"/>
+			<arg line="-d propertylist=name,type,importMode,aclHandling,package.roots,package.filters,property.filters,tempFsFolder,useBinaryReferences,autoSaveThreshold,cleanupDelay,fileThreshold,MEGA_BYTES,useOffHeapMemory,digestAlgorithm,monitoringQueueSize"/>
+			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.serialization.impl.vlt.VaultDistributionPackageBuilderFactory.${vltfilter.id}"/>
+		</exec>
 	</target>
 	<!-- Target for configuring the Admin account -->
 	<target name="configure_admin" if="aem60orlater">
@@ -3025,10 +3154,10 @@
 			</or>
 		</condition>
 		<!-- Making sure the instance is available for uploads -->
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
 		<echo message="Uploading ${packagefilename} on port ${port}"/>
+		<antcall target="canlogin">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<exec executable="curl">
 			<arg line="--output '${logs}/${port}_${packagefilename}.html'"/>
 			<arg line="-u admin:${demo.admin.password}"/>
@@ -3199,9 +3328,9 @@
 		</exec>
 		<!-- Making sure the instance is available for uploads -->
 		<sleep seconds="10"/>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
+		<antcall target="canlogin">
+			<param name="port" value="${port}"/>
+		</antcall>
 	</target>
 	<!-- Configure the dispatcher flush on Publish -->
 	<target name="dispatcher">
@@ -4526,6 +4655,19 @@
 					<arg line="-d propertylist=feature.flag.show.status"/>
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.caas.impl.feature.ContentServicesFeatureFlag"/>
 				</exec>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${port}_content_services_models.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d './jcr:title=We.Retail'"/>
+					<arg line="-d 'configCapabilities=Data Models'"/>
+					<arg line="-d 'configCapabilities@Delete'"/>
+					<arg line="-d 'read@Delete'"/>
+					<arg line="-d 'modify@Delete'"/>
+					<arg line="-d 'delete@Delete'"/>
+					<arg line="http://${demo.host}:${port}/conf/we-retail.updateconf.json"/>
+				</exec>
 			</then>
 		</if>
 	</target>
@@ -4770,9 +4912,9 @@
 		<echo message="Waiting 60 seconds..."/>
 		<sleep seconds="60"/>
 		<echo message="Waiting for login URL..."/>
-		<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-		</waitfor>
+		<antcall target="canlogin">
+			<param name="port" value="${port}"/>
+		</antcall>
 		<echo message="Waiting 10 more seconds..."/>
 		<sleep seconds="10"/>
 	</target>
@@ -5160,6 +5302,7 @@
 		<antcall target="community_tunnel"/>
 		<antcall target="community_email_importer"/>
 		<antcall target="community_fragment"/>
+		<antcall target="community_spamdetector"/>
 		<antcall target="community_login"/>
 		<antcall target="community_users"/>
 		<antcall target="community_livefyre"/>
@@ -5455,6 +5598,30 @@
 			</then>
 		</if>
 	</target>
+	<!-- Target for configuring the Communities Default Login pages, for each site -->
+	<target name="community_spamdetector" if="aem64orlater">
+		<if>
+			<equals arg1="${demo.communities.spamdetector}" arg2="true" casesensitive="false"/>
+			<then>
+				<echo message="Configuring AEM Communities Spam detection on port ${demomachine.publishport}..."/>
+				<exec executable="curl">
+					<arg line="--output '${logs}/${demomachine.publishport}_spamdetector.html'"/>
+					<arg line="--globoff"/>
+					<arg line="-u admin:${demo.admin.password}"/>
+					<arg line="-X POST"/>
+					<arg line="-d apply=true"/>
+					<arg line="-d action=ajaxConfigManager"/>
+					<arg line="-d $location="/>
+					<arg line="-d automoderation.sequence=SentimentProcess"/>
+					<arg line="-d automoderation.sequence=ProfanityFilter"/>
+					<arg line="-d automoderation.onfailurestop=true"/>
+					<arg line="-d automoderation.onfailurestop=false"/>
+					<arg line="-d propertylist=automoderation.onfailurestop,automoderation.sequence"/>
+					<arg line="http://${demo.host}:${demomachine.publishport}/system/console/configMgr/com.adobe.cq.social.ugcbase.moderation.impl.AutoModerationImpl"/>
+				</exec>
+			</then>
+		</if>
+	</target>
 	<!-- Target for configuring the Communities Tunnel service (allowing requests from author to publish) -->
 	<target name="community_tunnel">
 		<if>
@@ -5478,9 +5645,9 @@
 					<arg line="http://${demo.host}:${demomachine.authorport}/system/console/configMgr/com.adobe.cq.social.user.impl.transport.HttpToPublisher"/>
 				</exec>
 				<sleep seconds="5"/>
-				<waitfor maxwait="300" maxwaitunit="second" checkevery="5" checkeveryunit="second">
-					<http url="http://${demo.host}:${demomachine.authorport}/libs/granite/core/content/login.html" errorsbeginat="400"/>
-				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.authorport}"/>
+				</antcall>
 			</then>
 		</if>
 	</target>
@@ -6255,6 +6422,7 @@
 		<echo message="Java version in use: ${ant.java.version}"/>
 		<if>
 			<and>
+				<equals arg1="${demo.jvm}" arg2="java" casesensitive="false"/>
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
 				<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
 			</and>
@@ -6265,6 +6433,7 @@
 		<if>
 			<and>
 				<equals arg1="${ant.java.version}" arg2="1.8" casesensitive="false"/>
+				<equals arg1="${demo.jvm}" arg2="java" casesensitive="false"/>
 				<or>
 					<equals arg1="${demo.packages}" arg2="aem60" casesensitive="false"/>
 					<equals arg1="${demo.packages}" arg2="cq56" casesensitive="false"/>
@@ -6582,7 +6751,7 @@
 				</exec>
 				<java classname="com.adobe.aem.demomachine.RegExp" outputproperty="soco.version.zip">
 					<arg line="-f '${validation}/build/${AdobeAEM.publishport}_${demo}_packages.json'"/>
-					<arg line="-r 'cq-socialcommunities-(.*)([0-9.]+).zip'"/>
+					<arg line="-r 'cq-socialcommunities(-content)?-pkg-([0-9.]+).zip'"/>
 					<arg line="-p last"/>
 					<classpath refid="demo.classpath"/>
 				</java>

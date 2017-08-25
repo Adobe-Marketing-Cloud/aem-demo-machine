@@ -56,7 +56,7 @@ public class RegExp {
 				fileName = cmd.getOptionValue("f");
 			}
 
-			if(cmd.hasOption("f")) {
+			if(cmd.hasOption("r")) {
 				regExp = cmd.getOptionValue("r");
 			}
 
