@@ -217,6 +217,7 @@
 				</if>
 			</then>
 			<else>
+				<property name="demomachine.jar" value="${demo.jar}"/>
 				<property name="demomachine.srp" value="${demo.srp}"/>
 				<property name="demomachine.type" value="${demo.type}"/>
 				<property name="demomachine.store" value="${demo.store}"/>
@@ -232,6 +233,7 @@
 	</target>
 	<target name="demo_settings">
 		<echo message="Demo Folder: ${demos}/${demo.build}"/>
+		<echo message="Demo JAR: ${demomachine.jar}"/>
 		<echo message="Demo SRP: ${demomachine.srp}"/>
 		<echo message="Demo Type: ${demomachine.type}"/>
 		<echo message="Demo Store: ${demomachine.store}"/>
@@ -250,6 +252,7 @@
 		<mkdir dir="${logs}"/>
 		<echo message="Persisting runtime options in demomachine.properties"/>
 		<propertyfile file="${demos}/${demo.build}/demomachine.properties" comment="Demo Machine Instance">
+			<entry key="demomachine.jar" value="${demo.jar}"/>
 			<entry key="demomachine.srp" value="${demo.srp}"/>
 			<entry key="demomachine.type" value="${demo.type}"/>
 			<entry key="demomachine.store" value="${demo.store}"/>
@@ -278,34 +281,126 @@
 		<echo message="AEM SRP to use: ${demomachine.srp}"/>
 		<echo message="AEM Store to use: ${demomachine.store}"/>
 		<if>
+			<or>
+				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
+				<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
+			</or>
+			<then>
+				<!-- Making sure we configure Solr with a new core for this demo build  -->
+				<antcall target="solr_stop"/>
+				<if>
+					<resourceexists>
+						<file file="${solr}/bin/solr"/>
+					</resourceexists>
+					<then>
+						<copy todir="${solr}/example/solr/${demo.build}" overwrite="true">
+							<fileset dir="${solr}/example/solr/collection1">
+								<include name="**/*"/>
+							</fileset>
+						</copy>
+						<replace file="${solr}/example/solr/${demo.build}/core.properties" token="collection1" value="${demo.build}"/>
+					</then>
+				</if>
+			</then>
+		</if>
+		<if>
+			<contains string="${demomachine.jar}" substring=":"/>
+			<then>
+				<antcall target="install_docker"/>
+			</then>
+			<else>
+				<antcall target="install_local"/>
+			</else>
+		</if>
+	</target>
+	<!-- For Docker installation -->
+	<target name="install_docker" depends="version">
+		<mkdir dir="${logs}"/>
+		<antcall target="create_from_template">
+			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone.template"/>
+			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone"/>
+		</antcall>
+		<antcall target="create_from_template">
+			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-tunnel.template"/>
+			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-tunnel"/>
+		</antcall>
+		<antcall target="create_from_template">
+			<param name="template_srcfile" value="${dist}/docker/yaml/aem-${demomachine.type}.yml.template"/>
+			<param name="template_distfile" value="${demos}/${demo.build}/aem.yml"/>
+		</antcall>
+		<!-- Setting up the provisioning model for this image -->
+		<antcall target="install_docker_instance">
+			<param name="demo.instance" value="author"/>
+			<param name="demo.mode" value="author"/>
+			<param name="demo.port" value="${demomachine.authorport}"/>
+			<param name="demo.portdebug" value="${AdobeAEM.authorportdebug}"/>
+		</antcall>
+		<if>
+			<not>
+				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
+			</not>
+			<then>
+				<antcall target="install_docker_instance">
+					<param name="demo.instance" value="publish"/>
+					<param name="demo.mode" value="publish"/>
+					<param name="demo.port" value="${demomachine.publishport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.publishportdebug}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			<then>
+				<antcall target="install_docker_instance">
+					<param name="demo.instance" value="farm"/>
+					<param name="demo.mode" value="publish"/>
+					<param name="demo.port" value="${demomachine.farmport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.farmportdebug}"/>
+				</antcall>
+			</then>
+		</if>
+		<echo message="Building the Docker containers..."/>
+		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-build.log" spawn="false" failonerror="false">
+			<arg line="-f '${demos}/${demo.build}/aem.yml' up -d --build"/>
+		</exec>
+		<antcall target="canlogin_all"/>
+	</target>
+	<target name="install_docker_instance">
+		<mkdir dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher"/>
+		<!-- Provisioning model -->
+		<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher" overwrite="true">
+			<fileset dir="${dist}/docker/provisioning/${demo.mode}">
+				<include name="**/*"/>
+			</fileset>
+		</copy>
+		<!-- We.Retail files -->
+		<if>
+			<and>
+				<equals arg1="${demo.weretail.local}" arg2="true" casesensitive="false"/>
+				<equals arg1="${demo.addons.8.weretail}" arg2="true" casesensitive="false"/>
+			</and>
+			<then>
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.apps/1.0.0">
+					<fileset dir="${dist}/we-retail/${demo.packages}" casesensitive="yes">
+						<include name="*apps*.zip"/>
+					</fileset>
+				</copy>
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.content/1.0.0">
+					<fileset dir="${dist}/we-retail/${demo.packages}" casesensitive="yes">
+						<include name="*content*.zip"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+	</target>
+	<!-- For local installation -->
+	<target name="install_local">
+		<if>
 			<resourceexists>
 				<file file="${dist}/bin/${demo.jar}.jar"/>
 			</resourceexists>
 			<then>
-				<if>
-					<or>
-						<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
-						<equals arg1="${demomachine.srp}" arg2="dsrp" casesensitive="false"/>
-					</or>
-					<then>
-						<!-- Making sure we configure Solr with a new core for this demo build  -->
-						<antcall target="solr_stop"/>
-						<if>
-							<resourceexists>
-								<file file="${solr}/bin/solr"/>
-							</resourceexists>
-							<then>
-								<copy todir="${solr}/example/solr/${demo.build}" overwrite="true">
-									<fileset dir="${solr}/example/solr/collection1">
-										<include name="**/*"/>
-									</fileset>
-								</copy>
-								<replace file="${solr}/example/solr/${demo.build}/core.properties" token="collection1" value="${demo.build}"/>
-							</then>
-						</if>
-					</then>
-				</if>
-				<antcall target="install_instance">
+				<antcall target="install_local_instance">
 					<param name="demo.instance" value="author"/>
 					<param name="demo.mode" value="author"/>
 					<param name="demo.port" value="${demomachine.authorport}"/>
@@ -316,7 +411,7 @@
 						<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
 					</not>
 					<then>
-						<antcall target="install_instance">
+						<antcall target="install_local_instance">
 							<param name="demo.instance" value="publish"/>
 							<param name="demo.mode" value="publish"/>
 							<param name="demo.port" value="${demomachine.publishport}"/>
@@ -327,7 +422,7 @@
 				<if>
 					<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
 					<then>
-						<antcall target="install_instance">
+						<antcall target="install_local_instance">
 							<param name="demo.instance" value="farm"/>
 							<param name="demo.mode" value="publish"/>
 							<param name="demo.port" value="${demomachine.farmport}"/>
@@ -404,7 +499,7 @@
 		<copy file="${package}" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
 	</target>
 	<!-- Target to install a new instance -->
-	<target name="install_instance">
+	<target name="install_local_instance">
 		<echo message="Installing a new demo instance of type ${demo.mode} named ${demo.instance}..."/>
 		<mkdir dir="${demos}/${demo.build}/${demo.instance}"/>
 		<copy file="${dist}/license/license-${demo.license}.properties" tofile="${demos}/${demo.build}/${demo.instance}/license.properties"/>
@@ -554,6 +649,47 @@
 			</then>
 		</if>
 		<if>
+			<contains string="${demomachine.jar}" substring=":"/>
+			<then>
+				<antcall target="start_docker"/>
+			</then>
+			<else>
+				<antcall target="start_local"/>
+			</else>
+		</if>
+	</target>
+	<target name="start_docker">
+		<echo message="Starting the Docker containers..."/>
+		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-start.log" spawn="false" failonerror="false">
+			<arg line="-f '${demos}/${demo.build}/aem.yml' start"/>
+		</exec>
+		<antcall target="canlogin_all"/>
+	</target>
+	<target name="canlogin_all">
+		<antcall target="canlogin">
+			<param name="port" value="${demomachine.authorport}"/>
+		</antcall>
+		<if>
+			<not>
+				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
+			</not>
+			<then>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.publishport}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			<then>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.farmport}"/>
+				</antcall>
+			</then>
+		</if>
+	</target>
+	<target name="start_local">
+		<if>
 			<resourceexists>
 				<file file="${demos}/${demo.build}/author/aem-author-p${demomachine.authorport}.jar"/>
 			</resourceexists>
@@ -647,23 +783,89 @@
 		<antcall target="start"/>
 	</target>
 	<!-- Target for stopping all running servers -->
-	<target name="stop">
+	<target name="stop" depends="configuration">
 		<echo message="Stopping all running demo instances"/>
 		<antcall target="demomachine_analytics_stop"/>
+		<if>
+			<contains string="${demomachine.jar}" substring=":"/>
+			<then>
+				<antcall target="stop_docker"/>
+			</then>
+			<else>
+				<antcall target="stop_local"/>
+			</else>
+		</if>
+	</target>
+	<!-- Target for killing all running servers -->
+	<target name="kill" depends="configuration">
+		<echo message="Killing all running demo instances"/>
+		<antcall target="demomachine_analytics_stop"/>
+		<if>
+			<contains string="${demomachine.jar}" substring=":"/>
+			<then>
+				<antcall target="stop_docker"/>
+			</then>
+			<else>
+				<antcall target="kill_unix"/>
+				<antcall target="kill_windows"/>
+			</else>
+		</if>
+	</target>
+	<target name="stop_docker">
+		<echo message="Stopping the Docker containers..."/>
+		<mkdir dir="${logs}"/>
+		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-stop.log" spawn="false" failonerror="false">
+			<arg line="-f '${demos}/${demo.build}/aem.yml' stop"/>
+		</exec>
+	</target>
+	<target name="stop_local">
 		<antcall target="stop_unix"/>
-		<antcall target="stop_windows"/>
+		<antcall target="kill_windows"/>
 	</target>
 	<target name="stop_unix" if="isUnix" depends="permissions">
+		<exec executable="${bin}/stop.sh" dir="${bin}" spawn="false">
+			<arg line="'${demos}'"/>
+		</exec>
+		<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+			<not>
+				<socket server="${demo.host}" port="${demomachine.authorport}"/>
+			</not>
+		</waitfor>
+		<if>
+			<not>
+				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
+			</not>
+			<then>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+					<not>
+						<socket server="${demo.host}" port="${demomachine.publishport}"/>
+					</not>
+				</waitfor>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			<then>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+					<not>
+						<socket server="${demo.host}" port="${demomachine.farmport}"/>
+					</not>
+				</waitfor>
+			</then>
+		</if>
+		<sleep seconds="1"/>
+	</target>
+	<target name="kill_unix" if="isUnix" depends="permissions">
 		<exec executable="${bin}/kill.sh" dir="${bin}" spawn="false">
 			<arg line="'${demos}'"/>
 		</exec>
 		<sleep seconds="2"/>
 	</target>
-	<target name="stop_windows" if="isWindows">
+	<target name="kill_windows" if="isWindows">
 		<exec executable="taskkill.exe" spawn="true">
 			<arg line="/F /FI &quot;WINDOWTITLE eq Adobe Experience Manager*&quot;"/>
 		</exec>
-		<sleep seconds="4"/>
+		<sleep seconds="2"/>
 	</target>
 	<!-- Target for starting an AEM server -->
 	<target name="aem_start">
@@ -1365,6 +1567,28 @@
 	<!-- Target for uninstalling a specific demo build -->
 	<target name="uninstall" depends="configuration">
 		<antcall target="uninstall_item"/>
+		<if>
+			<contains string="${demomachine.jar}" substring=":"/>
+			<then>
+				<echo message="Stopping the Docker containers..."/>
+				<exec executable="docker-compose" dir="." output="${logs}/docker-compose-stop.log" spawn="false" failonerror="false">
+					<arg line="-f '${demos}/${demo.build}/aem.yml' stop -t 1"/>
+				</exec>
+				<exec executable="docker-compose" dir="." output="${logs}/docker-compose-down.log" spawn="false" failonerror="false">
+					<arg line="-f '${demos}/${demo.build}/aem.yml' down"/>
+				</exec>
+				<echo message="Removing the Docker images..."/>
+				<exec executable="docker" dir="." output="${logs}/docker-rmi-author.log" spawn="false" failonerror="false">
+					<arg line="rmi -f ${demo.build}_aem-simple-author"/>
+				</exec>
+				<exec executable="docker" dir="." output="${logs}/docker-rmi-publish.log" spawn="false" failonerror="false">
+					<arg line="rmi -f ${demo.build}_aem-simple-publish"/>
+				</exec>
+				<exec executable="docker" dir="." output="${logs}/docker-rmi-farm.log" spawn="false" failonerror="false">
+					<arg line="rmi -f ${demo.build}_aem-simple-farm"/>
+				</exec>
+			</then>
+		</if>
 		<delete dir="${demos}/${demo.build}" failonerror="false" includeemptydirs="true"/>
 		<delete dir="${logs}" failonerror="false"/>
 		<delete dir="./logs/build" failonerror="false"/>
@@ -1531,6 +1755,7 @@
 	</target>
 	<!-- Target for login screen to be available -->
 	<target name="canlogin">
+		<echo message="Waiting for instance on port ${port} to be available..."/>
 		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 		</waitfor>
@@ -2602,9 +2827,14 @@
 	<!-- Target for getting version number -->
 	<target name="version">
 		<if>
-			<resourceexists>
-				<file file="${demos}/${demo.build}/demomachine.properties"/>
-			</resourceexists>
+			<and>
+				<resourceexists>
+					<file file="${demos}/${demo.build}/demomachine.properties"/>
+				</resourceexists>
+				<resourceexists>
+					<file file="${demos}/${demo.build}/author/crx-quickstart/bin/start"/>
+				</resourceexists>
+			</and>
 			<then>
 				<path id="cq.path">
 					<fileset dir="${demos}/${demo.build}/author/crx-quickstart/app">
@@ -2612,7 +2842,7 @@
 					</fileset>
 				</path>
 				<property name="cq.file" refid="cq.path"/>
-				<propertyregex property="cq.version" input="${cq.file}" regexp="(.*)-(.*)(\.0|\.1|\.2|\.3)-(.*).jar" select="\2"/>
+				<propertyregex property="cq.version" input="${cq.file}" regexp="(.*)-(.*)(\.0|\.1|\.2|\.3|\.4)-(.*).jar" select="\2"/>
 			</then>
 			<else>
 				<property name="cq.version" value="${demo.version}"/>
@@ -2719,7 +2949,7 @@
 			</or>
 		</condition>
 		<!--
-		<echo message="demo.packages: ${demo.packages}"/>
+		<echo message="Detected version is ${cq.version} and packages is ${demo.packages}"/>
 		-->
 	</target>
 	<!-- Target for loading the packages -->
@@ -4233,15 +4463,34 @@
 		</exec>
 	</target>
 	<!-- FFMPEG: sets the desired list of profiles for video renditions -->
-	<target name="ffmpeg">
+	<target name="ffmpeg" depends="version,configuration">
 		<if>
 			<equals arg1="${demo.ffmpeg.transcoding}" arg2="false" casesensitive="false"/>
 			<then>
+				<if>
+					<or>
+						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+					</or>
+					<then>
+						<!-- Doing the workflow override -->
+						<exec executable="curl">
+							<arg line="-o '${logs}/${port}_assets_damupdateworkflowoverride.json'"/>
+							<arg line="-X POST"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="http://${demo.host}:${port}/libs/settings/workflow/models/dam/update_asset/jcr:content.override.json"/>
+						</exec>
+						<property name="workflow.root" value="/conf/global/settings/workflow/models"/>
+					</then>
+					<else>
+						<property name="workflow.root" value="/etc/workflow/models"/>
+					</else>
+				</if>
 				<!-- Locating the FFMPEG transcoding task -->
 				<exec executable="curl">
 					<arg line="-o '${logs}/${port}_assets_damupdateworkflow.json'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/_jcr_content/flow.infinity.json"/>
+					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/_jcr_content/flow.infinity.json"/>
 				</exec>
 				<loadfile property="dam.update.workflow.model" srcFile="${logs}/${port}_assets_damupdateworkflow.json"/>
 				<propertyregex property="process.id" input="${dam.update.workflow.model}" regexp="process([0-9])&quot;:\{&quot;jcr:primaryType&quot;:&quot;nt:unstructured&quot;,&quot;jcr:title&quot;:&quot;FFmpeg transcoding" select="\1"/>
@@ -4250,13 +4499,13 @@
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
 					<arg line="-d ./PROCESS_ARGS@Delete"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/process${process.id}/metaData"/>
+					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/process${process.id}/metaData"/>
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_ffmpeg_workflow.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content.generate.json"/>
+					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content.generate.json"/>
 				</exec>
 			</then>
 		</if>
@@ -4654,9 +4903,14 @@
 	<!-- Target for configuring the We.Retail Community subsite -->
 	<target name="weretail" if="aem62orlater" depends="version,configuration">
 		<!-- Then we create the We.Retail demo environment -->
+		<echo message="Regenerating We.Retail Communities..."/>
 		<if>
 			<and>
 				<equals arg1="${demo.weretail.local}" arg2="true" casesensitive="false"/>
+				<not>
+					<!-- Not for Docker -->
+					<contains string="${demomachine.jar}" substring=":"/>
+				</not>
 			</and>
 			<then>
 				<echo message="Loading We.Retail Demo Packages on Author"/>
@@ -5026,6 +5280,26 @@
 				</replace>
 			</then>
 		</if>
+	</target>
+	<!-- Target for creating a file from a template, replace placeholders with demo properties -->
+	<target name="create_from_template">
+		<copy file="${template_srcfile}" tofile="${template_distfile}" overwrite="true"/>
+		<replace file="${template_distfile}" token="##DEMO.EMAILSERVER.HOSTNAME##" value="${demo.emailserver.hostname}"/>
+		<replace file="${template_distfile}" token="##DEMO.EMAILSERVER.PASSWORD##" value="${demo.emailserver.password}"/>
+		<replace file="${template_distfile}" token="##DEMO.EMAILSERVER.SMTP##" value="${demo.emailserver.smtp}"/>
+		<replace file="${template_distfile}" token="##DEMO.EMAILSERVER.NOREPLY##" value="${demo.emailserver.noreply}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.authorport##" value="${AdobeAEM.authorport}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.publishport##" value="${AdobeAEM.publishport}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.farmport##" value="${AdobeAEM.farmport}"/>
+		<replace file="${template_distfile}" token="##demo.build##" value="${demo.build}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.licensefile##" value="${dist}/license/license-${demo.license}.properties"/>
+		<replace file="${template_distfile}" token="##demobuild.authorlogs##" value="${demos}/${demo.build}/author/crx-quickstart/logs"/>
+		<replace file="${template_distfile}" token="##demobuild.publishlogs##" value="${demos}/${demo.build}/publish/crx-quickstart/logs"/>
+		<replace file="${template_distfile}" token="##demobuild.farmlogs##" value="${demos}/${demo.build}/farm/crx-quickstart/logs"/>
+		<replace file="${template_distfile}" token="##demobuild.authorrepo##" value="${demos}/${demo.build}/author/crx-quickstart/repository"/>
+		<replace file="${template_distfile}" token="##demobuild.publishrepo##" value="${demos}/${demo.build}/publish/crx-quickstart/repository"/>
+		<replace file="${template_distfile}" token="##demobuild.farmrepo##" value="${demos}/${demo.build}/farm/crx-quickstart/repository"/>
+		<replace file="${template_distfile}" token="##demomachine.jar##" value="${demomachine.jar}"/>
 	</target>
 	<!-- Target for bootstrapping AEM with the latest Community uber -->
 	<target name="community_instance" depends="version,configuration" if="aem61orlater">
@@ -6205,9 +6479,20 @@
 				<equals arg1="${ant.java.version}" arg2="1.6" casesensitive="false"/>
 			</not>
 			<then>
-				<java classname="com.adobe.aem.demomachine.Hostname" outputproperty="demo.hostname">
-					<classpath refid="demo.classpath"/>
-				</java>
+				<mkdir dir="${logs}"/>
+				<if>
+					<not>
+						<resourceexists>
+							<file file="${logs}/hostname.properties"/>
+						</resourceexists>
+					</not>
+					<then>
+						<java classname="com.adobe.aem.demomachine.Hostname" dir="${logs}" fork="true">
+							<classpath refid="demo.classpath"/>
+						</java>
+					</then>
+				</if>
+				<loadproperties srcFile="${logs}/hostname.properties"/>
 			</then>
 		</if>
 	</target>
@@ -6970,6 +7255,44 @@
 		<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
 			<arg line="-Ddemo.build=${demo} cleanup"/>
 		</exec>
+	</target>
+	<!-- Docker related target -->
+	<target name="docker_setup">
+		<mkdir dir="${infralogs}/docker"/>
+	</target>
+	<target name="docker_list_images" depends="docker_setup">
+		<exec executable="docker" dir="." output="${infralogs}/docker/list-images.log" spawn="false" failonerror="false">
+			<arg line="images"/>
+		</exec>
+		<loadfile property="dockerlog" srcFile="${infralogs}/docker/list-images.log"/>
+		<echo>${dockerlog}</echo>
+	</target>
+	<target name="docker_list_containers" depends="docker_setup">
+		<exec executable="docker" dir="." output="${infralogs}/docker/list-containers.log" spawn="false" failonerror="false">
+			<arg line="ps"/>
+		</exec>
+		<loadfile property="dockerlog" srcFile="${infralogs}/docker/list-containers.log"/>
+		<echo>${dockerlog}</echo>
+	</target>
+	<target name="docker_remove_images" depends="docker_setup">
+		<exec executable="docker" dir="." output="${infralogs}/docker/list-images-id.log" spawn="false" failonerror="false">
+			<arg line="images -q"/>
+		</exec>
+		<loadfile property="dockerids" srcFile="${infralogs}/docker/list-images-id.log" failonerror="false"/>
+		<if>
+			<isset property="dockerids"/>
+			<then>
+				<echo message="List of containers IDs: ${dockerids}"/>
+				<exec executable="docker" dir="." output="${infralogs}/docker/remove-images.log" spawn="false" failonerror="false">
+					<arg line="rmi -f $(dockerids)"/>
+				</exec>
+				<loadfile property="dockerlog" srcFile="${infralogs}/docker/remove-images.log" failonerror="false"/>
+				<echo>${dockerlog}</echo>
+			</then>
+			<else>
+				<echo>No image to remove</echo>
+			</else>
+		</if>
 	</target>
 	<!-- Default target when no target name is provided to ANT -->
 	<target name="default">

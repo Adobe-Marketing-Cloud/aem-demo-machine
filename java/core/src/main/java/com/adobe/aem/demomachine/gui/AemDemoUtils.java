@@ -86,6 +86,8 @@ public class AemDemoUtils {
 	public static AemDemoProperty[] listAEMjars(File buildFile) {
 
 		List<AemDemoProperty> aemJars = new ArrayList<AemDemoProperty>();	
+		
+		// First, loading the .jar files from the /dist/bin folder
 		File folder = new File(buildFile.getParentFile().getAbsolutePath() + File.separator + "dist" + File.separator + "bin");
 		File[] listOfFiles = folder.listFiles();
 
@@ -95,7 +97,28 @@ public class AemDemoUtils {
 				aemJars.add(new AemDemoProperty(listOfFiles[i].getName().substring(0, listOfFiles[i].getName().indexOf(".jar")),listOfFiles[i].getName()));
 			}
 		}
-
+		
+		// Second, loading the docker images from the config files
+		Properties defaultProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "build.properties");
+		Properties personalProps = loadProperties (buildFile.getParentFile().getAbsolutePath() + File.separator + "conf" + File.separator + "build-personal.properties");
+		Properties mergedProps = new Properties();
+		mergedProps.putAll(defaultProps);
+		mergedProps.putAll(personalProps);
+		
+		Enumeration<?> e = mergedProps.keys();
+		while (e.hasMoreElements()) {
+			String key = (String) e.nextElement();
+			if (key.startsWith("demo.docker.images.") & !(key.endsWith("help") || key.endsWith("label"))) {
+				String keyValue = mergedProps.getProperty(key);
+				String keyName = "docker:" + keyValue;
+				int lastSlash = keyName.lastIndexOf("/");
+				if (lastSlash>0) {
+					keyName = keyName.substring(1 + lastSlash);
+				}
+				aemJars.add(new AemDemoProperty(keyValue, keyName));
+			}
+		}
+		
 		AemDemoProperty[] aemPropertyArray = new AemDemoProperty[ aemJars.size() ];
 		aemJars.toArray( aemPropertyArray );
 		return aemPropertyArray;

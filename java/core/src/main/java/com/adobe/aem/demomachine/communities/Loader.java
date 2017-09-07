@@ -448,14 +448,15 @@ public class Loader {
 						String urlName = null;
 						String[] initialLanguages = null;
 
-						boolean isValid=true;
+						boolean isPostValid=true;
 						for (int i=2;i<record.size()-1;i=i+2) {
 
 							if (record.get(i)!=null && record.get(i+1)!=null && record.get(i).length()>0) {
 
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
-	
+								boolean isRecordValid=true;
+								
 								if (value.equals("TRUE")) { value = "true"; }
 								if (value.equals("FALSE")) { value = "false"; }	
 								if (name.equals("urlName")) { urlName = value; }
@@ -463,25 +464,37 @@ public class Loader {
 								// Special case for 64 and later
 								if (isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/sites/custom", "/conf/global/settings/community/templates/sites");
+									value = value.replaceAll("/etc/designs/community/sitethemes", "/libs/clientlibs/social/themes/sitethemes");									
 								}
 								
+								logger.debug (name + " " + value);
 								// Only create the site when a ROOT path is specified and available
 								if (name.equals(ROOT)) {
 									rootPath = value;
 									logger.info("Rootpath for subsequent processing is: " + rootPath);
 									if (!isResourceAvailable(hostname, port, adminPassword, rootPath)) {
 										logger.warn("Rootpath " + rootPath + " is not available, proceeding to next record");
-										isValid=false;
+										isPostValid=false;
 									} else {
 										logger.info("Rootpath " + rootPath + " is available");
 									}
 								}
 
+								// Only add a .css for 6.3 and before
+								if (name.equals("pagecss") && isCommunities64orlater) {
+									isRecordValid=false;
+								}
+								
+								// Only add a theme if it's 6.4 and beyond with an /apps theme 
+								if (name.equals("theme") && !isCommunities64orlater && value.startsWith("/apps")) {
+									isRecordValid=false;
+								}
+								
 								// Only create the site when a non-english language is specified 
 								if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 									if (!value.startsWith("en") && nomultilingual) {
 										logger.info("Language " + value + " is not desired for this site, proceeding to next record");
-										isValid=false;
+										isPostValid=false;
 									}
 								}
 
@@ -518,16 +531,27 @@ public class Loader {
 
 										String cloudName = record.get(i+2).trim();
 										String cloudValue = record.get(i+3).trim();
+										String cloudUrl = null;
 
 										// Special case for 64 and later
 										if (isCommunities64orlater) {
 											cloudValue = cloudValue.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+											cloudValue = cloudValue.replaceAll("/etc/cloudservices/msft-translation", "cloudconfigs/translation/msft-translation");																												
+											if (!cloudValue.startsWith("/")) {
+												cloudUrl = "/libs/settings/" + cloudValue; // Checking if there's a default cloud service
+						
+											} else {
+												cloudUrl = cloudValue;
+											}
 										}
 										
-										if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
+										if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudUrl)) {
+											
 											builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 											logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
-										} else {	
+										
+										} else {
+											
 											// We have a valid cloud service
 											builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 											builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
@@ -538,7 +562,8 @@ public class Loader {
 									} else {
 
 										// All other values just get added as is
-										builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+										if (isRecordValid)
+											builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 									}
 								}
@@ -546,7 +571,7 @@ public class Loader {
 						}
 
 						// Site creation
-						if (isValid)
+						if (isPostValid)
 							doPost(hostname, port, "/content.social.json", "admin", adminPassword, builder.build(), null,
 									null);
 						else
@@ -679,6 +704,14 @@ public class Loader {
 
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
+
+								// If the group or site template is meant to be created in 6.4 and beyond, there's a change of paths
+								if (name.equals("functions") && isCommunities64orlater) {
+									value = value.replaceAll("/etc/community/templates/functions/reference", "/libs/settings/community/templates/functions");
+									value = value.replaceAll("/etc/community/templates/groups/reference", "/libs/settings/community/templates/groups");
+									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");									
+								}
+								
 								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 								// If the template includes some of the enablement features, then it won't work for 6.1 GA

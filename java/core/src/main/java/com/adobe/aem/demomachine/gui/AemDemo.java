@@ -622,6 +622,37 @@ public class AemDemo {
 		mnInfrastructure.add(mnInDesignServer);
 
 		mnInfrastructure.addSeparator();
+		
+		JMenu mnDocker = new JMenu("Docker");
+		menuBar.add(mnDocker);
+
+		JMenuItem mntmDockerListImages= new JMenuItem("List all images");
+		mntmDockerListImages.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "docker_list_images");
+			}
+		});
+		mnDocker.add(mntmDockerListImages);
+
+		JMenuItem mntmDockerListContainers= new JMenuItem("List all containers");
+		mntmDockerListContainers.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "docker_list_containers");
+			}
+		});
+		mnDocker.add(mntmDockerListContainers);
+
+		JMenuItem mntmDockerRemoveImages= new JMenuItem("Remove all container images");
+		mntmDockerRemoveImages.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "docker_remove_images");
+			}
+		});
+		mnDocker.add(mntmDockerRemoveImages);
+		
+		mnInfrastructure.add(mnDocker);
+
+		mnInfrastructure.addSeparator();
 
 		JMenuItem mntmInfraInstall = new JMenuItem("All in One Setup");
 		mntmInfraInstall.addActionListener(new ActionListener() {
@@ -631,6 +662,7 @@ public class AemDemo {
 		});
 		mnInfrastructure.add(mntmInfraInstall);
 
+		
 		JMenu mnOther = new JMenu("Other");
 		menuBar.add(mnOther);
 
@@ -812,7 +844,7 @@ public class AemDemo {
 		btnStop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				int dialogResult = JOptionPane.showConfirmDialog (null, "Are you sure you really want to stop the running instances?","Warning",JOptionPane.YES_NO_OPTION);
+				int dialogResult = JOptionPane.showConfirmDialog (null, "Are you sure you really want to stop the running instances?", "Warning", JOptionPane.YES_NO_OPTION);
 				if(dialogResult == JOptionPane.NO_OPTION) {
 					return;
 				}
@@ -820,9 +852,25 @@ public class AemDemo {
 
 			}
 		});
-		btnStop.setBounds(500, 29, 117, 29);
+		btnStop.setBounds(375, 29, 117, 29);
 		frameMain.getContentPane().add(btnStop);
 
+		// Kill action
+		JButton btnKill = new JButton("Kill");
+		btnKill.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+
+				int dialogResult = JOptionPane.showConfirmDialog (null, "Are you sure you really want to kill the running instances? This might leave your AEM instances in unstable state.", "Warning", JOptionPane.YES_NO_OPTION);
+				if(dialogResult == JOptionPane.NO_OPTION) {
+					return;
+				}
+				AemDemoUtils.antTarget(AemDemo.this, "kill");
+
+			}
+		});
+		btnKill.setBounds(500, 29, 117, 29);
+		frameMain.getContentPane().add(btnKill);
+		
 		JButton btnExit = new JButton("Exit");
 		btnExit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {

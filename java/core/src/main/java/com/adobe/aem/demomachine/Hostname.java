@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2016 Adobe Systems Incorporated.
+ * Copyright 2017 Adobe Systems Incorporated.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,31 +15,38 @@
  ******************************************************************************/
 package com.adobe.aem.demomachine;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-
-import org.apache.log4j.Logger;
+import java.util.Properties;
 
 public class Hostname {
-
-	static Logger logger = Logger.getLogger(Hostname.class);
 
 	public static void main(String[] args) {
 
 		String hostname = "localhost";
 		try {
 			hostname = InetAddress.getLocalHost().getHostName();
-			logger.debug("Hostname resolved to: " + hostname);
 		} catch (UnknownHostException e) {
-			logger.error(e.getMessage());
 		}
-		
-		System.out.println(hostname);
+
+	    try {
+	        Properties props = new Properties();
+	        props.setProperty("demo.hostname", hostname);
+	        File f = new File("hostname.properties");
+	        OutputStream out = new FileOutputStream( f );
+	        props.store(out, "Detected hostname");
+	    }
+	    catch (Exception e ) {
+	        e.printStackTrace();
+	    }
 		
 	}
 

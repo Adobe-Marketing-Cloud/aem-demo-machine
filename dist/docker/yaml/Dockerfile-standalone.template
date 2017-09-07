@@ -1,0 +1,12 @@
+FROM ##demomachine.jar##
+
+MAINTAINER Adobe Systems Incorporated
+
+ARG aem_port
+ARG read_only
+
+ENV port ${aem_port}
+
+ADD publish/crx-quickstart/launcher /launcher/
+
+RUN /aem/create_segmentstore.sh
