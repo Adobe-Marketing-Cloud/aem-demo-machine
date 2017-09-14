@@ -369,10 +369,38 @@
 		<mkdir dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher"/>
 		<!-- Provisioning model -->
 		<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher" overwrite="true">
-			<fileset dir="${dist}/docker/provisioning/${demo.mode}">
+			<fileset dir="${dist}/docker/provisioning">
 				<include name="**/*"/>
 			</fileset>
 		</copy>
+		<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+		<!-- Encryption keys -->
+		<copy file="${dist}/config/all/all/cq-demo-keys-1.0.zip" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/keys/keys/1.0.0/keys-1.0.0.zip" overwrite="true"/>
+		<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.keys/keys/1.0.0/zip"/>
+		<!-- Config files -->
+		<if>
+			<and>
+				<equals arg1="${demo.osgi}" arg2="true" casesensitive="false"/>
+				<available file="${dist}/config" type="dir"/>
+			</and>
+			<then>
+				<echo file="${provisioning.model}" append="true" message="${line.separator}[configurations]${line.separator}"/>
+				<foreach target="docker_config_item" param="config">
+					<path id="standard.config">
+						<fileset dir="${dist}/config" casesensitive="yes">
+							<include name="all/all/**/*.config"/>
+							<include name="all/${demo.instance}/**/*.config"/>
+							<include name="${demo.packages}/all/**/*.config"/>
+							<include name="${demo.packages}/${demo.instance}/**/*.config"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+		<!-- Communities files -->
+		<antcall target="community_instance"/>
+		<antcall target="mysql_instance"/>
+		<antcall target="docker_community_scorm"/>
 		<!-- We.Retail files -->
 		<if>
 			<and>
@@ -390,8 +418,26 @@
 						<include name="*content*.zip"/>
 					</fileset>
 				</copy>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.apps/1.0.0/zip"/>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.content/1.0.0/zip"/>
 			</then>
 		</if>
+		<!--
+		<fail message="testend"/>
+		-->
+	</target>
+	<target name="docker_config_item">
+		<basename property="config.name" file="${config}" suffix=".config"/>
+		<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+		<antcall target="create_from_template">
+			<param name="template_srcfile" value="${config}"/>
+			<param name="template_distfile" value="${logs}/${config.name}"/>
+		</antcall>
+		<replaceregexp file="${logs}/${config.name}" match="(\r?\n)" flags="g" replace="${line.separator}"/>
+		<loadfile property="config.data" srcFile="${logs}/${config.name}"/>
+		<echo file="${provisioning.model}" append="true" message="${config.name}${line.separator}"/>
+		<echo file="${provisioning.model}" append="true" message="${config.data}"/>
+		<echo file="${provisioning.model}" append="true" message="${line.separator}${line.separator}"/>
 	</target>
 	<!-- For local installation -->
 	<target name="install_local">
@@ -530,6 +576,15 @@
 				<copy file="${demo.spfile}" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/sp.zip"/>
 			</then>
 		</if>
+		<antcall target="mysql_instance"/>
+		<antcall target="osgi_instance"/>
+		<antcall target="hotfix_osgi_instance"/>
+		<antcall target="hotfix_package_instance"/>
+		<antcall target="community_instance"/>
+		<antcall target="email_instance"/>
+	</target>
+	<!-- Target for configuring mySQL for a particular instance -->
+	<target name="mysql_instance">
 		<if>
 			<!-- Checking if mysql is to be used -->
 			<or>
@@ -540,6 +595,15 @@
 			<then>
 				<!-- Installing the OSGI driver for MySQL -->
 				<unzip src="${dist}/rdb/mysql.zip" dest="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+				<if>
+					<contains string="${demomachine.jar}" substring=":"/>
+					<then>
+						<copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.38-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.38/mysql-connector-java-5.1.38.jar" overwrite="true"/>
+						<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+						<echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.38/jar${line.separator}"/>
+						<delete dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+					</then>
+				</if>
 				<!-- Need to reset the schemas if already there -->
 				<antcall target="mysql_start"/>
 				<if>
@@ -598,11 +662,6 @@
 				</if>
 			</then>
 		</if>
-		<antcall target="osgi_instance"/>
-		<antcall target="hotfix_osgi_instance"/>
-		<antcall target="hotfix_package_instance"/>
-		<antcall target="community_instance"/>
-		<antcall target="email_instance"/>
 	</target>
 	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
 	<target name="start" depends="version,configuration,details">
@@ -3647,7 +3706,13 @@
 	<!-- Marketing Cloud Solution Switcher -->
 	<target name="solution_switcher">
 		<if>
-			<equals arg1="${SolutionSwitcher.customize}" arg2="true" casesensitive="false"/>
+			<and>
+				<equals arg1="${SolutionSwitcher.customize}" arg2="true" casesensitive="false"/>
+				<not>
+					<!-- Not for Docker -->
+					<contains string="${demomachine.jar}" substring=":"/>
+				</not>
+			</and>
 			<then>
 				<!-- primary switcher -->
 				<exec executable="curl">
@@ -5255,6 +5320,40 @@
 			</then>
 		</if>
 	</target>
+	<!-- Target for deploying SCORM bundle on docker -->
+	<target name="docker_community_scorm">
+		<property name="demo.install.folder" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/scorm/1.0.0"/>
+		<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+		<if>
+			<and>
+				<or>
+					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
+					<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+				</or>
+				<resourceexists>
+					<file file="${dist}/downloads/cq-social-scorm-pkg-${demo.packages}.zip"/>
+				</resourceexists>
+			</and>
+			<then>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine/scorm/1.0.0/zip"/>
+				<copy file="${dist}/downloads/cq-social-scorm-pkg-${demo.packages}.zip" tofile="${demo.install.folder}/scorm-1.0.0.zip"/>
+			</then>
+			<else>
+				<if>
+					<resourceexists>
+						<file file="${dist}/community/scorm/all/cq-social-scorm-pkg.zip"/>
+					</resourceexists>
+					<then>
+						<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine/scorm/1.0.0/zip"/>
+						<copy file="${dist}/community/scorm/all/cq-social-scorm-pkg.zip" tofile="${demo.install.folder}/scorm-1.0.0.zip"/>
+					</then>
+					<else>
+						<echo message="WARNING: Scorm Bundle has not been installed"/>
+					</else>
+				</if>
+			</else>
+		</if>
+	</target>
 	<!-- Target for bootstrapping AEM with the email settings -->
 	<target name="email_instance">
 		<if>
@@ -5300,6 +5399,9 @@
 		<replace file="${template_distfile}" token="##demobuild.publishrepo##" value="${demos}/${demo.build}/publish/crx-quickstart/repository"/>
 		<replace file="${template_distfile}" token="##demobuild.farmrepo##" value="${demos}/${demo.build}/farm/crx-quickstart/repository"/>
 		<replace file="${template_distfile}" token="##demomachine.jar##" value="${demomachine.jar}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.memorymin##" value="${AdobeAEM.memorymin}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.memorymax##" value="${AdobeAEM.memorymax}"/>
+		<replace file="${template_distfile}" token="##demo.loglevel##" value="${demo.loglevel}"/>
 	</target>
 	<!-- Target for bootstrapping AEM with the latest Community uber -->
 	<target name="community_instance" depends="version,configuration" if="aem61orlater">
@@ -5310,6 +5412,22 @@
 				<equals arg1="${demo.external}" arg2="false" casesensitive="false"/>
 			</and>
 			<then>
+				<if>
+					<and>
+						<contains string="${demomachine.jar}" substring=":"/>
+						<not>
+							<equals arg1="${demo.communities.featurepack}" arg2="none" casesensitive="false"/>
+						</not>
+					</and>
+					<then>
+						<property name="demo.install.folder" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/communities/1.0.0"/>
+						<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+						<echo file="${provisioning.model}" append="true" message="[feature name=quickstart]${line.separator}${line.separator}[artifacts]${line.separator}com.adobe.aem.demomachine/communities/1.0.0/zip"/>
+					</then>
+					<else>
+						<property name="demo.install.folder" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+					</else>
+				</if>
 				<if>
 					<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
 					<then>
@@ -5322,7 +5440,7 @@
 							</and>
 							<then>
 								<echo message="Upgrading the AEM instance with AEM Communities latest product update uber"/>
-								<copy file="${dist}/downloads/communities-${demo.packages}-latest.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+								<copy file="${dist}/downloads/communities-${demo.packages}-latest.zip" tofile="${demo.install.folder}/communities-1.0.0.zip"/>
 							</then>
 							<else>
 								<if>
@@ -5331,7 +5449,7 @@
 									</resourceexists>
 									<then>
 										<echo message="Upgrading the AEM instance with AEM Communities latest product maintenance uber"/>
-										<copy file="${dist}/downloads/communities-${demo.packages}-release.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+										<copy file="${dist}/downloads/communities-${demo.packages}-release.zip" tofile="${demo.install.folder}/communities-1.0.0.zip"/>
 									</then>
 								</if>
 							</else>
@@ -5349,7 +5467,7 @@
 							</and>
 							<then>
 								<echo message="Upgrading the AEM instance with AEM Communities a feature pack uber"/>
-								<copy file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip" todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+								<copy file="${dist}/community/featurepacks/${demo.packages}/${demo.communities.featurepack}.zip" tofile="${demo.install.folder}/communities-1.0.0.zip"/>
 							</then>
 						</if>
 					</else>
@@ -5545,7 +5663,14 @@
 				</not>
 			</and>
 			<then>
-				<antcall target="community_scorm_bundle"/>
+				<if>
+					<not>
+						<contains string="${demomachine.jar}" substring=":"/>
+					</not>
+					<then>
+						<antcall target="community_scorm_bundle"/>
+					</then>
+				</if>
 				<antcall target="community_mysql_schema"/>
 				<antcall target="community_reporting_configure"/>
 				<antcall target="community_scorm_configure"/>
@@ -6543,12 +6668,18 @@
 	</target>
 	<!-- Sets the Cloud Services as per the configuration for the standard demo sites Geometrixx Outdoors and Geometrix Media  -->
 	<target name="demo_cloudservices">
-		<antcall target="cloudservices">
-			<param name="path" value="/content/geometrixx-outdoors/jcr:content"/>
-		</antcall>
-		<antcall target="cloudservices">
-			<param name="path" value="/content/geometrixx-media/jcr:content"/>
-		</antcall>
+		<if>
+			<equals arg1="${aem63orlater}" arg2="false" casesensitive="false"/>
+			<then>
+				<!-- no more geometrixx for 6.3 and later -->
+				<antcall target="cloudservices">
+					<param name="path" value="/content/geometrixx-outdoors/jcr:content"/>
+				</antcall>
+				<antcall target="cloudservices">
+					<param name="path" value="/content/geometrixx-media/jcr:content"/>
+				</antcall>
+			</then>
+		</if>
 		<antcall target="cloudservices">
 			<param name="path" value="/content/community-components/en/jcr:content"/>
 		</antcall>
@@ -6921,6 +7052,34 @@
 		<copy file="${validation}/${results}.html" tofile="${validation}/results.html" overwrite="true" failonerror="false"/>
 		<copy file="${validation}/${results}-full.png" tofile="${validation}/results.png" overwrite="true" failonerror="false"/>
 	</target>
+	<!-- Sets all the validation flags for existing demo builds to false -->
+	<target name="validation_nothing">
+		<foreach target="validation_nothing_instance" param="demopath" inheritall="true">
+			<path>
+				<sort>
+					<dirset dir="${demos}">
+						<include name="*"/>
+					</dirset>
+					<reverse xmlns="antlib:org.apache.tools.ant.types.resources.comparators">
+						<name/>
+					</reverse>
+				</sort>
+			</path>
+		</foreach>
+	</target>
+	<target name="validation_nothing_instance">
+		<basename property="demo" file="${demopath}"/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo}/demobuild.properties"/>
+			</resourceexists>
+			<then>
+				<propertyfile file="${demos}/${demo}/demobuild.properties">
+					<entry key="demo.validation" value="false"/>
+				</propertyfile>
+			</then>
+		</if>
+	</target>
 	<target name="validation_build">
 		<basename property="demo" file="${demopath}"/>
 		<if>
@@ -7046,21 +7205,25 @@
 				<echo file="${validation}/${results}.html" append="true">&lt;/tr&gt;</echo>
 				<!-- Cleaning via nested ANT -->
 				<if>
-					<and>
-						<not>
-							<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
-						</not>
-						<resourcecontains resource="${demos}/${demo}/demobuild.properties" substring="demo.validation.wipeout=true"/>
-					</and>
+					<not>
+						<equals arg1="${screenshot}" arg2="true" casesensitive="false"/>
+					</not>
 					<then>
-						<echo message="Cleaning demo environment: ${demo}"/>
-						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
-							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
+						<!-- Stopping in anycase -->
+						<echo message="Stopping demo environment: ${demo}"/>
+						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-stop.log" failonerror="false">
+							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} stop"/>
 						</exec>
+						<if>
+							<resourcecontains resource="${demos}/${demo}/demobuild.properties" substring="demo.validation.wipeout=true"/>
+							<then>
+								<echo message="Cleaning demo environment: ${demo}"/>
+								<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
+								</exec>
+							</then>
+						</if>
 					</then>
-					<else>
-						<echo message="Not cleaning up demo environment: ${demo}"/>
-					</else>
 				</if>
 			</then>
 		</if>

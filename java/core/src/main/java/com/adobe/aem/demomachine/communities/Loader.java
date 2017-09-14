@@ -539,7 +539,6 @@ public class Loader {
 											cloudValue = cloudValue.replaceAll("/etc/cloudservices/msft-translation", "cloudconfigs/translation/msft-translation");																												
 											if (!cloudValue.startsWith("/")) {
 												cloudUrl = "/libs/settings/" + cloudValue; // Checking if there's a default cloud service
-						
 											} else {
 												cloudUrl = cloudValue;
 											}
@@ -685,7 +684,11 @@ public class Loader {
 											builder.addTextBody(prop, propArray.get(i).toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));																	
 										}
 									} else {
-										builder.addTextBody(prop, propValue.toString(), ContentType.create("text/plain", MIME.UTF8_CHARSET));								
+										String value = propValue.toString();
+										if (isCommunities64orlater) {
+											value = value.replaceAll("/libs/settings/", "");
+										}
+										builder.addTextBody(prop, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));								
 									}
 								} else {
 									logger.info("Not adding property " + prop + " with override status " + willOverride);

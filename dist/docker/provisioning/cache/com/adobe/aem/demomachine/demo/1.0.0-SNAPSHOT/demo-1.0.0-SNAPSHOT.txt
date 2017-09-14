@@ -1,0 +1,4 @@
+[feature name=demo]
+
+[artifacts]
+
