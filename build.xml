@@ -2,6 +2,7 @@
 <project name="AEMDemo" default="default" basedir=".">
 	<!-- The conf/build-personal.properties file can be created to store your own values without touching the default build.xml file released with new demo machines -->
 	<property file="conf/build-personal.properties"/>
+	<property file="conf/validation.properties"/>
 	<!-- The build.properties file contains the default configuration value -->
 	<property file="build.properties"/>
 	<!-- Setting some global properties for this build -->
@@ -25,7 +26,7 @@
 	<!-- This file requires the ant-contrib-1.0b3.jar file to be in the ant/lib folder -->
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<description>
-        This is the AEM Demo Machine. Comprensive toolkit for running and configuring integrated AEM demos.
+        This is the AEM Demo Machine. Comprehensive toolkit for running and configuring integrated AEM demos.
     </description>
 	<condition property="isWindows">
 		<os family="windows"/>
@@ -7456,6 +7457,12 @@
 				<echo>No image to remove</echo>
 			</else>
 		</if>
+	</target>
+	<target name="demo_encrypt">
+		<java classname="com.adobe.aem.demomachine.CypherUtils">
+			<arg line="-f '${encrypt.inputFileName}' -t '${encrypt.outputFileName}' -k '${encrypt.key}'"/>
+			<classpath refid="demo.classpath"/>
+		</java>
 	</target>
 	<!-- Default target when no target name is provided to ANT -->
 	<target name="default">

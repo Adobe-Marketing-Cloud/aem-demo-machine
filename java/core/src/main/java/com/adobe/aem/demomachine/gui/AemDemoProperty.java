@@ -15,10 +15,14 @@
  ******************************************************************************/
 package com.adobe.aem.demomachine.gui;
 
+import org.apache.log4j.Logger;
+
 public class AemDemoProperty {
 
     private String value;
     private String label;
+    
+	static Logger logger = Logger.getLogger(AemDemoProperty.class);
 
     public AemDemoProperty(String value, String label) {
         this.value = value;

@@ -17,11 +17,19 @@ package com.adobe.aem.demomachine.gui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.TreeSet;
 
 import javax.swing.*;
@@ -30,6 +38,10 @@ import javax.swing.table.*;
 import javax.swing.event.TableModelListener;
 import javax.swing.event.TableModelEvent;
 
+import org.apache.log4j.Logger;
+
+import com.adobe.aem.demomachine.CypherUtils;
+
 
 public class AemDemoOptions extends JDialog {
 
@@ -37,6 +49,7 @@ public class AemDemoOptions extends JDialog {
 	private final JPanel contentPanel = new JPanel();
 	private final JTable table;
 	private AemDemo aemDemo;
+	static Logger logger = Logger.getLogger(AemDemoOptions.class);
 
 	@SuppressWarnings("serial")
 	public AemDemoOptions(AemDemo aemDemoInput) {
@@ -273,9 +286,68 @@ public class AemDemoOptions extends JDialog {
 		});
 		contentPanel.add(loadButton);
 
+		// One click setup for Adobe VPN users
+		JButton oneclickButton = new JButton("1-Click Setup (VPN)");
+		oneclickButton.setBounds(380, 535, 170, 30);
+		oneclickButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+
+				int dialogResult = JOptionPane.showConfirmDialog (null, "Are you sure you really want to load the default Adobe-only demo properties?\nThis might override some of your existing values.\nA backup file of /conf/build-personal.properties will be created.", "Warning", JOptionPane.YES_NO_OPTION);
+				if(dialogResult == JOptionPane.NO_OPTION) {
+					return;
+				}
+
+				StringBuffer cryptedContent = new StringBuffer("");
+				try {
+					
+					URL url = new URL("http://" + AemDemoConstants.ADOBEDEMOSERVER + "/properties/build-mac.properties.encrypted");
+					BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));    
+					String line;
+					while ((line = in.readLine()) != null) {
+						cryptedContent.append(line);
+					}
+					in.close();
+					logger.info(cryptedContent);
+
+					String decryptedContent = CypherUtils.decrypt(cryptedContent.toString(), AemDemoConstants.ADOBEVPN);
+					logger.info(decryptedContent);
+					Properties mergeProps = parsePropertiesString(decryptedContent);
+					@SuppressWarnings("rawtypes")
+					Enumeration currentProp = mergeProps.propertyNames();
+					while (currentProp.hasMoreElements()) {
+						String key = (String) currentProp.nextElement();
+						String value = (String) mergeProps.getProperty(key);
+
+						// Lookup for the same key in the property table
+						for (int i=0; i<table.getRowCount(); i++) {
+
+							if ( table.getModel().getValueAt(i, 1).equals(key) ) {
+
+								table.getModel().setValueAt(value, i, 3);
+								table.getModel().setValueAt(true, i, 0);
+
+							}
+						}
+
+					}
+
+					aemDemo.setPersonalProperties(savePersonalProperties());
+
+				}
+				catch (MalformedURLException ex) {
+					logger.error("Malformed URL: " + ex.getMessage());
+				}
+				catch (IOException ex) {
+					logger.error("I/O Error: " + ex.getMessage());
+					JOptionPane.showMessageDialog(null, "Problem when loading the properties - make sure you are logged into the Adobe VPN and retry");
+				}
+				
+			}
+		});
+		contentPanel.add(oneclickButton);
+
 		// Closing ESC
 		AemDemoUtils.installEscapeCloseOperation(this);
-
 
 	}
 
@@ -303,6 +375,16 @@ public class AemDemoOptions extends JDialog {
 		}
 		return newPersonalProperties;
 
+	}
+	
+	public Properties parsePropertiesString(String s) {
+	    final Properties p = new Properties();
+	    try {
+			p.load(new StringReader(s));
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}
+	    return p;
 	}
 
 }
