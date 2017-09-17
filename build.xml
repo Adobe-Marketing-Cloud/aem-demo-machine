@@ -326,6 +326,14 @@
 			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-tunnel"/>
 		</antcall>
 		<antcall target="create_from_template">
+			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-farm.template"/>
+			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-farm"/>
+		</antcall>
+		<antcall target="create_from_template">
+			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-author.template"/>
+			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-author"/>
+		</antcall>
+		<antcall target="create_from_template">
 			<param name="template_srcfile" value="${dist}/docker/yaml/aem-${demomachine.type}.yml.template"/>
 			<param name="template_distfile" value="${demos}/${demo.build}/aem.yml"/>
 		</antcall>
@@ -1815,7 +1823,7 @@
 	</target>
 	<!-- Target for login screen to be available -->
 	<target name="canlogin">
-		<echo message="Waiting for instance on port ${port} to be available..."/>
+		<echo message="Waiting for the AEM instance on port ${port} to be available..."/>
 		<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
 			<http url="http://${demo.host}:${port}/libs/granite/core/content/login.html" errorsbeginat="400"/>
 		</waitfor>
@@ -4405,6 +4413,25 @@
 					<arg line="http://${demo.host}:${port}/system/console/configMgr/com.day.cq.dam.similaritysearch.internal.impl.SimilaritySearchServiceImpl"/>
 				</exec>
 				<!-- Inserting the Smart Tag extraction task to the DAM update workflow -->
+				<if>
+					<or>
+						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+					</or>
+					<then>
+						<!-- Doing the workflow override -->
+						<exec executable="curl">
+							<arg line="-o '${logs}/${port}_assets_damupdateworkflowoverride.json'"/>
+							<arg line="-X POST"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="http://${demo.host}:${port}/libs/settings/workflow/models/dam/update_asset/jcr:content.override.json"/>
+						</exec>
+						<property name="workflow.root" value="/conf/global/settings/workflow/models"/>
+					</then>
+					<else>
+						<property name="workflow.root" value="/etc/workflow/models"/>
+					</else>
+				</if>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetsworkflowinserttask.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
@@ -4419,7 +4446,7 @@
 					<arg line="-d :nameHint=autotagassetprocess"/>
 					<arg line="-d parentResourceType=cq/flow/components/parsys"/>
 					<arg line="-d :order='before commandlineprocess'"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/"/>
+					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/"/>
 				</exec>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetsworkflowupdatetask.html'"/>
@@ -4431,14 +4458,14 @@
 					<arg line="-d ./metaData/PROCESS_AUTO_ADVANCE=true"/>
 					<arg line="-d ./PROCESS@Delete="/>
 					<arg line="-d ./metaData/PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content/flow/autotagassetprocess"/>
+					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/autotagassetprocess"/>
 				</exec>
 				<!-- Saving the workflow model -->
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_assetsworkflowsave.html'"/>
 					<arg line="-u admin:${demo.admin.password}"/>
 					<arg line="-X POST"/>
-					<arg line="http://${demo.host}:${port}/etc/workflow/models/dam/update_asset/jcr:content.generate.json"/>
+					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content.generate.json"/>
 				</exec>
 				<!-- For each folder where we need to set the Smart Tag property -->
 				<propertyselector property="folders" match="demo.assets.smarttags.folders\.([^\.]*)" select="\1" casesensitive="false"/>

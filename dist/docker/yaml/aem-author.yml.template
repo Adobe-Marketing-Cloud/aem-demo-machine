@@ -1,0 +1,28 @@
+version: '3.1'
+services:
+  aem-simple-author:
+    build:
+      context: .
+      dockerfile: ./Dockerfile-standalone-author
+      args:
+        build_runmodes: author,sling-junit
+        aem_port: ##AdobeAEM.authorport##
+        read_only: "true"
+    environment:
+     - runmodes=crx3tar
+    ports:
+     - "##AdobeAEM.authorport##:##AdobeAEM.authorport##"
+    volumes:
+     - ##demobuild.authorlogs##:/launcher/logs
+     - ##demobuild.authorrepo##:/launcher/repository
+    secrets:
+     - aem_license
+    stop_grace_period: 1m30s
+
+secrets:
+  aem_license:
+    file: ##AdobeAEM.licensefile##
+
+volumes:
+  aem-##demo.build##-author-logs:
+  aem-##demo.build##-author-repo:
