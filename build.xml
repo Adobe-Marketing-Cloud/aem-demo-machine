@@ -372,6 +372,16 @@
 		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-build.log" spawn="false" failonerror="false">
 			<arg line="-f '${demos}/${demo.build}/aem.yml' up -d --build"/>
 		</exec>
+		<!-- Check if the build phase was completed successfully -->
+		<if>
+			<resourcecontains resource="${logs}/docker-compose-build.log" substring="failed to build"/>
+			<then>
+				<fail message="Error when building the docker images - check ${logs}/docker-compose-build.log"/>
+			</then>
+			<else>
+				<echo message="Docker images successfully built - proceeding with startup"/>
+			</else>
+		</if>
 		<antcall target="canlogin_all"/>
 	</target>
 	<target name="install_docker_instance">
