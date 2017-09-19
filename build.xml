@@ -3276,7 +3276,7 @@
 			<arg line="-d MEGA_BYTES=MEGA_BYTES"/>
 			<arg line="-d useOffHeapMemory=false"/>
 			<arg line="-d digestAlgorithm=NONE"/>
-			<arg line="-d monitoringQueueSize=0"/>
+			<arg line="-d monitoringQueueSize=100"/>
 			<arg line="-d propertylist=name,type,importMode,aclHandling,package.roots,package.filters,property.filters,tempFsFolder,useBinaryReferences,autoSaveThreshold,cleanupDelay,fileThreshold,MEGA_BYTES,useOffHeapMemory,digestAlgorithm,monitoringQueueSize"/>
 			<arg line="http://${demo.host}:${port}/system/console/configMgr/org.apache.sling.distribution.serialization.impl.vlt.VaultDistributionPackageBuilderFactory.${vltfilter.id}"/>
 		</exec>
