@@ -156,6 +156,7 @@ public class Loader {
 	private static final String CLOUDSERVICE_FACEBOOK = "fbconnectoauthid";
 	private static final String CLOUDSERVICE_TWITTER = "twitterconnectoauthid";
 	private static final String CLOUDSERVICE_TRANSLATION = "translationProviderConfig";
+	private static final String SOCIAL_LOGIN = "SocialLogin";
 	private static final int RESOURCE_INDEX_PATH = 5;
 	private static final int RESOURCE_INDEX_THUMBNAIL = 3;
 	private static final int CALENDAR_INDEX_THUMBNAIL = 8;
@@ -374,7 +375,7 @@ public class Loader {
 			boolean isCommunities61FP7orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP7))>=0;
 			boolean isCommunities61FP8orlater = vBundleCommunitiesSCF!=null && vBundleCommunitiesSCF.compareTo(new Version(COMMUNITIES61FP8))>=0;
 			boolean isCommunities64orlater = vBundleCommunitiesScoring!=null && vBundleCommunitiesScoring.compareTo(new Version(COMMUNITIES64))>=0;
-			
+
 			Iterable<CSVRecord> records = CSVFormat.EXCEL.parse(in);
 			ignoreUntilNextComponent = false;
 			recordLoop:
@@ -392,19 +393,19 @@ public class Loader {
 					String action = record.get(0);
 					int versionBound=action.indexOf("@");
 					if (versionBound>0) {
-						
+
 						// We are bound to a specific version
 						String version = action.substring(1+versionBound);
 						if (version.equals("6.4") && !isCommunities64orlater) {
 							logger.info("Not processing this action on this version");
 							continue;
 						}
-						
+
 						// Proceeding with correct action name
 						action = action.substring(0, versionBound);
-					
+
 					}
-					
+
 					// Let's see if we deal with a comment
 					if (action.startsWith("#")) {
 
@@ -436,6 +437,54 @@ public class Loader {
 						sitePagePath = record.get(1);
 					}
 
+					// Let's see if we need to create a new Social Login configuration
+					if (action.equals(SOCIAL_LOGIN)) {
+
+						String confFolder = "";
+						if (isCommunities64orlater) {
+							confFolder = "/conf/" + record.get(2) + "/settings/cloudconfigs"; 
+						} else {
+							confFolder = "/etc/cloudservices/" + record.get(1) + "connect";
+						}
+
+						// First create the configuration from the template
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						builder.addTextBody("cmd", "createPage");
+						builder.addTextBody("parentPath", confFolder);
+						builder.addTextBody("title", record.get(3));
+						builder.addTextBody("label", record.get(1) + "connect");
+						builder.addTextBody("template", "/libs/social/connect/templates/" + record.get(1) + (isCommunities64orlater?"config":"connect"));
+						printPOST(builder.build());	
+						doPost(hostname, port, "/bin/wcmcommand", "admin", adminPassword, builder.build(), null);
+
+						// Then configure the social login cloud config
+						MultipartEntityBuilder builderConfig = MultipartEntityBuilder.create();
+						builderConfig.setCharset(MIME.UTF8_CHARSET);
+						builderConfig.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+
+						String postFolder = "";
+						if (isCommunities64orlater) {
+							builderConfig.addTextBody(":operation", "social:update" + record.get(1).substring(0, 1).toUpperCase() + record.get(1).substring(1) + "Config", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							builderConfig.addTextBody("oauth.scope", "true", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							postFolder = "/conf/" + record.get(2) + "/settings/cloudconfigs/" + record.get(1) + "connect.social.json"; 
+						} else {
+							builderConfig.addTextBody("oauth.scope", "email", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							builderConfig.addTextBody("oauth.create.users.groups", "true", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							postFolder = "/etc/cloudservices/" + record.get(1) + "connect/" + record.get(1) + "connect/jcr:content";
+						}
+
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 4, isCommunities64orlater);
+						for (NameValuePair nameValuePair : nameValuePairs ) {
+							builderConfig.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						}
+						doPost(hostname, port, postFolder, "admin", adminPassword,builderConfig.build(), null);
+
+						printPOST(builderConfig.build());	
+
+					}
+
 					// Let's see if we need to create a new Community site
 					if (action.equals(SITE)) {
 
@@ -456,7 +505,7 @@ public class Loader {
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
 								boolean isRecordValid=true;
-								
+
 								if (value.equals("TRUE")) { value = "true"; }
 								if (value.equals("FALSE")) { value = "false"; }	
 								if (name.equals("urlName")) { urlName = value; }
@@ -465,8 +514,9 @@ public class Loader {
 								if (isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/sites/custom", "/conf/global/settings/community/templates/sites");
 									value = value.replaceAll("/etc/designs/community/sitethemes", "/libs/clientlibs/social/themes/sitethemes");									
+									value = value.replaceAll("/etc/tags", "/content/cq:tags");									
 								}
-								
+
 								logger.debug (name + " " + value);
 								// Only create the site when a ROOT path is specified and available
 								if (name.equals(ROOT)) {
@@ -484,12 +534,12 @@ public class Loader {
 								if (name.equals("pagecss") && isCommunities64orlater) {
 									isRecordValid=false;
 								}
-								
+
 								// Only add a theme if it's 6.4 and beyond with an /apps theme 
 								if (name.equals("theme") && !isCommunities64orlater && value.startsWith("/apps")) {
 									isRecordValid=false;
 								}
-								
+
 								// Only create the site when a non-english language is specified 
 								if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 									if (!value.startsWith("en") && nomultilingual) {
@@ -531,32 +581,35 @@ public class Loader {
 
 										String cloudName = record.get(i+2).trim();
 										String cloudValue = record.get(i+3).trim();
-										String cloudUrl = null;
+
+										// Social login cloud services follow some special rules starting with 6.4 (no direct association)
+										if (isCommunities64orlater && (cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) )) {
+											cloudValue="";
+										}
 
 										// Special case for 64 and later
-										if (isCommunities64orlater) {
-											cloudValue = cloudValue.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+										if (isCommunities64orlater && cloudName.equals(CLOUDSERVICE_TRANSLATION)) {
 											cloudValue = cloudValue.replaceAll("/etc/cloudservices/msft-translation", "cloudconfigs/translation/msft-translation");																												
-											if (!cloudValue.startsWith("/")) {
-												cloudUrl = "/libs/settings/" + cloudValue; // Checking if there's a default cloud service
-											} else {
-												cloudUrl = cloudValue;
-											}
 										}
-										
-										if ((cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudUrl)) {
-											
+
+										if (!isCommunities64orlater && (cloudName.equals(CLOUDSERVICE_TRANSLATION) || cloudName.equals(CLOUDSERVICE_FACEBOOK) || cloudName.equals(CLOUDSERVICE_TWITTER) || cloudName.equals(CLOUDSERVICE_ANALYTICS)) && !isResourceAvailable(hostname, port, adminPassword, cloudValue)) {
+
 											builder.addTextBody(name, "false", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 											logger.warn("Cloud service: " + cloudValue + " is not available on this instance");
-										
+
 										} else {
-											
+
 											// We have a valid cloud service
-											builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-											builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
-											i=i+2;
-											logger.info("Cloud service: " + cloudValue + " available on this instance");
+											builder.addTextBody(name, "true", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+											if (!cloudValue.equals("")) {
+												builder.addTextBody(cloudName, cloudValue, ContentType.create("text/plain", MIME.UTF8_CHARSET));
+												logger.info("Cloud service: " + cloudValue + " for this instance");
+											}
+
 										}
+
+										// Moving to the next record anyway
+										i=i+2;
 
 									} else {
 
@@ -656,7 +709,7 @@ public class Loader {
 						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 						// Adding the mandatory values for being able to save a site via the JSON endpoint
-						List<String> props = Arrays.asList("urlName", "theme", "moderators", "communitymanagers", "privilegedmembers", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
+						List<String> props = Arrays.asList("siteCloudConfig", "urlName", "theme", "moderators", "communitymanagers", "privilegedmembers", "createGroupPermission", "groupAdmin", "twitterconnectoauthid", "fbconnectoauthid", "translationProviderConfig", "translationProvider", "commonStoreLanguage");
 						try {
 
 							JSONObject siteprops = new JSONObject(siteConfig).getJSONObject("properties");
@@ -713,8 +766,9 @@ public class Loader {
 									value = value.replaceAll("/etc/community/templates/functions/reference", "/libs/settings/community/templates/functions");
 									value = value.replaceAll("/etc/community/templates/groups/reference", "/libs/settings/community/templates/groups");
 									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");									
+									value = value.replaceAll("/etc/tags", "/content/cq:tags");									
 								}
-								
+
 								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
 								// If the template includes some of the enablement features, then it won't work for 6.1 GA
@@ -804,9 +858,10 @@ public class Loader {
 					if (action.equals(ACTIVATE) && record.get(1)!=null) {
 
 						String activatePath = record.get(1);
-						if (isCommunities64orlater) {
-							activatePath= activatePath.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+						if (!isCommunities64orlater & activatePath.contains("connect")) {
+							activatePath = "/etc/cloudservices/" + activatePath.substring(1 + activatePath.lastIndexOf("/")) + "/" + activatePath.substring(1 + activatePath.lastIndexOf("/"));
 						}
+						logger.debug("Path to activate: " + activatePath);
 
 						if (!port.equals(altport) && isResourceAvailable(hostname, port, adminPassword, activatePath)) {
 
@@ -819,7 +874,7 @@ public class Loader {
 									"admin", adminPassword,
 									new UrlEncodedFormEntity(nameValuePairs),
 									null);
-							
+
 						} else {
 							logger.warn("Not activating the requested path");
 						}
@@ -874,7 +929,7 @@ public class Loader {
 							//nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
 							//nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
 						}
-						
+
 						if (isCommunities64orlater) {
 							badgePath = badgePath.replaceAll("/etc/community", "/conf/global/settings/community");
 						}
@@ -910,14 +965,14 @@ public class Loader {
 										value = "nt:unstructured";
 									}
 								}
-								
+
 								nameValuePairs.set(i, new BasicNameValuePair(name, value));
-															
+
 								// Special case for accommodate advanced scoring being installed or not
 								if (name.endsWith("Rules") && value.contains("adv-") && vBundleCommunitiesAdvancedScoring==null) {
 									nameValuePairs.remove(i--);
 								}
-							
+
 							}
 						}
 
@@ -955,7 +1010,7 @@ public class Loader {
 										isResourceAvailable(hostname, port, adminPassword, "/conf/global/settings/community/templates/sites/" + title2name(value)) ||
 										isResourceAvailable(hostname, port, adminPassword, "/conf/global/settings/community/templates/groups/" + title2name(value)) 
 										)
-								) {
+										) {
 									logger.info("Template " + value + " is already there");
 									isValid=false;
 								}
@@ -983,7 +1038,7 @@ public class Loader {
 									logger.info("Template " + record.get(3) + " is not compatible with this version of AEM");
 									isValid=false;
 								}
-								
+
 								// If the group or site template is meant to be created in 6.4 and beyond, there's a change of paths
 								if (name.equals("functions") && isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/functions/reference", "/libs/settings/community/templates/functions");
@@ -1034,7 +1089,7 @@ public class Loader {
 								if (isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");
 								}
-								
+
 								if (value.equals("TRUE")) { value = "true"; }
 								if (value.equals("FALSE")) { value = "false"; }	
 								if (name.equals("type")) { groupType = value; }
@@ -1081,7 +1136,7 @@ public class Loader {
 					if (action.equals(SLINGDELETE)) {
 
 						String deletePath = record.get(1);
-						
+
 						doDelete(hostname, port,
 								deletePath,
 								"admin", adminPassword);
@@ -1106,7 +1161,7 @@ public class Loader {
 								"/bin/querybuilder.json",
 								"admin", adminPassword,
 								sitesNameValuePairs);
-						
+
 						// List of orphan entries
 						List<String> orphanKeys = new ArrayList<String>();
 
@@ -1460,13 +1515,14 @@ public class Loader {
 						if (componentType.equals(SLINGPOST) || configure) {
 
 							String postPath = record.get(1);
-							
-							if (isCommunities64orlater) {
-								postPath= postPath.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+
+							if (isCommunities64orlater && postPath.startsWith("/etc/cloudservices") && postPath.endsWith("jcr:content")) {
+								postPath = postPath.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+								postPath = postPath.substring(0, postPath.lastIndexOf("jcr:content") -1) + ".social.json";
 							}
-							
+
 							String configurePath = getConfigurePath(postPath);
-							
+
 							logger.debug("Configuration path:" + configurePath);
 
 							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, record.get(1), record, 2, isCommunities64orlater);
@@ -1514,9 +1570,9 @@ public class Loader {
 								// Only do this when really have configuration settings
 								doPost(hostname, port,
 										componentType.equals(SLINGPOST)?postPath:configurePath,
-										"admin", adminPassword,
-										new UrlEncodedFormEntity(nameValuePairs),
-										null);
+												"admin", adminPassword,
+												new UrlEncodedFormEntity(nameValuePairs),
+												null);
 
 							}
 
@@ -1682,7 +1738,7 @@ public class Loader {
 						if (isCommunities64orlater) {
 							value = value.replaceAll("/etc/community", "/libs/community");
 						}
-						
+
 						nameValuePairs.add(new BasicNameValuePair("badgeContentPath", value));
 
 						// Appending the path to the user profile to the target location
@@ -3563,16 +3619,18 @@ public class Loader {
 						value = "/conf/global/settings/cloudconfigs";
 					} else if (value.contains("/etc/cloudservices")) {
 						// Location for referencing the cloud configs by name
-						value= value.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+						value = value.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+					} else if (name.equals("template") && value.endsWith("connect")) {
+						value = value.substring(0, value.lastIndexOf("connect")) + "config";
 					}
 				}
-				
+
 				// If it's a reference to a resource, let's make sure it's available first
 				if (name.startsWith("cq:cloudserviceconfigs") && !isResourceAvailable(hostname, port, adminPassword, value) ) {
 					logger.warn("Resource " + value + " is not available");
 					continue;
 				}
-								
+
 				// We are adding to an existing property supporting multiple values (might not exist yet)
 				int addition = name.indexOf("+");
 				if (addition>0 && path!=null) {
@@ -3627,7 +3685,7 @@ public class Loader {
 				} else {
 					// Only adding the hint if not posting to a .json endpoint
 					if (path==null || path.indexOf(".json")<0)
-							nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
+						nameValuePairs.add(new BasicNameValuePair(name + "@TypeHint", "String"));					            							            		
 				}
 
 				// We have multiple values to pass to the POST servlet, e.g. for a String[]
