@@ -3616,7 +3616,7 @@ public class Loader {
 				if (isCommunities64orlater) {
 					if (name.equals("parentPath") && value.contains("/etc/cloudservices")) {
 						// Location for getting new cloud configs created
-						value = "/conf/global/settings/cloudconfigs";
+						value = "/conf/we-retail/settings/cloudconfigs";
 					} else if (value.contains("/etc/cloudservices")) {
 						// Location for referencing the cloud configs by name
 						value = value.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
