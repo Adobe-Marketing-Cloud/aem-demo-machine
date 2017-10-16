@@ -2645,9 +2645,10 @@
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem63.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
 		</exec>
-		<echo message="Downloading cq-social-scorm-pkg-1.1.${latest11}.zip"/>
+		<propertyregex property="latest12" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.2\.)([0-9]*)(\,1\.^2\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-social-scorm-pkg-1.2.${latest12}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.2.${latest12}/cq-social-scorm-pkg-1.2.${latest12}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>

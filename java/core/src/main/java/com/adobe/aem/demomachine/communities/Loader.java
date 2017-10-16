@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -95,6 +94,7 @@ public class Loader {
 	static Logger logger = Logger.getLogger(Loader.class);
 
 	private static final String USERS = "Users";
+	private static final String MEMBERS = "Members";
 	private static final String COMMENTS = "Comments";
 	private static final String REVIEWS = "Reviews";
 	private static final String RATINGS = "Ratings";
@@ -118,6 +118,7 @@ public class Loader {
 	private static final String FOLDER = "Folder";
 	private static final String PASSWORD = "password";
 	private static final String SITE = "Site";
+	private static final String SITECONTEXT = "SiteContext";
 	private static final String SITEUPDATE = "SiteUpdate";
 	private static final String SITEPUBLISH = "SitePublish";
 	private static final String SITEDELETE = "SiteDelete";
@@ -318,7 +319,7 @@ public class Loader {
 
 			} else if (csvfile.toLowerCase().endsWith(".csv")) {
 
-				Reader in = new FileReader(csvfile);
+				InputStreamReader in = new InputStreamReader(new FileInputStream(csvfile), "UTF-8");
 				processLoading(null, in, hostname, port, altport, adminPassword, analytics, reset, configure, minimize, noenablement, nomultilingual, csvfile, maxretries);
 
 			}
@@ -340,6 +341,9 @@ public class Loader {
 		String resourceType = null;
 		String subComponentType = null;
 		String rootPath = "/content/sites";
+		String siteContext = "global";
+		String templateContext = "/conf/global";
+
 		String[] url = new String[10];  // Handling 10 levels maximum for nested comments 
 		int urlLevel = 0;
 		int row = 0;
@@ -435,6 +439,14 @@ public class Loader {
 					// Let's see if we need to set the current site path
 					if (action.equals(SITEPATH)) {
 						sitePagePath = record.get(1);
+						continue;
+					}
+
+					// Let's see if we need to set the current site context for configurations
+					if (action.equals(SITECONTEXT)) {
+						siteContext = record.get(1);
+						templateContext = siteContext.equals("global") ? ("/conf/global") : ("/apps");
+						continue;
 					}
 
 					// Let's see if we need to create a new Social Login configuration
@@ -442,7 +454,7 @@ public class Loader {
 
 						String confFolder = "";
 						if (isCommunities64orlater) {
-							confFolder = "/conf/" + record.get(2) + "/settings/cloudconfigs"; 
+							confFolder = "/conf/" + siteContext + "/settings/cloudconfigs"; 
 						} else {
 							confFolder = "/etc/cloudservices/" + record.get(1) + "connect";
 						}
@@ -453,10 +465,10 @@ public class Loader {
 						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 						builder.addTextBody("cmd", "createPage");
 						builder.addTextBody("parentPath", confFolder);
-						builder.addTextBody("title", record.get(3));
+						builder.addTextBody("title", record.get(2));
 						builder.addTextBody("label", record.get(1) + "connect");
 						builder.addTextBody("template", "/libs/social/connect/templates/" + record.get(1) + (isCommunities64orlater?"config":"connect"));
-						printPOST(builder.build());	
+
 						doPost(hostname, port, "/bin/wcmcommand", "admin", adminPassword, builder.build(), null);
 
 						// Then configure the social login cloud config
@@ -468,20 +480,20 @@ public class Loader {
 						if (isCommunities64orlater) {
 							builderConfig.addTextBody(":operation", "social:update" + record.get(1).substring(0, 1).toUpperCase() + record.get(1).substring(1) + "Config", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 							builderConfig.addTextBody("oauth.scope", "true", ContentType.create("text/plain", MIME.UTF8_CHARSET));
-							postFolder = "/conf/" + record.get(2) + "/settings/cloudconfigs/" + record.get(1) + "connect.social.json"; 
+							postFolder = "/conf/" + siteContext + "/settings/cloudconfigs/" + record.get(1) + "connect.social.json"; 
 						} else {
 							builderConfig.addTextBody("oauth.scope", "email", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 							builderConfig.addTextBody("oauth.create.users.groups", "true", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 							postFolder = "/etc/cloudservices/" + record.get(1) + "connect/" + record.get(1) + "connect/jcr:content";
 						}
 
-						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 4, isCommunities64orlater);
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3, isCommunities64orlater, siteContext);
 						for (NameValuePair nameValuePair : nameValuePairs ) {
 							builderConfig.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 						}
 						doPost(hostname, port, postFolder, "admin", adminPassword,builderConfig.build(), null);
 
-						printPOST(builderConfig.build());	
+						continue;
 
 					}
 
@@ -512,7 +524,8 @@ public class Loader {
 
 								// Special case for 64 and later
 								if (isCommunities64orlater) {
-									value = value.replaceAll("/etc/community/templates/sites/custom", "/conf/global/settings/community/templates/sites");
+									value = value.replaceAll("/etc/community/templates/sites/custom", templateContext + "/settings/community/templates/sites");
+									value = value.replaceAll("/etc/community/templates/sites/reference", "/libs/settings/community/templates/sites");
 									value = value.replaceAll("/etc/designs/community/sitethemes", "/libs/clientlibs/social/themes/sitethemes");									
 									value = value.replaceAll("/etc/tags", "/content/cq:tags");									
 								}
@@ -552,7 +565,8 @@ public class Loader {
 									addBinaryBody(builder, lIs, rr, BANNER, csvfile, value);
 								} else if (name.equals(THUMBNAIL)) {
 									addBinaryBody(builder, lIs, rr, THUMBNAIL, csvfile, value);
-								} else if (name.equals(CSS)) {
+								} else if (name.equals(CSS) && !isCommunities64orlater) {
+									//Starting with 6.4, we are using a proper custom theme under /apps (associated record already marked as invalid)
 									addBinaryBody(builder, lIs, rr, CSS, csvfile, value);
 								} else if (name.equals(LANGUAGE) || name.equals(LANGUAGES)) {
 
@@ -765,7 +779,7 @@ public class Loader {
 								if (name.equals("functions") && isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/functions/reference", "/libs/settings/community/templates/functions");
 									value = value.replaceAll("/etc/community/templates/groups/reference", "/libs/settings/community/templates/groups");
-									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");									
+									value = value.replaceAll("/etc/community/templates/groups/custom", templateContext + "/settings/community/templates/groups");									
 									value = value.replaceAll("/etc/tags", "/content/cq:tags");									
 								}
 
@@ -786,9 +800,6 @@ public class Loader {
 							}
 
 						}
-
-						// Convenient for debugging the site update operation
-						printPOST(builder.build());	
 
 						if (isValid)
 							doPost(hostname, port,
@@ -856,10 +867,9 @@ public class Loader {
 
 					// Let's see if we need to activate a tree
 					if (action.equals(ACTIVATE) && record.get(1)!=null) {
-
 						String activatePath = record.get(1);
-						if (!isCommunities64orlater & activatePath.contains("connect")) {
-							activatePath = "/etc/cloudservices/" + activatePath.substring(1 + activatePath.lastIndexOf("/")) + "/" + activatePath.substring(1 + activatePath.lastIndexOf("/"));
+						if (isCommunities64orlater) {
+							activatePath = activatePath.replaceAll("/global","/" + siteContext);
 						}
 						logger.debug("Path to activate: " + activatePath);
 
@@ -876,7 +886,7 @@ public class Loader {
 									null);
 
 						} else {
-							logger.warn("Not activating the requested path");
+							logger.warn("Not activating the requested path at " + activatePath);
 						}
 
 						continue;
@@ -920,18 +930,16 @@ public class Loader {
 							continue;
 						}
 
-						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater);
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater, siteContext);
 
 						String badgePath = record.get(1);
 
 						if (badgePath.startsWith("/etc") && (vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT61FP4))==0 || vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))>0 ) ) {
 							badgePath = badgePath.replaceAll("/jcr:content", "");
-							//nameValuePairs.add(new BasicNameValuePair("sling:resourceType","social/gamification/components/hbs/badging/rulecollection/rule"));
-							//nameValuePairs.add(new BasicNameValuePair("badgingType","basic"));
 						}
 
 						if (isCommunities64orlater) {
-							badgePath = badgePath.replaceAll("/etc/community", "/conf/global/settings/community");
+							badgePath = badgePath.replaceAll("/etc/community", "/conf/" + siteContext + "/settings/community");
 						}
 
 						if (nameValuePairs.size()>2) {
@@ -985,9 +993,10 @@ public class Loader {
 
 						continue;
 					}
+					logger.debug("action: " + action);
 
 					// Let's see if we need to create a new Community site template, and if we can do it (script run against author instance)
-					if (action.equals(SITETEMPLATE) || record.get(0).equals(GROUPTEMPLATE)) {
+					if (action.equals(SITETEMPLATE) || action.equals(GROUPTEMPLATE)) {
 
 						// Building the form entity to be posted
 						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -995,6 +1004,8 @@ public class Loader {
 						builder.addTextBody(":operation", "social:create" + record.get(0), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
 
+						// Calculating the template context
+						String templateName = null;
 						boolean isValid=true;
 						for (int i=2;i<record.size()-1;i=i+2) {
 
@@ -1003,12 +1014,16 @@ public class Loader {
 								String name = record.get(i).trim();
 								String value = record.get(i+1).trim();
 
+								if (name.equals("templateName")) {
+									templateName = value;
+								}
+
 								// If the site/group template is already there, let's not try to create it
 								if (name.equals("templateName") && (
 										isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/sites/custom/" + title2name(value)) ||
 										isResourceAvailable(hostname, port, adminPassword, "/etc/community/templates/groups/custom/" + title2name(value)) ||
-										isResourceAvailable(hostname, port, adminPassword, "/conf/global/settings/community/templates/sites/" + title2name(value)) ||
-										isResourceAvailable(hostname, port, adminPassword, "/conf/global/settings/community/templates/groups/" + title2name(value)) 
+										isResourceAvailable(hostname, port, adminPassword, templateContext + "/settings/community/templates/sites/" + title2name(value)) ||
+										isResourceAvailable(hostname, port, adminPassword, templateContext + "/settings/community/templates/groups/" + title2name(value)) 
 										)
 										) {
 									logger.info("Template " + value + " is already there");
@@ -1028,7 +1043,7 @@ public class Loader {
 								}
 
 								// If the group template includes the nested group features, then it won't work until 6.2 FP1
-								if (record.get(0).equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
+								if (action.equals(GROUPTEMPLATE) && name.equals("functions") && value.indexOf("groups")>0 && (vBundleCommunitiesEnablement!=null && vBundleCommunitiesEnablement.compareTo(new Version(ENABLEMENT62))<=0)) {
 									logger.info("Group template " + record.get(3) + " is not compatible with this version of AEM");
 									isValid=false;
 								}
@@ -1043,7 +1058,8 @@ public class Loader {
 								if (name.equals("functions") && isCommunities64orlater) {
 									value = value.replaceAll("/etc/community/templates/functions/reference", "/libs/settings/community/templates/functions");
 									value = value.replaceAll("/etc/community/templates/groups/reference", "/libs/settings/community/templates/groups");
-									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");									
+									value = value.replaceAll("/etc/community/templates/groups/custom", templateContext + "/settings/community/templates/groups");									
+									value = value.replaceAll("/etc/tags", "/content/cq:tags");									
 								}
 
 								builder.addTextBody(name, value, ContentType.create("text/plain", MIME.UTF8_CHARSET));
@@ -1052,11 +1068,63 @@ public class Loader {
 						}
 
 						// Site or Group template creation
-						if (isValid) doPost(hostname, port,
-								"/content.social.json",
-								"admin", adminPassword,
-								builder.build(),
-								null);
+						if (isValid) {
+
+							doPost(hostname, port,
+									"/content.social.json",
+									"admin", adminPassword,
+									builder.build(),
+									null);
+
+							// If on 6.4 and a site context if provided, let's move the created template into their proper /app location
+							if (isCommunities64orlater && !siteContext.equals("global") && templateName!=null) {
+
+								String targetPath = action.equals(SITETEMPLATE) ? ("/apps/settings/community/templates/sites/" + title2name(templateName)) : ("/apps/settings/community/templates/groups/" + title2name(templateName));
+								String sourcePath = action.equals(SITETEMPLATE) ? ("/conf/global/settings/community/templates/sites/" + title2name(templateName)) : ("/conf/global/settings/community/templates/groups/" + title2name(templateName));
+
+								// First, on the author instance...
+
+								// Creating the root folder if necessary
+								createFolder("/apps/settings/community/templates/" + (action.equals(SITETEMPLATE)?"sites":"groups") ,hostname,port,adminPassword);
+
+								List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+								nameValuePairs.add(new BasicNameValuePair(":diff", ">" + sourcePath + " : " + targetPath ));
+								logger.debug("Moving template to: " + targetPath);
+
+								// Moving the template
+								doPost(hostname, port,
+										"/crx/server/crx.default/jcr:root",
+										"admin", adminPassword,
+										new UrlEncodedFormEntity(nameValuePairs),
+										null);
+
+								// Deleting the source folder in any case
+								doDelete(hostname, port, "/conf/global/settings/community", "admin", adminPassword);
+
+								// Next, on the publisher, same thing...
+								if (!port.equals(altport)) {
+
+									// Wait until the matching folder is available
+									doWaitPath(hostname, altport, adminPassword, sourcePath, maxretries);
+
+									// Create the folder if necessary
+									createFolder("/apps/settings/community/templates/" + (action.equals(SITETEMPLATE)?"sites":"groups") ,hostname,altport,adminPassword);
+
+									// Move the existing resource
+									logger.debug("Moving template reference to: " + targetPath);
+									doPost(hostname, altport,
+											"/crx/server/crx.default/jcr:root",
+											"admin", adminPassword,
+											new UrlEncodedFormEntity(nameValuePairs),
+											null);
+									// Delete the original folder
+									doDelete(hostname, altport, "/conf/global/settings/community", "admin", adminPassword);
+
+								}
+
+							}
+
+						}
 
 						continue;
 					}
@@ -1087,7 +1155,7 @@ public class Loader {
 
 								// Special case for 64 and later
 								if (isCommunities64orlater) {
-									value = value.replaceAll("/etc/community/templates/groups/custom", "/conf/global/settings/community/templates/groups");
+									value = value.replaceAll("/etc/community/templates/groups/custom", templateContext + "/settings/community/templates/groups");
 								}
 
 								if (value.equals("TRUE")) { value = "true"; }
@@ -1119,13 +1187,13 @@ public class Loader {
 								getUserName(record.get(2)), getPassword(record.get(2), adminPassword),
 								builder.build(),
 								null);
-
+						
 						// Waiting for group to be available either on publish or author
 						int i = (record.get(1).indexOf("/jcr:content")>0)?record.get(1).indexOf("/jcr:content"):record.get(1).indexOf(".social.json");
 						if (urlName!=null && i>0) {
 							doWaitPath(hostname, port, adminPassword, record.get(1).substring(0, i) + "/" + urlName, maxretries);
 						} else {
-							logger.warn("Not waiting for Group to be fully available");
+							logger.warn("Not waiting for Community Group to be fully available");
 						}
 
 						continue;
@@ -1243,6 +1311,8 @@ public class Loader {
 
 						}
 
+						continue;
+
 					}
 
 					// Let's see if we need to delete a Community site
@@ -1287,10 +1357,13 @@ public class Loader {
 						} catch (Exception e) {
 							logger.error(e.getMessage());
 						}
+
+						continue;
+
 					}
 
 					// Let's see if we need to add users to an AEM Group
-					if ((action.equals(GROUPMEMBERS) || record.get(0).equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
+					if ((action.equals(GROUPMEMBERS) || action.equals(SITEMEMBERS)) && record.get(GROUP_INDEX_NAME)!=null) {
 
 						// Checking if we have a member group for this site
 						String groupName = null;
@@ -1375,7 +1448,7 @@ public class Loader {
 									builder.setCharset(MIME.UTF8_CHARSET);
 									builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
 
-									List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater);
+									List<NameValuePair> groupNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater, siteContext);
 									for (NameValuePair nameValuePair : groupNameValuePairs) {
 										builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
 									}
@@ -1401,38 +1474,67 @@ public class Loader {
 
 					}
 
-					// Let's see if it's user related
+					// Let's see if it has to do with signing up a new member
+					if (action.equals(MEMBERS)) {
+
+						//First we need to get the path to the user node, if already there
+						String homeFolder = getHomeFolder(record.get(3), adminPassword, hostname, port);
+
+						if (homeFolder!=null) {
+
+							// User already in there system, we need to get rid of it and associated UGC before we can proceed
+							MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+							builder.setCharset(MIME.UTF8_CHARSET);
+							builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+							builder.addTextBody("deleteAuthorizable", "1", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+							doPost(hostname, port,
+									homeFolder + ".rw.html",
+									"admin", adminPassword,
+									builder.build(),
+									null);
+
+							doDelete(hostname, port,
+									"/content/usergenerated" + homeFolder,
+									"admin", adminPassword);
+							doDelete(hostname, port,
+									"/content/usergenerated/asi/jcr" + homeFolder,
+									"admin", adminPassword);
+
+						}
+
+						// Then we re-configure the member
+						MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+						builder.setCharset(MIME.UTF8_CHARSET);
+						builder.addTextBody("_charset_", "UTF-8", ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater, siteContext);
+						nameValuePairs.add(new BasicNameValuePair(":operation", "social:createTenantUser"));
+						for (NameValuePair nameValuePair : nameValuePairs ) {
+							builder.addTextBody(nameValuePair.getName(), nameValuePair.getValue(), ContentType.create("text/plain", MIME.UTF8_CHARSET));
+						}
+						doPost(hostname, port, record.get(1), "admin", adminPassword, builder.build(), null);
+
+					}
+
+					// Let's see if it's user related, in order to set preferences for instance
 					if (action.equals(USERS)) {
 
-						//First we need to get the path to the user node
-						String json = doGet(hostname, port,
-								"/libs/granite/security/currentuser.json",
-								getUserName(record.get(1)), getPassword(record.get(1), adminPassword),
-								null);
+						String homeFolder = getHomeFolder(record.get(1), adminPassword, hostname, port);
 
-						if (json!=null) {
+						if (homeFolder!=null) {
 
-							try {
-
-								// Fetching the home property
-								String home = new JSONObject(json).getString("home");
-								if (record.get(2).equals(PREFERENCES)) {
-									home = home + "/preferences";
-								} else {
-									home = home + "/profile";
-								}
-
-								// Now we can post all the preferences or the profile
-								List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3, isCommunities64orlater);
-								doPost(hostname, port,
-										home,
-										"admin", adminPassword,
-										new UrlEncodedFormEntity(nameValuePairs),
-										null);
-
-							} catch (Exception e) {
-								logger.error(e.getMessage());
+							if (record.get(2).equals(PREFERENCES)) {
+								homeFolder = homeFolder + "/preferences";
+							} else {
+								homeFolder = homeFolder + "/profile";
 							}
+
+							// Now we can post all the preferences or the profile
+							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 3, isCommunities64orlater, siteContext);
+							doPost(hostname, port,
+									homeFolder,
+									"admin", adminPassword,
+									new UrlEncodedFormEntity(nameValuePairs),
+									null);
 
 						}
 
@@ -1516,16 +1618,15 @@ public class Loader {
 
 							String postPath = record.get(1);
 
-							if (isCommunities64orlater && postPath.startsWith("/etc/cloudservices") && postPath.endsWith("jcr:content")) {
-								postPath = postPath.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
-								postPath = postPath.substring(0, postPath.lastIndexOf("jcr:content") -1) + ".social.json";
+							if (isCommunities64orlater) {
+								postPath = postPath.replaceAll("/global","/" + siteContext);
 							}
 
 							String configurePath = getConfigurePath(postPath);
 
 							logger.debug("Configuration path:" + configurePath);
 
-							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, record.get(1), record, 2, isCommunities64orlater);
+							List<NameValuePair> nameValuePairs = buildNVP(hostname, port, adminPassword, record.get(1), record, 2, isCommunities64orlater, siteContext);
 							if (nameValuePairs.size()>2) {
 
 								// If we're posting against a jcr:content node, let's make sure the parent folder is there
@@ -1587,11 +1688,12 @@ public class Loader {
 
 						}
 
-						// We're done with this line, moving on to the next line in the CSV file
+						// We're done with this row, moving on to the next row in the CSV file
 						continue;
+
 					}
 
-					// Are we processing until the next component because the end point if not available?
+					// Are we processing until the next component because the end point is not available?
 					if (ignoreUntilNextComponent) {
 						logger.info("Ignoring this record because of unavailable component configuration");
 						continue;
@@ -1687,7 +1789,7 @@ public class Loader {
 						if (vBundleCommunitiesNotifications!=null && vBundleCommunitiesNotifications.compareTo(new Version("1.0.11"))>0) {
 
 							nameValuePairs.add(new BasicNameValuePair(":operation", "social:updateUserPreference"));
-							List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater);
+							List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, 2, isCommunities64orlater, siteContext);
 							nameValuePairs.addAll(otherNameValuePairs);
 
 						}
@@ -2095,7 +2197,7 @@ public class Loader {
 
 						nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
-						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES, isCommunities64orlater);
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES, isCommunities64orlater, siteContext);
 						nameValuePairs.addAll(otherNameValuePairs);
 
 						// Assignments only make sense when SCORM is configured
@@ -2180,7 +2282,7 @@ public class Loader {
 
 						nameValuePairs.add(new BasicNameValuePair(":operation", createResourceOpName));
 
-						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES, isCommunities64orlater);
+						List<NameValuePair> otherNameValuePairs = buildNVP(hostname, port, adminPassword, null, record, RESOURCE_INDEX_PROPERTIES, isCommunities64orlater, siteContext);
 						nameValuePairs.addAll(otherNameValuePairs);
 
 						// Special processing of lists with multiple users, need to split a String into multiple entries
@@ -2328,7 +2430,7 @@ public class Loader {
 
 					if (componentType.equals(RESOURCE) || componentType.equals(LEARNING)) {
 						// Useful for debugging complex POST requests
-						printPOST(builder.build());	
+						printPOST(builder.build(), true);	
 					}
 
 					if (!(componentType.equals(ASSET) || componentType.equals(BADGEASSIGN) || componentType.equals(MESSAGE) || componentType.equals(AVATAR))) {
@@ -2738,6 +2840,7 @@ public class Loader {
 		} else if (fileName.indexOf(".zip")>0) {
 			ct = ContentType.create("application/zip", MIME.UTF8_CHARSET);
 		}
+		logger.debug("Attached resource Mime type: " + ct.getMimeType());
 		return ct;
 	}
 
@@ -3595,7 +3698,7 @@ public class Loader {
 
 
 	// This method builds a list of NVP for a subsequent Sling post
-	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start, boolean isCommunities64orlater) {
+	private static List<NameValuePair> buildNVP(String hostname, String port, String adminPassword, String path, CSVRecord record, int start, boolean isCommunities64orlater, String siteContext) {
 
 		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 		List<String> alreadyLoaded = new ArrayList<String>();
@@ -3616,10 +3719,7 @@ public class Loader {
 				if (isCommunities64orlater) {
 					if (name.equals("parentPath") && value.contains("/etc/cloudservices")) {
 						// Location for getting new cloud configs created
-						value = "/conf/we-retail/settings/cloudconfigs";
-					} else if (value.contains("/etc/cloudservices")) {
-						// Location for referencing the cloud configs by name
-						value = value.replaceAll("/etc/cloudservices/(.*connect)/", "/conf/global/settings/cloudconfigs/");
+						value = "/conf/" + siteContext + "/settings/cloudconfigs";
 					} else if (name.equals("template") && value.endsWith("connect")) {
 						value = value.substring(0, value.lastIndexOf("connect")) + "config";
 					}
@@ -3782,17 +3882,82 @@ public class Loader {
 		return title.replaceAll(" ","_").replaceAll("\\.","_").toLowerCase();
 	}
 
-	// Printing the details of a POST request
-	public static void printPOST(HttpEntity entity) {
+	// Printing the details of a POST request, useful for debugging what's actually posted
+	public static void printPOST(HttpEntity entity, boolean debugonly) {
 
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		try {
 			entity.writeTo(out);
 			String string = out.toString();
-			logger.debug(string);
+			if (debugonly)
+				logger.debug(string);
+			else
+				logger.error(string);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+	}
+
+	// Creating a folder hierarchy if needed
+	public static void createFolder(String path, String hostname, String port, String adminPassword) {
+
+		String[] parts = path.split("/");
+		String newpath = "";
+		for (String part : parts) {
+
+			if (!part.equals("")) {
+				newpath = newpath + "/" + part;
+				logger.debug(newpath);
+				List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+				nameValuePairs.add(new BasicNameValuePair("jcr:primaryType","sling:Folder"));
+				// If the last item
+				if (part.equals(parts[parts.length-1])) {
+					nameValuePairs.add(new BasicNameValuePair("mergeList","true"));					
+				}
+				// Creating the target folder if not there already
+				try {
+					doPost(hostname, port,
+							newpath,
+							"admin", adminPassword,
+							new UrlEncodedFormEntity(nameValuePairs),
+							null);
+				} catch (Exception e) {
+					logger.error(e.getMessage());
+				}
+			}
+		}
+
+	}
+
+	// Getting the home folder of a given user
+	public static String getHomeFolder(String userId, String adminPassword, String hostname, String port) {
+
+		String homeFolder = null;
+
+		//First we need to get the path to the user node
+		String json = doGet(hostname, port,
+				"/libs/granite/security/currentuser.json",
+				getUserName(userId), getPassword(userId, adminPassword),
+				null);
+
+		if (json!=null && !json.contains("anonymous")) {
+
+			try {
+
+				// Fetching the home property
+				homeFolder = new JSONObject(json).getString("home");
+				logger.debug("Home folder for user " + userId + " is " + homeFolder);
+
+			} catch (Exception e) {
+
+				logger.error("Problem when accessing user " + userId + " home");
+
+			}
+
+		}
+
+		return homeFolder;
 
 	}
 

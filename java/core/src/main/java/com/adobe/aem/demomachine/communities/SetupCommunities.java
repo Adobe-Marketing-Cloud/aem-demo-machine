@@ -59,19 +59,14 @@ public class SetupCommunities extends org.apache.sling.api.servlets.SlingAllMeth
 			csvPath = "";
 		}
 		
-		// Checking the version of GraniteUI to be loaded
-		String coralVersion = "3";
-		Resource resCoral = resourceResolver.getResource("/etc/clientlibs/granite/coralui3.js");
-		if (resCoral==null) coralVersion = "2";
-
 		response.setContentType("text/html");
 		out.println("<html><head>");
-		out.println("<link rel=\"stylesheet\" href=\"/etc/clientlibs/granite/coralui" + coralVersion + ".css\" type=\"text/css\">");
-		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/typekit.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/jquery.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/utils.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/moment.js\"></script>");
-		out.println("<script type=\"text/javascript\" src=\"/etc/clientlibs/granite/coralui" + coralVersion + ".js\"></script>");
+		out.println("<link rel=\"stylesheet\" href=\"/etc.clientlibs/clientlibs/granite/coralui3.css\" type=\"text/css\">");
+		out.println("<script type=\"text/javascript\" src=\"/etc.clientlibs/clientlibs/granite/typekit.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"/etc.clientlibs/clientlibs/granite/jquery.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"/etc.clientlibs/clientlibs/granite/utils.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"/etc.clientlibs/clientlibs/granite/moment.js\"></script>");
+		out.println("<script type=\"text/javascript\" src=\"/etc.clientlibs/clientlibs/granite/coralui3.js\"></script>");
 		out.println("</head><body class=\"coral--light u-coral-clearFix\" style=\"margin:40px\">");
 
 		// Checking if the page is loaded in a frame (e.g. authoring environment)
