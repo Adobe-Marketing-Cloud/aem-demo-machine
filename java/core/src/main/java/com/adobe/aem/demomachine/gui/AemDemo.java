@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2016 Adobe Systems Incorporated.
+ * Copyright 2017 Adobe Systems Incorporated.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -389,18 +389,6 @@ public class AemDemo {
 			}
 		});
 		mnCommerceDownload.add(mnCommerceDownloadWAS);
-
-		// WeRetail Add-on
-		JMenu mnWeRetail = new JMenu("We-Retail");
-		mnUpdate.add(mnWeRetail);
-
-		JMenuItem mnWeRetailAddon = new JMenuItem("Download Demo Add-on");
-		mnWeRetailAddon.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AemDemoUtils.antTarget(AemDemo.this, "download_weretail");
-			}
-		});
-		mnWeRetail.add(mnWeRetailAddon);
 
 		// Download all section
 		mnUpdate.addSeparator();

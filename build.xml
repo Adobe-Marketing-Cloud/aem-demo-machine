@@ -2115,34 +2115,6 @@
 		<delete file="${dist}/downloads/google.txt"/>
 		<delete file="${dist}/downloads/google.html"/>
 	</target>
-	<target name="download_weretail">
-		<echo message="Downloading Latest AEM We.Retail 6.2 packages from GitHub"/>
-		<delete dir="${dist}/we-retail"/>
-		<mkdir dir="${dist}/downloads"/>
-		<mkdir dir="${dist}/we-retail/aem62"/>
-		<exec executable="curl">
-			<arg line="-L -s -k -o '${dist}/downloads/we.retail.all-${demo.download.weretail.all}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail/releases/download/we.retail-${demo.download.weretail.all}/we.retail.all-${demo.download.weretail.all}.zip"/>
-		</exec>
-		<move todir="${dist}/we-retail/aem62">
-			<fileset dir="${dist}/downloads">
-				<include name="**/we.retail.*.zip"/>
-			</fileset>
-		</move>
-		<echo message="Downloading Latest AEM We.Retail 6.3 packages from GitHub"/>
-		<mkdir dir="${dist}/we-retail/aem63"/>
-		<exec executable="curl">
-			<arg line="-L -s -k -o '${dist}/downloads/we.retail.communities.ui.apps-${demo.download.weretail.source}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail-communities/releases/download/v${demo.download.weretail.source}/we.retail.communities.ui.apps-${demo.download.weretail.source}.zip"/>
-		</exec>
-		<exec executable="curl">
-			<arg line="-L -s -k -o '${dist}/downloads/we.retail.communities.ui.content-${demo.download.weretail.source}.zip' https://github.com/Adobe-Marketing-Cloud/aem-sample-we-retail-communities/releases/download/v${demo.download.weretail.source}/we.retail.communities.ui.content-${demo.download.weretail.source}.zip"/>
-		</exec>
-		<move todir="${dist}/we-retail/aem63">
-			<fileset dir="${dist}/downloads">
-				<include name="we.retail.communities.ui.apps-${demo.download.weretail.source}.zip"/>
-				<include name="we.retail.communities.ui.content-${demo.download.weretail.source}.zip"/>
-			</fileset>
-		</move>
-	</target>
 	<!-- Target for downloading all packages for a given area -->
 	<target name="download_packageshare">
 		<echo message="Downloading latest AEM ${packageshare.capability} packages from PackageShare"/>
@@ -3705,7 +3677,6 @@
 					<arg line="-d ./registrationID@Encrypted="/>
 					<arg line="http://${demo.host}:${port}/etc/cloudservices/dynamicmediaservices/DemoMachine/jcr:content"/>
 				</exec>
-
 				<!-- set image server URL, if present -->
 				<if>
 					<and>
@@ -3724,7 +3695,6 @@
 						</exec>
 					</then>
 				</if>
-
 			</then>
 		</if>
 	</target>
@@ -4818,50 +4788,74 @@
 			</then>
 		</if>
 	</target>
-	<!-- Target for compiling the Communities Reference Demo site -->
-	<target name="communities_build_reference">
-		<delete dir="${dist}/community/reference"/>
-		<echo message="Building the core AEM Communities reference demo..."/>
-		<exec dir="${dist}/community/maven/reference" executable="${demo.mvn}" spawn="false" failonerror="true">
-			<arg line="clean install"/>
-		</exec>
-		<copy todir="${dist}/community/reference" overwrite="true">
-			<fileset dir="${dist}/community/maven/reference/target">
-				<include name="*.zip"/>
-			</fileset>
-		</copy>
+	<!-- Target for building a Communities Samples Demo site -->
+	<target name="communities_build_samples">
+		<if>
+			<resourceexists>
+				<file file="${mvn.project.path}"/>
+			</resourceexists>
+			<then>
+				<echo message="Building an AEM Communities sample demo..."/>
+				<exec dir="${mvn.project.path}" executable="${demo.mvn}" spawn="false" failonerror="true">
+					<arg line="clean install"/>
+				</exec>
+				<copy todir="${dist}/samples/${communities.samples.name}" overwrite="true">
+					<fileset dir="${mvn.project.path}/target">
+						<include name="*.zip"/>
+					</fileset>
+				</copy>
+			</then>
+			<else>
+				<fail message="Maven project not available. Not building!"/>
+			</else>
+		</if>
 	</target>
-	<!-- Target for compiling the Communities Scoring Demo site -->
-	<target name="communities_build_scoring">
-		<delete dir="${dist}/community/scoring"/>
-		<echo message="Building the core AEM Communities scoring demo..."/>
-		<exec dir="${dist}/community/maven/scoring" executable="${demo.mvn}" spawn="false" failonerror="true">
-			<arg line="clean install"/>
-		</exec>
-		<copy todir="${dist}/community/scoring" overwrite="true">
-			<fileset dir="${dist}/community/maven/scoring/target">
-				<include name="*.zip"/>
-			</fileset>
-		</copy>
-	</target>
-	<!-- Target for compiling the Communities Enablement Demo site -->
-	<target name="communities_build_enablement">
-		<delete dir="${dist}/community/enablement"/>
-		<echo message="Building the core AEM Communities enablement demo..."/>
-		<exec dir="${dist}/community/maven/enablement" executable="${demo.mvn}" spawn="false" failonerror="true">
-			<arg line="clean install"/>
-		</exec>
-		<copy todir="${dist}/community/enablement" overwrite="true">
-			<fileset dir="${dist}/community/maven/enablement/target">
-				<include name="*.zip"/>
-			</fileset>
-		</copy>
+	<!-- Target for building the We.Retail Samples Demo site -->
+	<target name="communities_build_weretail">
+		<if>
+			<resourceexists>
+				<file file="${mvn.project.path}"/>
+			</resourceexists>
+			<then>
+				<echo message="Building an AEM Communities We.Retail demo..."/>
+				<exec dir="${mvn.project.path}" executable="${demo.mvn}" spawn="false" failonerror="true">
+					<arg line="clean install"/>
+				</exec>
+				<copy todir="${dist}/samples/${communities.samples.name}" overwrite="true">
+					<fileset dir="${mvn.project.path}/ui.apps/target">
+						<include name="*.zip"/>
+					</fileset>
+				</copy>
+				<copy todir="${dist}/samples/${communities.samples.name}" overwrite="true">
+					<fileset dir="${mvn.project.path}/ui.content/target">
+						<include name="*.zip"/>
+					</fileset>
+				</copy>
+			</then>
+			<else>
+				<fail message="Maven project not available. Not building!"/>
+			</else>
+		</if>
 	</target>
 	<!-- Target for compiling the Communities Demo sites -->
-	<target name="communities_build" depends="compile">
-		<antcall target="communities_build_reference"/>
-		<antcall target="communities_build_scoring"/>
-		<antcall target="communities_build_enablement"/>
+	<target name="communities_build">
+		<delete dir="${dist}/samples"/>
+		<antcall target="communities_build_samples">
+			<param name="communities.samples.name" value="reference"/>
+			<param name="mvn.project.path" value="${demo.communities.samples.mvn}/reference"/>
+		</antcall>
+		<antcall target="communities_build_samples">
+			<param name="communities.samples.name" value="scoring"/>
+			<param name="mvn.project.path" value="${demo.communities.samples.mvn}/scoring"/>
+		</antcall>
+		<antcall target="communities_build_samples">
+			<param name="communities.samples.name" value="enablement"/>
+			<param name="mvn.project.path" value="${demo.communities.samples.mvn}/enablement"/>
+		</antcall>
+		<antcall target="communities_build_weretail">
+			<param name="communities.samples.name" value="we-retail"/>
+			<param name="mvn.project.path" value="${demo.communities.weretail.mvn}"/>
+		</antcall>
 	</target>
 	<!-- Target for building the AEM Demo Machine core bundle -->
 	<target name="compile">
@@ -5041,7 +5035,7 @@
 				<foreach target="package_author" param="package">
 					<path id="weretail.packages">
 						<fileset dir="${dist}" casesensitive="yes">
-							<include name="we-retail/*.zip"/>
+							<include name="samples/we-retail/*.zip"/>
 							<include name="we-retail/${demo.packages}/*.zip"/>
 						</fileset>
 					</path>
@@ -5056,7 +5050,7 @@
 						<foreach target="package_publish" param="package">
 							<path id="weretail.packages">
 								<fileset dir="${dist}" casesensitive="yes">
-									<include name="we-retail/*.zip"/>
+									<include name="samples/we-retail/*.zip"/>
 									<include name="we-retail/${demo.packages}/*.zip"/>
 								</fileset>
 							</path>
@@ -5073,7 +5067,7 @@
 						<foreach target="package_farm" param="package">
 							<path id="weretail.packages">
 								<fileset dir="${dist}" casesensitive="yes">
-									<include name="we-retail/*.zip"/>
+									<include name="samples/we-retail/*.zip"/>
 									<include name="we-retail/${demo.packages}/*.zip"/>
 								</fileset>
 							</path>
@@ -5135,7 +5129,7 @@
 		<foreach target="package_author" param="package">
 			<path id="community.packages">
 				<fileset dir="${dist}" casesensitive="yes">
-					<include name="community/reference/*.zip"/>
+					<include name="samples/reference/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -5162,7 +5156,7 @@
 		<echo message="Loading AEM Communities Scoring Demo Package"/>
 		<foreach target="package_author" param="package">
 			<path id="community.packages">
-				<fileset dir="${dist}" casesensitive="yes">
+				<fileset dir="${dist}/samples" casesensitive="yes">
 					<include name="extra/*.zip"/>
 				</fileset>
 			</path>
@@ -5172,7 +5166,7 @@
 			<then>
 				<foreach target="package_publish" param="package">
 					<path id="community.packages">
-						<fileset dir="${dist}" casesensitive="yes">
+						<fileset dir="${dist}/samples" casesensitive="yes">
 							<include name="extra/*.zip"/>
 						</fileset>
 					</path>
@@ -5184,7 +5178,7 @@
 		<echo message="Configuring AEM Communities Extra Demo Sites"/>
 		<foreach target="community_loader_extra_curl" param="extrademo">
 			<path id="community.packages">
-				<fileset dir="${dist}" casesensitive="yes">
+				<fileset dir="${dist}/samples" casesensitive="yes">
 					<include name="extra/*.txt"/>
 				</fileset>
 			</path>
@@ -5215,7 +5209,7 @@
 		<foreach target="package_author" param="package">
 			<path id="community.packages">
 				<fileset dir="${dist}" casesensitive="yes">
-					<include name="community/scoring/*.zip"/>
+					<include name="samples/scoring/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -5243,7 +5237,7 @@
 		<foreach target="package_author" param="package">
 			<path id="community.packages">
 				<fileset dir="${dist}" casesensitive="yes">
-					<include name="community/enablement/*.zip"/>
+					<include name="samples/enablement/*.zip"/>
 				</fileset>
 			</path>
 		</foreach>
@@ -6051,7 +6045,7 @@
 					<arg line="-d action=ajaxConfigManager"/>
 					<arg line="-d $location="/>
 					<arg line="-d automoderation.sequence=SentimentProcess"/>
-					<arg line="-d automoderation.sequence=ProfanityFilter"/>
+					<arg line="-d automoderation.sequence=SpamProcess"/>
 					<arg line="-d automoderation.onfailurestop=true"/>
 					<arg line="-d automoderation.onfailurestop=false"/>
 					<arg line="-d propertylist=automoderation.onfailurestop,automoderation.sequence"/>
