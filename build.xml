@@ -4057,7 +4057,7 @@
 				<if>
 					<equals arg1="${demo.assets.insights.analytics}" arg2="true" casesensitive="false"/>
 					<then>
-						<java classname="com.adobe.aem.demomachine.communities.Loader">
+						<java classname="com.adobe.aem.communities.loader.Loader">
 							<classpath refid="demo.classpath"/>
 							<arg line="-h ${demo.host} -p ${demomachine.authorport} -a ${demomachine.publishport} -u ${demo.admin.password} -s &quot;${demo.assets.insights.reportsuite}.d3.sc.omtrdc.net/b/ss//6&quot; -f &quot;${dist}/analytics/loader-assets-insights.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag} -t"/>
 						</java>
@@ -4657,7 +4657,7 @@
 	<!-- This target sets some user preferences in advance for some users -->
 	<target name="users" depends="version,configuration">
 		<echo message="Updating User Preferences on port ${port}..."/>
-		<java classname="com.adobe.aem.demomachine.communities.Loader">
+		<java classname="com.adobe.aem.communities.loader.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.host} -p ${port} -a ${demomachine.publishport} -u ${demo.admin.password} -f &quot;${dist}/users/loader-users.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -4665,7 +4665,7 @@
 	<!-- This target loads some content fragments from a .csv file -->
 	<target name="sites_fragments" depends="community_loader_flag">
 		<echo message="Loading up Content Fragments..."/>
-		<java classname="com.adobe.aem.demomachine.communities.Loader">
+		<java classname="com.adobe.aem.communities.loader.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.host} -p ${demomachine.authorport} -a ${demomachine.authorport} -u ${demo.admin.password} -f &quot;${dist}/community/wizard/loader-fragments.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -4939,7 +4939,7 @@
 	</target>
 	<!-- Target for loading a CSV file with UGC into the author instance -->
 	<target name="community_loader_author" depends="community_loader_flag">
-		<java classname="com.adobe.aem.demomachine.communities.Loader">
+		<java classname="com.adobe.aem.communities.loader.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.host} -p ${demomachine.authorport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
@@ -4951,7 +4951,7 @@
 			<socket server="${demo.host}" port="${demomachine.publishport}"/>
 			<then>
 				<echo message="Loading Community content on Publish ${demo.loader.currentfile}..."/>
-				<java classname="com.adobe.aem.demomachine.communities.Loader">
+				<java classname="com.adobe.aem.communities.loader.Loader">
 					<classpath refid="demo.classpath"/>
 					<arg line="-h ${demo.host} -p ${demomachine.publishport} -u ${demo.admin.password} -a ${demomachine.publishport} -f &quot;${demo.loader.currentfile}&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 				</java>
@@ -6702,7 +6702,7 @@
 		<echo message="Adding cloud services for path ${path}: ${constituents} on port ${port}"/>
 		<delete file="${logs}/cloudservices.csv"/>
 		<foreach list="${constituents}" target="cloudservices.process" param="myparam"/>
-		<java classname="com.adobe.aem.demomachine.communities.Loader">
+		<java classname="com.adobe.aem.communities.loader.Loader">
 			<classpath refid="demo.classpath"/>
 			<arg line="-h ${demo.host} -p ${port} -a ${port} -u ${demo.admin.password} -f  &quot;${logs}/cloudservices.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
