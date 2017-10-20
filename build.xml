@@ -425,20 +425,23 @@
 			<and>
 				<equals arg1="${demo.weretail.local}" arg2="true" casesensitive="false"/>
 				<equals arg1="${demo.addons.8.weretail}" arg2="true" casesensitive="false"/>
+				<resourceexists>
+					<file file="${dist}/samples/we-retail"/>
+				</resourceexists>
 			</and>
 			<then>
-				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.apps/1.0.0">
-					<fileset dir="${dist}/we-retail/${demo.packages}" casesensitive="yes">
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.apps/0.2.0">
+					<fileset dir="${dist}/samples/we-retail" casesensitive="yes">
 						<include name="*apps*.zip"/>
 					</fileset>
 				</copy>
-				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.content/1.0.0">
-					<fileset dir="${dist}/we-retail/${demo.packages}" casesensitive="yes">
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.content/0.2.0">
+					<fileset dir="${dist}/samples/we-retail" casesensitive="yes">
 						<include name="*content*.zip"/>
 					</fileset>
 				</copy>
-				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.apps/1.0.0/zip"/>
-				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.content/1.0.0/zip"/>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.apps/0.2.0/zip"/>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.content/0.2.0/zip"/>
 			</then>
 		</if>
 		<!--
@@ -6698,6 +6701,7 @@
 		</if>
 	</target>
 	<target name="cloudservices" depends="version,configuration,community_loader_flag">
+		<!--
 		<propertyselector property="constituents" match="demo.cloudservices\.([^\.]*)\.enabled" select="\1" casesensitive="false"/>
 		<echo message="Adding cloud services for path ${path}: ${constituents} on port ${port}"/>
 		<delete file="${logs}/cloudservices.csv"/>
@@ -6707,6 +6711,7 @@
 			<arg line="-h ${demo.host} -p ${port} -a ${port} -u ${demo.admin.password} -f  &quot;${logs}/cloudservices.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 		<delete file="${logs}/cloudservices.csv"/>
+		-->
 	</target>
 	<target name="cloudservices.process">
 		<propertycopy property="key" from="demo.cloudservices.${myparam}.path"/>
