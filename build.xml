@@ -194,6 +194,14 @@
 				</if>
 				<if>
 					<not>
+						<isset property="demomachine.clusterport"/>
+					</not>
+					<then>
+						<property name="demomachine.clusterport" value="${AdobeAEM.clusterport}"/>
+					</then>
+				</if>
+				<if>
+					<not>
 						<isset property="demomachine.publishport"/>
 					</not>
 					<then>
@@ -226,6 +234,7 @@
 				<property name="demomachine.jvmdebug" value="${AdobeAEM.jvmdebug}"/>
 				<property name="demomachine.dynamicmedia" value="${demo.dynamicmedia}"/>
 				<property name="demomachine.authorport" value="${AdobeAEM.authorport}"/>
+				<property name="demomachine.clusterport" value="${AdobeAEM.clusterport}"/>
 				<property name="demomachine.publishport" value="${AdobeAEM.publishport}"/>
 				<property name="demomachine.farmport" value="${AdobeAEM.farmport}"/>
 				<property name="demomachine.communities.enablement" value="${demo.communities.enablement}"/>
@@ -259,6 +268,7 @@
 			<entry key="demomachine.store" value="${demo.store}"/>
 			<entry key="demomachine.dynamicmedia" value="${demo.dynamicmedia}"/>
 			<entry key="demomachine.authorport" value="${AdobeAEM.authorport}"/>
+			<entry key="demomachine.clusterport" value="${AdobeAEM.clusterport}"/>
 			<entry key="demomachine.publishport" value="${AdobeAEM.publishport}"/>
 			<entry key="demomachine.farmport" value="${AdobeAEM.farmport}"/>
 			<entry key="demomachine.jvmdebug" value="${AdobeAEM.jvmdebug}"/>
@@ -316,23 +326,63 @@
 	</target>
 	<!-- For Docker installation -->
 	<target name="install_docker" depends="version">
+		<exec executable="docker" dir="." output="${infralogs}/docker/list-process.log" spawn="false" failonerror="false">
+			<arg line="ps"/>
+		</exec>
+		<if>
+			<resourcecontains resource="${infralogs}/docker/list-process.log" substring="daemon"/>
+			<then>
+				<fail message="Docker doesn't seem to be running. Please start Docker first!"/>
+			</then>
+		</if>
 		<mkdir dir="${logs}"/>
-		<antcall target="create_from_template">
-			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone.template"/>
-			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone"/>
-		</antcall>
-		<antcall target="create_from_template">
-			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-tunnel.template"/>
-			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-tunnel"/>
-		</antcall>
-		<antcall target="create_from_template">
-			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-farm.template"/>
-			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-farm"/>
-		</antcall>
-		<antcall target="create_from_template">
-			<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-author.template"/>
-			<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-author"/>
-		</antcall>
+		<if>
+			<or>
+				<equals arg1="${demomachine.type}" arg2="publish" casesensitive="false"/>
+				<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			</or>
+			<then>
+				<antcall target="create_from_template">
+					<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone.template"/>
+					<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone"/>
+				</antcall>
+				<antcall target="create_from_template">
+					<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-tunnel.template"/>
+					<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-tunnel"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.type}" arg2="cluster" casesensitive="false"/>
+			<then>
+				<antcall target="create_from_template">
+					<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-cluster-1.template"/>
+					<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-cluster-1"/>
+				</antcall>
+				<antcall target="create_from_template">
+					<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-cluster-2.template"/>
+					<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-cluster-2"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			<then>
+				<antcall target="create_from_template">
+					<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-farm.template"/>
+					<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-farm"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
+			<then>
+				<antcall target="create_from_template">
+					<param name="template_srcfile" value="${dist}/docker/yaml/Dockerfile-standalone-author.template"/>
+					<param name="template_distfile" value="${demos}/${demo.build}/Dockerfile-standalone-author"/>
+				</antcall>
+			</then>
+		</if>
 		<antcall target="create_from_template">
 			<param name="template_srcfile" value="${dist}/docker/yaml/aem-${demomachine.type}.yml.template"/>
 			<param name="template_distfile" value="${demos}/${demo.build}/aem.yml"/>
@@ -345,9 +395,21 @@
 			<param name="demo.portdebug" value="${AdobeAEM.authorportdebug}"/>
 		</antcall>
 		<if>
-			<not>
-				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
-			</not>
+			<equals arg1="${demomachine.type}" arg2="cluster" casesensitive="false"/>
+			<then>
+				<antcall target="install_docker_instance">
+					<param name="demo.instance" value="cluster"/>
+					<param name="demo.mode" value="author"/>
+					<param name="demo.port" value="${demomachine.clusterport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.clusterportdebug}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<or>
+				<equals arg1="${demomachine.type}" arg2="publish" casesensitive="false"/>
+				<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			</or>
 			<then>
 				<antcall target="install_docker_instance">
 					<param name="demo.instance" value="publish"/>
@@ -430,18 +492,18 @@
 				</resourceexists>
 			</and>
 			<then>
-				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.apps/0.2.0">
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.apps/0.2.1">
 					<fileset dir="${dist}/samples/we-retail" casesensitive="yes">
 						<include name="*apps*.zip"/>
 					</fileset>
 				</copy>
-				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.content/0.2.0">
+				<copy todir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/weretail/we.retail.communities.ui.content/0.2.1">
 					<fileset dir="${dist}/samples/we-retail" casesensitive="yes">
 						<include name="*content*.zip"/>
 					</fileset>
 				</copy>
-				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.apps/0.2.0/zip"/>
-				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.content/0.2.0/zip"/>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.apps/0.2.1/zip"/>
+				<replace file="${provisioning.model}" token="[artifacts]" value="[artifacts]${line.separator}com.adobe.aem.demomachine.weretail/we.retail.communities.ui.content/0.2.1/zip"/>
 			</then>
 		</if>
 		<!--
@@ -468,16 +530,31 @@
 				<file file="${dist}/bin/${demo.jar}.jar"/>
 			</resourceexists>
 			<then>
+				<!-- Always a primary author instance -->
 				<antcall target="install_local_instance">
 					<param name="demo.instance" value="author"/>
 					<param name="demo.mode" value="author"/>
 					<param name="demo.port" value="${demomachine.authorport}"/>
 					<param name="demo.portdebug" value="${AdobeAEM.authorportdebug}"/>
 				</antcall>
+				<!-- Maybe in a cluster -->
 				<if>
-					<not>
-						<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
-					</not>
+					<equals arg1="${demomachine.type}" arg2="cluster" casesensitive="false"/>
+					<then>
+						<antcall target="install_local_instance">
+							<param name="demo.instance" value="cluster"/>
+							<param name="demo.mode" value="author"/>
+							<param name="demo.port" value="${demomachine.clusterport}"/>
+							<param name="demo.portdebug" value="${AdobeAEM.clusterportdebug}"/>
+						</antcall>
+					</then>
+				</if>
+				<!-- Maybe a first publish instance -->
+				<if>
+					<or>
+						<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+						<equals arg1="${demomachine.type}" arg2="publish" casesensitive="false"/>
+					</or>
 					<then>
 						<antcall target="install_local_instance">
 							<param name="demo.instance" value="publish"/>
@@ -487,6 +564,7 @@
 						</antcall>
 					</then>
 				</if>
+				<!-- Maybe we have a farm -->
 				<if>
 					<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
 					<then>
@@ -598,12 +676,20 @@
 				<copy file="${demo.spfile}" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/sp.zip"/>
 			</then>
 		</if>
-		<antcall target="mysql_instance"/>
-		<antcall target="osgi_instance"/>
-		<antcall target="hotfix_osgi_instance"/>
-		<antcall target="hotfix_package_instance"/>
-		<antcall target="community_instance"/>
-		<antcall target="email_instance"/>
+		<!-- If we're not in a cluster, we need to start the instance with a number of packages -->
+		<if>
+			<not>
+				<equals arg1="${demo.instance}" arg2="cluster" casesensitive="false"/>
+			</not>
+			<then>
+				<antcall target="mysql_instance"/>
+				<antcall target="osgi_instance"/>
+				<antcall target="hotfix_osgi_instance"/>
+				<antcall target="hotfix_package_instance"/>
+				<antcall target="community_instance"/>
+				<antcall target="email_instance"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for configuring mySQL for a particular instance -->
 	<target name="mysql_instance">
@@ -704,7 +790,8 @@
 				<equals arg1="${demomachine.srp}" arg2="msrp" casesensitive="false"/>
 			</or>
 			<then>
-				<!-- Making sure we start Mongo with the right data path -->
+				<!-- Making sure we restart Mongo with the right data path -->
+				<antcall target="mongo_stop"/>
 				<antcall target="mongo_start"/>
 			</then>
 		</if>
@@ -751,9 +838,18 @@
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
 		<if>
-			<not>
-				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
-			</not>
+			<equals arg1="${demomachine.type}" arg2="cluster" casesensitive="false"/>
+			<then>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.clusterport}"/>
+				</antcall>
+			</then>
+		</if>
+		<if>
+			<or>
+				<equals arg1="${demomachine.type}" arg2="publish" casesensitive="false"/>
+				<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+			</or>
 			<then>
 				<antcall target="canlogin">
 					<param name="port" value="${demomachine.publishport}"/>
@@ -812,6 +908,31 @@
 			<param name="port" value="${demomachine.authorport}"/>
 		</antcall>
 		<echo message="AUTHOR instance has started..."/>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/cluster/aem-author-p${demomachine.clusterport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Starting the CLUSTER instance..."/>
+				<antcall target="aem_start">
+					<param name="demo.instance" value="cluster"/>
+					<param name="demo.mode" value="author"/>
+					<param name="demo.port" value="${demomachine.clusterport}"/>
+					<param name="demo.portdebug" value="${AdobeAEM.clusterportdebug}"/>
+				</antcall>
+				<echo message="Waiting for the CLUSTER instance to be started..."/>
+				<waitfor maxwait="600" maxwaitunit="second" checkevery="5" checkeveryunit="second">
+					<and>
+						<socket server="${demo.host}" port="${demomachine.clusterport}"/>
+						<resourcecontains resource="${demos}/${demo.build}/cluster/crx-quickstart/logs/stderr.log" substring="Quickstart started"/>
+					</and>
+				</waitfor>
+				<antcall target="canlogin">
+					<param name="port" value="${demomachine.clusterport}"/>
+				</antcall>
+				<echo message="CLUSTER instance has started..."/>
+			</then>
+		</if>
 		<if>
 			<resourceexists>
 				<file file="${demos}/${demo.build}/publish/aem-publish-p${demomachine.publishport}.jar"/>
@@ -913,9 +1034,20 @@
 			</not>
 		</waitfor>
 		<if>
-			<not>
-				<equals arg1="${demomachine.type}" arg2="author" casesensitive="false"/>
-			</not>
+			<equals arg1="${demomachine.type}" arg2="cluster" casesensitive="false"/>
+			<then>
+				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
+					<not>
+						<socket server="${demo.host}" port="${demomachine.clusterport}"/>
+					</not>
+				</waitfor>
+			</then>
+		</if>
+		<if>
+			<or>
+				<equals arg1="${demomachine.type}" arg2="farm" casesensitive="false"/>
+				<equals arg1="${demomachine.type}" arg2="publish" casesensitive="false"/>
+			</or>
 			<then>
 				<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
 					<not>
@@ -1547,14 +1679,15 @@
 						<echo message="The Mongo DB server is already started..."/>
 					</then>
 					<else>
-						<mkdir dir="${mongodb}/data/communities"/>
+						<mkdir dir="${mongodb}/data/${demo.build}"/>
+						<mkdir dir="${infralogs}/${demo.build}"/>
 						<mkdir dir="${infralogs}/mongo"/>
 						<echo message="Starting the Mongo DB server..."/>
 						<exec executable="${mongodb}/bin/mongod" dir="${mongodb}/bin" spawn="true">
-							<arg line="--dbpath ${mongodb}/data/communities"/>
+							<arg line="--dbpath ${mongodb}/data/${demo.build}"/>
 							<arg line="--port ${demo.mongo.port}"/>
 							<arg line="--fork"/>
-							<arg line="--logpath ${infralogs}/mongo/mongo.log"/>
+							<arg line="--logpath ${infralogs}/${demo.build}/mongo.log"/>
 						</exec>
 						<sleep seconds="2"/>
 						<waitfor maxwait="300" maxwaitunit="second" checkevery="2" checkeveryunit="second">
@@ -1586,7 +1719,7 @@
 			</and>
 			<then>
 				<if>
-					<!-- Only try to stop if really running -->
+					<!-- Only try to stop if already running -->
 					<socket server="${demo.host}" port="${demo.mongo.port}"/>
 					<then>
 						<echo message="Stopping the Mongo DB server..."/>
@@ -1685,24 +1818,30 @@
 				<equals arg1="${demomachine.srp}" arg2="MSRP" casesensitive="false"/>
 			</or>
 			<then>
-				<!-- Let's make sure Mongo is started properly so that we can drop the database if already in there -->
+				<!-- Let's make sure Mongo is stopped then started properly for the current build so that we can drop the database if already in there -->
+				<antcall target="mongo_stop"/>
 				<antcall target="mongo_start"/>
 				<propertyregex property="mongo.prefix" input="${demo.build}" regexp="-" replace="" global="true" defaultvalue="${demo.build}"/>
 				<if>
 					<equals arg1="${demo.mongo.external}" arg2="false" casesensitive="false"/>
 					<then>
-						<exec executable="${mongodb}/bin/mongo" dir="${mongodb}/bin" spawn="true">
-							<arg line="${mongo.prefix} --eval &quot;db.dropDatabase()&quot;"/>
-						</exec>
+						<!-- For the Mongo instance managed by the demo machine, we totally delete the data folder -->
+						<antcall target="mongo_stop"/>
+						<delete dir="${mongodb}/data/${mongo.prefix}" failonerror="false"/>
 					</then>
 					<else>
+						<!-- While for the Mongo instance not managed by the demo machine, we only delete the databases -->
 						<exec executable="${demo.mongo.path}" spawn="true">
 							<arg line="${mongo.prefix} --eval &quot;db.dropDatabase()&quot;"/>
 						</exec>
+						<exec executable="${demo.mongo.path}" spawn="true">
+							<arg line="author --eval &quot;db.dropDatabase()&quot;"/>
+						</exec>
+						<exec executable="${demo.mongo.path}" spawn="true">
+							<arg line="publish --eval &quot;db.dropDatabase()&quot;"/>
+						</exec>
 					</else>
 				</if>
-				<sleep seconds="1"/>
-				<antcall target="mongo_stop"/>
 			</then>
 		</if>
 		<!-- check if we need to clean up the associated SOLR index -->
@@ -3553,6 +3692,7 @@
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##demo.externalizer.publish##" value="${demo.externalizer.publish}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##demo.externalizer.author##" value="${demo.externalizer.author}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.authorport##" value="${AdobeAEM.authorport}"/>
+		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.clusterport##" value="${AdobeAEM.clusterport}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.publishport##" value="${AdobeAEM.publishport}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##AdobeAEM.farmport##" value="${AdobeAEM.farmport}"/>
 		<replace file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/${config.name}" token="##demo.loglevel##" value="${demo.loglevel}"/>
@@ -3963,7 +4103,7 @@
 		</if>
 	</target>
 	<!-- Adobe Analytics: posting username, password and secret key for encryption wiht local instance keys -->
-	<target name="analytics">
+	<target name="analytics" depends="version,configuration">
 		<if>
 			<equals arg1="${AdobeAnalytics.install}" arg2="true" casesensitive="false"/>
 			<then>
@@ -4753,6 +4893,17 @@
 				</exec>
 			</then>
 		</if>
+		<if>
+			<resourceexists>
+				<file file="${demos}/${demo.build}/cluster/aem-author-p${demomachine.clusterport}.jar"/>
+			</resourceexists>
+			<then>
+				<echo message="Creating a snapshot for CLUSTER demo ${demo.build}..."/>
+				<exec executable="${bin}/demosnapshot.sh" dir="${bin}" spawn="false">
+					<arg line="-c -f -p ${demos}/${demo.build}/cluster"/>
+				</exec>
+			</then>
+		</if>
 	</target>
 	<!-- Restores a backup file for a specific demo image using an external script -->
 	<target name="restore" depends="permissions,configuration">
@@ -5360,11 +5511,11 @@
 					<else>
 						<if>
 							<resourceexists>
-								<file file="${dist}/community/scorm/all/cq-social-scorm-pkg.zip"/>
+								<file file="${dist}/community/scorm/${demo.packages}/cq-social-scorm-pkg.zip"/>
 							</resourceexists>
 							<then>
 								<antcall target="package">
-									<param name="package" value="${dist}/community/scorm/all/cq-social-scorm-pkg.zip"/>
+									<param name="package" value="${dist}/community/scorm/${demo.packages}/cq-social-scorm-pkg.zip"/>
 								</antcall>
 							</then>
 							<else>
@@ -5444,14 +5595,17 @@
 		<replace file="${template_distfile}" token="##DEMO.EMAILSERVER.SMTP##" value="${demo.emailserver.smtp}"/>
 		<replace file="${template_distfile}" token="##DEMO.EMAILSERVER.NOREPLY##" value="${demo.emailserver.noreply}"/>
 		<replace file="${template_distfile}" token="##AdobeAEM.authorport##" value="${AdobeAEM.authorport}"/>
+		<replace file="${template_distfile}" token="##AdobeAEM.clusterport##" value="${AdobeAEM.clusterport}"/>
 		<replace file="${template_distfile}" token="##AdobeAEM.publishport##" value="${AdobeAEM.publishport}"/>
 		<replace file="${template_distfile}" token="##AdobeAEM.farmport##" value="${AdobeAEM.farmport}"/>
 		<replace file="${template_distfile}" token="##demo.build##" value="${demo.build}"/>
 		<replace file="${template_distfile}" token="##AdobeAEM.licensefile##" value="${dist}/license/license-${demo.license}.properties"/>
 		<replace file="${template_distfile}" token="##demobuild.authorlogs##" value="${demos}/${demo.build}/author/crx-quickstart/logs"/>
+		<replace file="${template_distfile}" token="##demobuild.clusterlogs##" value="${demos}/${demo.build}/cluster/crx-quickstart/logs"/>
 		<replace file="${template_distfile}" token="##demobuild.publishlogs##" value="${demos}/${demo.build}/publish/crx-quickstart/logs"/>
 		<replace file="${template_distfile}" token="##demobuild.farmlogs##" value="${demos}/${demo.build}/farm/crx-quickstart/logs"/>
 		<replace file="${template_distfile}" token="##demobuild.authorrepo##" value="${demos}/${demo.build}/author/crx-quickstart/repository"/>
+		<replace file="${template_distfile}" token="##demobuild.clusterrepo##" value="${demos}/${demo.build}/cluster/crx-quickstart/repository"/>
 		<replace file="${template_distfile}" token="##demobuild.publishrepo##" value="${demos}/${demo.build}/publish/crx-quickstart/repository"/>
 		<replace file="${template_distfile}" token="##demobuild.farmrepo##" value="${demos}/${demo.build}/farm/crx-quickstart/repository"/>
 		<replace file="${template_distfile}" token="##demomachine.jar##" value="${demomachine.jar}"/>
@@ -6701,7 +6855,6 @@
 		</if>
 	</target>
 	<target name="cloudservices" depends="version,configuration,community_loader_flag">
-		<!--
 		<propertyselector property="constituents" match="demo.cloudservices\.([^\.]*)\.enabled" select="\1" casesensitive="false"/>
 		<echo message="Adding cloud services for path ${path}: ${constituents} on port ${port}"/>
 		<delete file="${logs}/cloudservices.csv"/>
@@ -6711,7 +6864,6 @@
 			<arg line="-h ${demo.host} -p ${port} -a ${port} -u ${demo.admin.password} -f  &quot;${logs}/cloudservices.csv&quot; ${demo.loader.configureflag} ${demo.loader.resetflag}"/>
 		</java>
 		<delete file="${logs}/cloudservices.csv"/>
-		-->
 	</target>
 	<target name="cloudservices.process">
 		<propertycopy property="key" from="demo.cloudservices.${myparam}.path"/>
@@ -6895,6 +7047,22 @@
 			</and>
 			<then>
 				<fail message="CQ 5.6.x cannot run with Java8 - please install a Java6 JDK"/>
+			</then>
+		</if>
+		<if>
+			<and>
+				<equals arg1="${ant.java.version}" arg2="1.9" casesensitive="false"/>
+				<equals arg1="${demo.jvm}" arg2="java" casesensitive="false"/>
+				<or>
+					<equals arg1="${demo.packages}" arg2="aem63" casesensitive="false"/>
+					<equals arg1="${demo.packages}" arg2="aem62" casesensitive="false"/>
+					<equals arg1="${demo.packages}" arg2="aem61" casesensitive="false"/>
+					<equals arg1="${demo.packages}" arg2="aem60" casesensitive="false"/>
+					<equals arg1="${demo.packages}" arg2="cq56" casesensitive="false"/>
+				</or>
+			</and>
+			<then>
+				<fail message="Java9 is only supported starting with AEM 6.4 - please install another Java 7/8 JDK"/>
 			</then>
 		</if>
 		<echo message="Java version ${ant.java.version} is compatible with AEM version: ${demo.packages}"/>
