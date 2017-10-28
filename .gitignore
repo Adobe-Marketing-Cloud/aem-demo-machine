@@ -10,9 +10,40 @@ crx-quickstart
 # Ignore compilation results
 target
 
+# Ignore folders created by the demo machine
+
+downloads/
+ffmpeg/
+james/
+logs/
+demos/
+mongodb/
+mysql/
+solr/
+dist/sites/
+dist/sites-packages/
+dist/osgi/
+dist/hotfixes/
+dist/forms/
+dist/forms-packages/
+dist/assets/
+dist/assets-packages/
+dist/apps/
+dist/apps-packages/
+dist/forms-demo/
+dist/commerce/
+
+# Ignore files created by the demo machine
+build-personal*
+license-*.properties
+events-data.xml
+conf/*.jpg
+*.p12
+
 # Ignore downloaded feature packs for Communities
 aem61-fp*
 aem62-fp*
+aem63-fp*
 cq-social-expert-identification-pkg*
 cq-social-scorm-pkg*
 
