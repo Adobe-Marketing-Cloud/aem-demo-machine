@@ -20,6 +20,7 @@ demos/
 mongodb/
 mysql/
 solr/
+archives/
 dist/sites/
 dist/sites-packages/
 dist/osgi/
@@ -32,6 +33,9 @@ dist/apps/
 dist/apps-packages/
 dist/forms-demo/
 dist/commerce/
+dist/acs/
+dist/samples/
+dist/we-retail/
 
 # Ignore files created by the demo machine
 build-personal*
