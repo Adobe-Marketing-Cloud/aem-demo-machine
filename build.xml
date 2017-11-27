@@ -350,7 +350,7 @@
 	<!-- Is Docker up? -->
 	<target name="dockerup">
 		<mkdir dir="${infralogs}/docker"/>
-		<exec executable="docker" dir="." output="${infralogs}/docker/list-process.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker" dir="." output="${infralogs}/docker/list-process.log" spawn="false" failonerror="false">
 			<arg line="ps"/>
 		</exec>
 		<if>
@@ -621,7 +621,7 @@
 	<target name="docker_build_instance">
 		<echo message="Building the Docker container for ${yml.file}..."/>
 		<basename property="yml.instance" file="${yml.file}"/>
-		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-${yml.instance}-build.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-${yml.instance}-build.log" spawn="false" failonerror="false">
 			<arg line="-f '${demos}/${demo.build}/${yml.instance}' build"/>
 		</exec>
 		<!-- Check if the build phase was completed successfully -->
@@ -875,11 +875,11 @@
 			<then>
 				<!-- Copying the SQL script to the running container -->
 				<basename property="demo.sqlfilename" file="${demo.sqlfile}"/>
-				<exec executable="docker" dir="." output="${logs}/docker-copy.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker" dir="." output="${logs}/docker-copy.log" spawn="false" failonerror="false">
 					<arg line="cp '${demo.sqlfile}' ${demo.build}_mysql${demo.build}_1:${demo.sqlfilename}"/>
 				</exec>
 				<!-- Executing the script withing the container -->
-				<exec executable="docker" dir="." output="${logs}/docker-exex-mysql-${demo.sqlfilename}.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker" dir="." output="${logs}/docker-exex-mysql-${demo.sqlfilename}.log" spawn="false" failonerror="false">
 					<arg line="exec ${demo.build}_mysql${demo.build}_1 /bin/sh -c 'mysql -u root -p${demo.mysql.password} &lt;/${demo.sqlfilename}'"/>
 				</exec>
 			</then>
@@ -1049,7 +1049,7 @@
 	<target name="start_docker_instance" depends="configuration">
 		<basename property="yml.instance" file="${yml.file}" suffix=".yml"/>
 		<echo message="Starting the Docker ${yml.instance} container..."/>
-		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-${yml.instance}-start.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-${yml.instance}-start.log" spawn="false" failonerror="false">
 			<arg line="-f '${demos}/${demo.build}/${yml.instance}.yml' up -d ${yml.instance}"/>
 		</exec>
 		<!-- Always start the first author instance first -->
@@ -1299,7 +1299,7 @@
 	<target name="stop_docker_instance" depends="logs">
 		<basename property="yml.instance" file="${yml.file}" suffix=".yml"/>
 		<echo message="Stopping the Docker ${yml.instance} container..."/>
-		<exec executable="docker-compose" dir="." output="${logs}/docker-compose-${yml.instance}-down.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-${yml.instance}-down.log" spawn="false" failonerror="false">
 			<arg line="-f '${demos}/${demo.build}/${yml.instance}.yml' down"/>
 		</exec>
 	</target>
@@ -1711,7 +1711,7 @@
 					</then>
 					<else>
 						<echo message="Starting SOLR container"/>
-						<exec executable="docker-compose" dir="." output="${logs}/docker-compose-solr-up.log" spawn="false" failonerror="false">
+						<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-solr-up.log" spawn="false" failonerror="false">
 							<arg line="-f '${demos}/${demo.build}/solr.yml' up -d"/>
 						</exec>
 					</else>
@@ -1772,7 +1772,7 @@
 			</and>
 			<then>
 				<echo message="Stopping the ${demo.build} SOLR container..."/>
-				<exec executable="docker-compose" dir="." output="${logs}/docker-compose-solr-down.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-solr-down.log" spawn="false" failonerror="false">
 					<arg line="-f '${demos}/${demo.build}/solr.yml' down"/>
 				</exec>
 			</then>
@@ -1887,7 +1887,7 @@
 					</then>
 					<else>
 						<echo message="Starting MySQL container"/>
-						<exec executable="docker-compose" dir="." output="${logs}/docker-compose-mysql-up.log" spawn="false" failonerror="false">
+						<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-mysql-up.log" spawn="false" failonerror="false">
 							<arg line="-f '${demos}/${demo.build}/mysql.yml' up -d"/>
 						</exec>
 					</else>
@@ -1934,7 +1934,7 @@
 			</and>
 			<then>
 				<echo message="Stopping the ${demo.build} MySQL container..."/>
-				<exec executable="docker-compose" dir="." output="${logs}/docker-compose-mysql-down.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-mysql-down.log" spawn="false" failonerror="false">
 					<arg line="-f '${demos}/${demo.build}/mysql.yml' down"/>
 				</exec>
 			</then>
@@ -2050,7 +2050,7 @@
 					</then>
 					<else>
 						<echo message="Starting HA Proxy container"/>
-						<exec executable="docker-compose" dir="." output="${logs}/docker-compose-haproxy-up.log" spawn="false" failonerror="false">
+						<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-haproxy-up.log" spawn="false" failonerror="false">
 							<arg line="-f '${demos}/${demo.build}/haproxy.yml' up -d"/>
 						</exec>
 					</else>
@@ -2068,7 +2068,7 @@
 			</and>
 			<then>
 				<echo message="Stopping the ${demo.build} HA Proxy container..."/>
-				<exec executable="docker-compose" dir="." output="${logs}/docker-compose-haproxy-down.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-haproxy-down.log" spawn="false" failonerror="false">
 					<arg line="-f '${demos}/${demo.build}/haproxy.yml' down"/>
 				</exec>
 			</then>
@@ -2089,7 +2089,7 @@
 					</then>
 					<else>
 						<echo message="Starting Mongo container"/>
-						<exec executable="docker-compose" dir="." output="${logs}/docker-compose-mongo-up.log" spawn="false" failonerror="false">
+						<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-mongo-up.log" spawn="false" failonerror="false">
 							<arg line="-f '${demos}/${demo.build}/mongo.yml' up -d"/>
 						</exec>
 					</else>
@@ -2152,7 +2152,7 @@
 			</and>
 			<then>
 				<echo message="Stopping the ${demo.build} Mongo container..."/>
-				<exec executable="docker-compose" dir="." output="${logs}/docker-compose-mongo-down.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker-compose" dir="." output="${logs}/docker-compose-mongo-down.log" spawn="false" failonerror="false">
 					<arg line="-f '${demos}/${demo.build}/mongo.yml' down"/>
 				</exec>
 			</then>
@@ -2248,7 +2248,7 @@
 	<target name="remove_docker_instance" depends="dockerup">
 		<basename property="yml.instance" file="${yml.file}" suffix=".yml"/>
 		<echo message="Removing the Docker ${yml.instance} container..."/>
-		<exec executable="docker" dir="." output="${logs}/docker-rmi-${yml.instance}.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker" dir="." output="${logs}/docker-rmi-${yml.instance}.log" spawn="false" failonerror="false">
 			<arg line="rmi -f ${demo.build}_${yml.instance}"/>
 		</exec>
 	</target>
@@ -7664,7 +7664,7 @@
 				<echo message="Rebuilding ${demo.build}"/>
 				<!-- Rebuilding via ANT -->
 				<mkdir dir="${validation}/build"/>
-				<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
+				<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
 					<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' -Ddemo.build=${demo.build} create"/>
 				</exec>
 			</then>
@@ -7810,7 +7810,7 @@
 					</not>
 					<then>
 						<echo message="Rebuilding demo environment: ${demo}"/>
-						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
+						<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
 							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
 						</exec>
 						<propertyfile file="${demos}/${demo}/demobuild.properties">
@@ -7950,14 +7950,14 @@
 					<then>
 						<!-- Stopping in anycase -->
 						<echo message="Stopping demo environment: ${demo}"/>
-						<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-stop.log" failonerror="false">
+						<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-stop.log" failonerror="false">
 							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} stop"/>
 						</exec>
 						<if>
 							<resourcecontains resource="${demos}/${demo}/demobuild.properties" substring="demo.validation.wipeout=true"/>
 							<then>
 								<echo message="Cleaning demo environment: ${demo}"/>
-								<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+								<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
 									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
 								</exec>
 							</then>
@@ -8173,7 +8173,7 @@
 			</resourceexists>
 			<then>
 				<echo message="Stopping demo environment: ${demo}"/>
-				<exec executable="ant" dir="." spawn="false" output="${logs}/stop.log" failonerror="false">
+				<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${logs}/stop.log" failonerror="false">
 					<arg line="-Ddemo.build=${demo} stop"/>
 				</exec>
 			</then>
@@ -8197,7 +8197,7 @@
 	<target name="cleanslate_doit">
 		<basename property="demo" file="${demopath}"/>
 		<echo message="Cleaning demo environment: ${demo}"/>
-		<exec executable="ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+		<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
 			<arg line="-Ddemo.build=${demo} cleanup"/>
 		</exec>
 	</target>
@@ -8206,21 +8206,21 @@
 		<mkdir dir="${infralogs}/docker"/>
 	</target>
 	<target name="docker_list_images" depends="docker_setup">
-		<exec executable="docker" dir="." output="${infralogs}/docker/list-images.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker" output="${infralogs}/docker/list-images.log" spawn="false" failonerror="false">
 			<arg line="images"/>
 		</exec>
 		<loadfile property="dockerlog" srcFile="${infralogs}/docker/list-images.log"/>
 		<echo>${dockerlog}</echo>
 	</target>
 	<target name="docker_list_containers" depends="docker_setup">
-		<exec executable="docker" dir="." output="${infralogs}/docker/list-containers.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker" dir="." output="${infralogs}/docker/list-containers.log" spawn="false" failonerror="false">
 			<arg line="ps"/>
 		</exec>
 		<loadfile property="dockerlog" srcFile="${infralogs}/docker/list-containers.log"/>
 		<echo>${dockerlog}</echo>
 	</target>
 	<target name="docker_remove_images" depends="docker_setup">
-		<exec executable="docker" dir="." output="${infralogs}/docker/list-images-id.log" spawn="false" failonerror="false">
+		<exec executable="${demo.docker.path}/docker" dir="." output="${infralogs}/docker/list-images-id.log" spawn="false" failonerror="false">
 			<arg line="images -q"/>
 		</exec>
 		<loadfile property="dockerids" srcFile="${infralogs}/docker/list-images-id.log" failonerror="false"/>
@@ -8228,7 +8228,7 @@
 			<isset property="dockerids"/>
 			<then>
 				<echo message="List of containers IDs: ${dockerids}"/>
-				<exec executable="docker" dir="." output="${infralogs}/docker/remove-images.log" spawn="false" failonerror="false">
+				<exec executable="${demo.docker.path}/docker" dir="." output="${infralogs}/docker/remove-images.log" spawn="false" failonerror="false">
 					<arg line="rmi -f $(dockerids)"/>
 				</exec>
 				<loadfile property="dockerlog" srcFile="${infralogs}/docker/remove-images.log" failonerror="false"/>
