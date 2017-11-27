@@ -29,6 +29,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.comparator.LastModifiedFileComparator;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
@@ -36,15 +38,16 @@ import org.w3c.dom.NodeList;
 import java.awt.event.*;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.DefaultListModel;
@@ -926,10 +929,50 @@ public class AemDemo {
 		}
 
 		// Launching the download tracker task
-		AemDemoDownload aemDownload = new AemDemoDownload(AemDemo.this);
-		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(aemDownload, 0, 5, TimeUnit.SECONDS);
+		//AemDemoDownload aemDownload = new AemDemoDownload(AemDemo.this);
+		//ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+		//executor.scheduleAtFixedRate(aemDownload, 0, 5, TimeUnit.SECONDS);
+		final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 
+		Runnable downloadTask = new Runnable() {
+			@Override 
+			public void run() {
+				long currentSize=0;
+
+				if (AemDemo.this.getDownloadInProgress()) {
+
+					File theNewestFile = null;
+					File dir = new File(AemDemo.this.getBuildFile().getParentFile().getAbsolutePath() + File.separator + "dist" + File.separator + "downloads");
+					
+					// Folder might have not been created yet
+					if (dir!=null && dir.exists()) {
+						FileFilter fileFilter = new WildcardFileFilter("*.*");
+						File[] files = dir.listFiles(fileFilter);
+
+						if (files.length > 0) {
+							/** The newest file comes first **/
+							Arrays.sort(files, LastModifiedFileComparator.LASTMODIFIED_REVERSE);
+							theNewestFile = files[0];
+							long newSize = theNewestFile.length();
+							if (newSize!=currentSize && (theNewestFile.getName().indexOf("xml")<0) && (theNewestFile.getName().indexOf("html")<0) && (theNewestFile.lastModified() > (System.currentTimeMillis() - 5000 ))) {
+								System.out.println("     [echo] " + theNewestFile.getName() + " (" + AemDemoUtils.humanReadableByteCount(theNewestFile.length(),true) +")");
+								currentSize = newSize;
+							}
+
+						}
+
+					}
+
+				}
+
+				executor.purge();;
+
+			}
+		};
+		
+		executor.scheduleAtFixedRate(downloadTask, 0, 5, TimeUnit.SECONDS);
+
+		
 		// Loading up the README.md file
 		String line=null;
 		try {

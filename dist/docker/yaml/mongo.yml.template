@@ -1,0 +1,11 @@
+version: '2'
+services:
+  mongo##demo.build##:
+    image: 'mongo:3.2'
+    command: mongod --enableMajorityReadConcern
+    ports:
+      - "##demo.mongo.port##:##demo.mongo.port##"
+    volumes:
+      - ##demo.mongo.path##/db:/data/db 
+      - ##demo.mongo.path##/configdb:/data/configdb
+

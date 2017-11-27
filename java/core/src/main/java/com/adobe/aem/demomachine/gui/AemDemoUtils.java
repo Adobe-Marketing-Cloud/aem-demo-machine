@@ -109,13 +109,12 @@ public class AemDemoUtils {
 		while (e.hasMoreElements()) {
 			String key = (String) e.nextElement();
 			if (key.startsWith("demo.docker.images.") & !(key.endsWith("help") || key.endsWith("label"))) {
-				String keyValue = mergedProps.getProperty(key);
-				String keyName = "docker:" + keyValue;
-				int lastSlash = keyName.lastIndexOf("/");
-				if (lastSlash>0) {
-					keyName = keyName.substring(1 + lastSlash);
+				int pos = mergedProps.getProperty(key).indexOf(',');
+				if (pos>0) {
+					String keyValue = mergedProps.getProperty(key).substring(pos+1);
+					String keyName = mergedProps.getProperty(key).substring(0,pos);;
+					aemJars.add(new AemDemoProperty(keyValue, keyName));
 				}
-				aemJars.add(new AemDemoProperty(keyValue, keyName));
 			}
 		}
 		

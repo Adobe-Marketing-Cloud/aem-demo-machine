@@ -1,0 +1,24 @@
+FROM ##demomachine.jar## as aem
+FROM docker-granite-release.dr.corp.adobe.com/oracle/serverjre:8
+  
+COPY --from=aem / .
+
+MAINTAINER Adobe Systems Incorporated
+
+ARG aem_port
+ARG read_only
+ARG build_runmodes
+
+ENV javaargs="-Xms##AdobeAEM.memorymin## -Xmx##AdobeAEM.memorymax## -Dcom.adobe.granite.crypto.file.disable=true"
+ENV port ${aem_port}
+
+ADD publish/crx-quickstart/launcher /launcher/
+
+RUN yum install -y socat && yum clean all
+
+RUN /aem/create_segmentstore.sh
+
+EXPOSE ${aem_port} 5007
+
+ENTRYPOINT []
+CMD [ "/aem/docker_entrypoint.sh" ]

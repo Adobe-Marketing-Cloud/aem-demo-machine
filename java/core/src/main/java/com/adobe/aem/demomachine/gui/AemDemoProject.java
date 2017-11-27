@@ -67,7 +67,7 @@ public class AemDemoProject extends Project {
     }
     
     public AemDemo getAemDemo() {
-    	return this.aemDemo;
+    		return this.aemDemo;
     }
     
 	

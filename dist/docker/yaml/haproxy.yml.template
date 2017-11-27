@@ -1,0 +1,11 @@
+version: '2'
+services:
+  haproxy##demo.build##:
+    build:
+      context: .
+      dockerfile: ./Dockerfile-haproxy
+    ports:
+     - "##demo.haproxy.httpport##:##demo.haproxy.httpport##"
+     - "##demo.haproxy.statsport##:##demo.haproxy.statsport##"
+  
+

@@ -12,21 +12,13 @@ ARG build_runmodes
 ENV javaargs="-Xms##AdobeAEM.memorymin## -Xmx##AdobeAEM.memorymax## -Dcom.adobe.granite.crypto.file.disable=true"
 ENV port ${aem_port}
 
-ADD author/crx-quickstart/launcher /launcher
+ADD farm/crx-quickstart/launcher /launcher
 
 RUN yum install -y socat && yum clean all
 
 RUN /aem/create_segmentstore.sh
 
-RUN mkdir -p /docker_entrypoint.d && \
-    echo "socat TCP4-LISTEN:##AdobeAEM.publishport##,fork TCP4:publish:##AdobeAEM.publishport## &" > /docker_entrypoint.d/10-create-tunnel.sh && \
-    chmod 755 /docker_entrypoint.d/10-create-tunnel.sh
-
-RUN mkdir -p /docker_entrypoint.d && \
-    echo "socat TCP4-LISTEN:##AdobeAEM.farmport##,fork TCP4:publish:##AdobeAEM.farmport## &" > /docker_entrypoint.d/10-create-tunnel.sh && \
-    chmod 755 /docker_entrypoint.d/10-create-tunnel.sh
-
-EXPOSE ${aem_port} 5006
+EXPOSE ${aem_port} 5008
 
 ENTRYPOINT []
 CMD [ "/aem/docker_entrypoint.sh" ]

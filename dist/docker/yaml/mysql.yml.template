@@ -1,0 +1,11 @@
+version: '2'
+services:
+  mysql##demo.build##:
+    image: 'mysql:5.6'
+    environment:
+      MYSQL_ROOT_PASSWORD: ##demo.mysql.password##
+    ports:
+      - "##demo.mysql.port##:##demo.mysql.port##"
+    volumes:
+      - ##demo.mysql.path##:/var/lib/mysql
+

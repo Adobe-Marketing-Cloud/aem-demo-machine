@@ -1,28 +1,9 @@
 version: '3.1'
 services:
-  aem-simple-author:
+  aem-publish:
     build:
       context: .
-      dockerfile: ./Dockerfile-standalone-tunnel
-      args:
-        build_runmodes: author,sling-junit
-        aem_port: ##AdobeAEM.authorport##
-        read_only: "true"
-    environment:
-     - runmodes=crx3tar
-    ports:
-     - "##AdobeAEM.authorport##:##AdobeAEM.authorport##"
-    volumes:
-     - ##demobuild.authorlogs##:/launcher/logs
-     - ##demobuild.authorrepo##:/launcher/repository
-    secrets:
-     - aem_license
-    stop_grace_period: 1m30s
-
-  aem-simple-publish:
-    build:
-      context: .
-      dockerfile: ./Dockerfile-standalone
+      dockerfile: ./Dockerfile-standalone-publish
       args:
         build_runmodes: publish,sling-junit
         aem_port: ##AdobeAEM.publishport##
@@ -34,6 +15,7 @@ services:
     volumes:
      - ##demobuild.publishlogs##:/launcher/logs
      - ##demobuild.publishrepo##:/launcher/repository
+     - ##demobuild.publishdatastore##:/launcher/datastore
     secrets:
      - aem_license
     networks:
@@ -45,9 +27,3 @@ services:
 secrets:
   aem_license:
     file: ##AdobeAEM.licensefile##
-
-volumes:
-  aem-##demo.build##-author-logs:
-  aem-##demo.build##-author-repo:
-  aem-##demo.build##-publish-logs:
-  aem-##demo.build##-publish-repo:

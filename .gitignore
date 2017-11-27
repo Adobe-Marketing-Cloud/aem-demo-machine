@@ -12,6 +12,7 @@ target
 
 # Ignore folders created by the demo machine
 
+tmp/
 downloads/
 ffmpeg/
 james/

@@ -129,7 +129,7 @@ public class AemDemoNew extends JDialog {
 			scrollTopologies.setViewportView(listTopologies);
 
 			// Label for AEM/CQ jar
-			JLabel lblSelectAMk = new JLabel("Select an AEM/CQ .jar");
+			JLabel lblSelectAMk = new JLabel("Select an application");
 			lblSelectAMk.setBounds(331, 20, 139, 16);
 			contentPanel.add(lblSelectAMk);
 

@@ -1,6 +1,6 @@
 version: '3.1'
 services:
-  aem-simple-author:
+  aem-author:
     build:
       context: .
       dockerfile: ./Dockerfile-standalone-author
@@ -15,14 +15,15 @@ services:
     volumes:
      - ##demobuild.authorlogs##:/launcher/logs
      - ##demobuild.authorrepo##:/launcher/repository
+     - ##demobuild.authordatastore##:/launcher/datastore
     secrets:
      - aem_license
+    networks:
+      default:
+        aliases:
+          - author
     stop_grace_period: 1m30s
 
 secrets:
   aem_license:
     file: ##AdobeAEM.licensefile##
-
-volumes:
-  aem-##demo.build##-author-logs:
-  aem-##demo.build##-author-repo:
