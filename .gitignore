@@ -44,6 +44,7 @@ license-*.properties
 events-data.xml
 conf/*.jpg
 *.p12
+logs/cookies*
 
 # Ignore downloaded feature packs for Communities
 aem61-fp*

@@ -7,7 +7,7 @@ fi
 
 function doLogin {
     echo "Logging in..."
-    curl -c cookies${time}.txt -d "j_username=admin&j_password=admin&j_validate=true" http://localhost:8080/libs/granite/core/content/login.html/j_security_check
+    curl -c logs/cookies${time}.txt -d "j_username=admin&j_password=admin&j_validate=true" http://localhost:8080/libs/granite/core/content/login.html/j_security_check
     echo "Login successful."
 }
 
@@ -19,7 +19,7 @@ do
     timestamp=`date +%s`
 
     echo "[${timestamp}] Polling page..."
-    response=$(curl -b cookies${time}.txt http://localhost:8080/content/we-retail/us/en.html 2>&1)
+    response=$(curl -b logs/cookies${time}.txt http://localhost:8080/content/we-retail/us/en.html 2>&1)
 
     if [[ $response == *"App V1"* ]]; then
         echo "[${timestamp}] Getting application version 1"
