@@ -37,6 +37,7 @@ dist/commerce/
 dist/acs/
 dist/samples/
 dist/we-retail/
+dist/community/featurepacks/
 
 # Ignore files created by the demo machine
 build-personal*
