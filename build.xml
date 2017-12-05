@@ -898,7 +898,10 @@
 						<property name="mysql.exec" value="${demo.mysql.path}"/>
 					</else>
 				</if>
-				<exec executable="${mysql.exec}" spawn="false">
+				<tstamp>
+					<format property="time.stamp" pattern="yyyy-MM-dd_HH:mm:ss"/>
+				</tstamp>
+				<exec executable="${mysql.exec}" spawn="false" output="${logs}/mysql-${time.stamp}.log">
 					<arg line="-u ${demo.mysql.user} --host=${demo.mysql.host} --port=${demo.mysql.port} --port=${demo.mysql.port} --password=${demo.mysql.password} -e 'source ${demo.sqlfile}' ${demo.sqldatabase}"/>
 				</exec>
 			</else>
@@ -937,7 +940,7 @@
 				<replace file="${dist}/rdb/drop_schemas_${demo.build}.sql" token="publish" value="${mysql.prefix}publish"/>
 				<antcall target="mysql_script">
 					<param name="demo.sqlfile" value="${dist}/rdb/drop_schemas_${demo.build}.sql"/>
-					<param name="dmeo.sqldatabase" value=""/>
+					<param name="demo.sqldatabase" value=""/>
 				</antcall>
 				<delete file="${dist}/rdb/drop_schemas_${demo.build}.sql"/>
 				<!-- Creating the Schema and the datasource for RDBMK -->
@@ -953,7 +956,7 @@
 							<then>
 								<antcall target="mysql_script">
 									<param name="demo.sqlfile" value="${dist}/rdb/mysql_${demo.instance}${demo.build}.sql"/>
-									<param name="dmeo.sqldatabase" value=""/>
+									<param name="demo.sqldatabase" value=""/>
 								</antcall>
 							</then>
 						</if>
@@ -974,7 +977,7 @@
 	</target>
 	<!-- Target for starting the default AUTHOR and PUBLISH servers -->
 	<target name="start" depends="logs,version,configuration,details">
-		<echo message="Starting the build for demo ${demo.build}..."/>
+		<echo message="Starting demo ${demo.build}, version: ${demo.packages}..."/>
 		<antcall target="prerequisites"/>
 		<antcall target="javaversion"/>
 		<antcall target="demomachine_analytics_start"/>
@@ -1443,6 +1446,8 @@
 				<or>
 					<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
 					<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+					<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+					<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				</or>
 			</and>
 			<then>
@@ -2015,19 +2020,26 @@
 		</if>
 	</target>
 	<!-- Target for schema substitution -->
-	<target name="mysql_schema_instance" depends="configuration">
+	<target name="mysql_schema_instance" depends="logs,configuration">
 		<echo message="Downloading the MySQL schema from /libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
 		<exec executable="curl">
 			<arg line="-u admin:${demo.admin.password}"/>
 			<arg line="-s -o '${mysql.path}/${mysql.file}.sql' http://${demo.host}:${demomachine.authorport}/libs/social/config/${mysql.schema}/${mysql.file}.sql"/>
 		</exec>
-		<replace file="${mysql.path}/${mysql.file}.sql" token="enablementdb" value="${mysql.prefix}${mysql.schema}"/>
-		<replace file="${mysql.path}/${mysql.file}.sql" token="ScormEngineDB" value="${mysql.prefix}${mysql.schema}"/>
-		<echo message="Loading SQL file into internal MySQL server..."/>
-		<antcall target="mysql_script">
-			<param name="demo.sqlfile" value="${mysql.path}/${mysql.file}.sql"/>
-			<param name="demo.sqldatabase" value="${mysql.db}"/>
-		</antcall>
+		<if>
+			<not>
+				<resourcecontains resource="${mysql.path}/${mysql.file}.sql" substring="404 Resource"/>
+			</not>
+			<then>
+				<replace file="${mysql.path}/${mysql.file}.sql" token="enablementdb" value="${mysql.prefix}${mysql.schema}"/>
+				<replace file="${mysql.path}/${mysql.file}.sql" token="ScormEngineDB" value="${mysql.prefix}${mysql.schema}"/>
+				<echo message="Loading SQL file into internal MySQL server..."/>
+				<antcall target="mysql_script">
+					<param name="demo.sqlfile" value="${mysql.path}/${mysql.file}.sql"/>
+					<param name="demo.sqldatabase" value="${mysql.db}"/>
+				</antcall>
+			</then>
+		</if>
 		<delete file="${mysql.path}/${mysql.file}.sql"/>
 	</target>
 	<!-- Target for initializing the required log folders -->
@@ -2289,6 +2301,13 @@
 				</fileset>
 			</path>
 		</foreach>
+		<!-- Load all the sample assets share project -->
+		<if>
+			<equals arg1="${demo.assets.samples.share}" arg2="true" casesensitive="false"/>
+			<then>
+				<antcall target="assets_share"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for installing the Forms demo -->
 	<target name="forms" depends="version,configuration">
@@ -4870,6 +4889,29 @@
 			<arg line="http://${demo.host}:${port}/system/console/configMgr/com.adobe.cq.dam.webdav.impl.io.DamWebdavVersionLinkingJob"/>
 		</exec>
 	</target>
+	<!-- Adobe AEM Assets: assets share -->
+	<target name="assets_share" depends="version,configuration">
+		<echo message="Loading AEM Assets Share Package"/>
+		<foreach target="package_author" param="package">
+			<path id="assets.packages">
+				<fileset dir="${dist}" casesensitive="yes">
+					<include name="samples/assetsshare/*.zip"/>
+				</fileset>
+			</path>
+		</foreach>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.publishport}"/>
+			<then>
+				<foreach target="package_publish" param="package">
+					<path id="assets.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="samples/assetsshare/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
+	</target>
 	<!-- Adobe AEM Assets: enabling smart tags -->
 	<target name="assets_smarttags" if="aem62orlater" depends="version,configuration">
 		<if>
@@ -5930,10 +5972,7 @@
 				<echo message="Upgrading the AEM instance on port ${port} with AEM Communities Scorm bundle"/>
 				<if>
 					<and>
-						<or>
-							<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
-							<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
-						</or>
+						<equals arg1="${demo.communities.featurepack}" arg2="latest" casesensitive="false"/>
 						<resourceexists>
 							<file file="${dist}/downloads/cq-social-scorm-pkg-${demo.packages}.zip"/>
 						</resourceexists>
@@ -7000,7 +7039,7 @@
 				<echo message="Loading SQL file into internal MySQL server..."/>
 				<antcall target="mysql_script">
 					<param name="demo.sqlfile" value="${dist}/rdb/init-schema.sql"/>
-					<param name="dmeo.sqldatabase" value=""/>
+					<param name="demo.sqldatabase" value=""/>
 				</antcall>
 				<delete file="${dist}/rdb/init-schema.sql"/>
 				<!-- Configuring the datasource -->
