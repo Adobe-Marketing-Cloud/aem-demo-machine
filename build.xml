@@ -667,7 +667,7 @@
 						<property name="mongo.exec" value="${mongodb}/bin/mongo"/>
 					</then>
 					<else>
-						<property name="mongo.exec" value="${demo.mongo.path"/>
+						<property name="mongo.exec" value="${demo.mongo.path}"/>
 					</else>
 				</if>
 				<exec executable="${mongo.exec}" spawn="true">
@@ -3359,6 +3359,18 @@
 				<antcall target="package">
 					<param name="package" value="${dist}/community/livefyre/cq-demo-livefyre-1.0.zip"/>
 				</antcall>
+				<if>
+					<or>
+						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+					</or>
+					<then>
+						<property name="cloudservice.root" value="/conf/we-retail/settings/cloudconfigs"/>
+					</then>
+					<else>
+						<property name="cloudservice.root" value="/etc/cloudservices/livefyre"/>
+					</else>
+				</if>
 				<echo message="Creating Livefyre cloud service"/>
 				<exec executable="curl">
 					<arg line="--output '${logs}/${port}_livefyre_cloudservice.html'"/>
@@ -3367,7 +3379,7 @@
 					<arg line="-X POST"/>
 					<arg line="-d cmd=createPage"/>
 					<arg line="-d _charset_=utf-8"/>
-					<arg line="-d parentPath=/etc/cloudservices/livefyre"/>
+					<arg line="-d parentPath=${cloudservice.root}"/>
 					<arg line="-d title=DemoMachine"/>
 					<arg line="-d label=DemoMachine"/>
 					<arg line="-d template=/libs/social/integrations/livefyre/cloudconfig/pagetemplate"/>
@@ -3386,7 +3398,7 @@
 					<arg line="-d './communities.integration.livefyre.networkkey@Encrypted='"/>
 					<arg line="-d ./userDataFieldMapping@Delete="/>
 					<arg line="-d ./sling:resourceType=/libs/social/integrations/livefyre/cloudconfig/livefyre-config"/>
-					<arg line="http://${demo.host}:${port}/etc/cloudservices/livefyre/DemoMachine/jcr:content"/>
+					<arg line="http://${demo.host}:${port}${cloudservice.root}/DemoMachine/jcr:content"/>
 				</exec>
 			</then>
 		</if>
