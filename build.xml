@@ -667,7 +667,7 @@
 						<property name="mongo.exec" value="${mongodb}/bin/mongo"/>
 					</then>
 					<else>
-						<property name="mongo.exec" value="${demo.mongo.path}c"/>
+						<property name="mongo.exec" value="${demo.mongo.path}"/>
 					</else>
 				</if>
 				<exec executable="${mongo.exec}" spawn="true">
