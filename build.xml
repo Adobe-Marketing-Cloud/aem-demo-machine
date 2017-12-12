@@ -667,7 +667,7 @@
 						<property name="mongo.exec" value="${mongodb}/bin/mongo"/>
 					</then>
 					<else>
-						<property name="mongo.exec" value="${demo.mongo.path}"/>
+						<property name="mongo.exec" value="${demo.mongo.path}c"/>
 					</else>
 				</if>
 				<exec executable="${mongo.exec}" spawn="true">
@@ -5843,7 +5843,7 @@
 		<exec executable="curl">
 			<arg line="--output '${logs}/${demomachine.authorport}_extra_${extrademoname}.html'"/>
 			<arg line="-v -u admin:${demo.admin.password}"/>
-			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}&amp;${extrademocurl}"/>
+			<arg line="http://${demo.host}:${demomachine.authorport}/bin/CreateCommunities?password=${demo.admin.password}&amp;port_author=${demomachine.authorport}${demo.loader.publish}&amp;hostname_author=${demo.host}${extrademocurl}${demo.loader.minimize}${demo.loader.noenablement}${demo.loader.composite}${demo.loader.nomultilingual}"/>
 		</exec>
 	</target>
 	<!-- Target for loading the scoring demo site for AEM Communities -->
