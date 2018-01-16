@@ -4923,6 +4923,18 @@
 				</foreach>
 			</then>
 		</if>
+		<if>
+			<socket server="${demo.host}" port="${demomachine.farmport}"/>
+			<then>
+				<foreach target="package_farm" param="package">
+					<path id="assets.packages">
+						<fileset dir="${dist}" casesensitive="yes">
+							<include name="samples/assetsshare/*.zip"/>
+						</fileset>
+					</path>
+				</foreach>
+			</then>
+		</if>
 	</target>
 	<!-- Adobe AEM Assets: enabling smart tags -->
 	<target name="assets_smarttags" if="aem62orlater" depends="version,configuration">
