@@ -9,7 +9,7 @@ services:
         aem_port: ##AdobeAEM.farmport##
         read_only: "true"
     environment:
-     - runmodes=crx3tar
+     - runmodes=global-tar
     ports:
      - "##AdobeAEM.farmport##:##AdobeAEM.farmport##"
     volumes:

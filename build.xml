@@ -584,7 +584,7 @@
 			</or>
 			<then>
 				<!-- Updating the yml files to reference the Mongo container and the associated settings -->
-				<replace file="${demos}/${demo.build}/aem-${demo.instance}.yml" token="crx3tar" value="crx3mongo,fds${line.separator}     - mongodb_uri=mongodb://mongo${demo.build}:${demo.mongo.port}${line.separator}     - mongodb_name=aem_${demo.mode}"/>
+				<replace file="${demos}/${demo.build}/aem-${demo.instance}.yml" token="global-tar" value="global-mongo,fds${line.separator}     - mongodb_uri=mongodb://mongo${demo.build}:${demo.mongo.port}${line.separator}     - mongodb_name=aem_${demo.mode}"/>
 			</then>
 		</if>
 		<if>

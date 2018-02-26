@@ -70,7 +70,7 @@ public class AemDemoUtils {
 		File folder = new File(demoMachineRootFolder + File.separator + "demos");
 		if (folder.exists()) {
 			File[] listOfFiles = folder.listFiles();
-
+			Arrays.sort(listOfFiles);
 			for (int i = 0; i < listOfFiles.length; i++) {
 				if (listOfFiles[i].isDirectory()) {
 					demoMachines.addElement(listOfFiles[i].getName());
@@ -90,6 +90,7 @@ public class AemDemoUtils {
 		// First, loading the .jar files from the /dist/bin folder
 		File folder = new File(buildFile.getParentFile().getAbsolutePath() + File.separator + "dist" + File.separator + "bin");
 		File[] listOfFiles = folder.listFiles();
+		Arrays.sort(listOfFiles);
 
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isFile() && listOfFiles[i].getName().endsWith(".jar")) {

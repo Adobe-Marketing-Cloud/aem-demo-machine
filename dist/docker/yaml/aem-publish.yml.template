@@ -9,7 +9,7 @@ services:
         aem_port: ##AdobeAEM.publishport##
         read_only: "true"
     environment:
-     - runmodes=crx3tar
+     - runmodes=global-tar
     ports:
      - "##AdobeAEM.publishport##:##AdobeAEM.publishport##"
     volumes:
