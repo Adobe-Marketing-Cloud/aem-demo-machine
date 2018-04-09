@@ -4,6 +4,7 @@ Double-click on demomachine.jar to get started.
 Full instructions at https://github.com/Adobe-Marketing-Cloud/aem-demo-machine/wiki
 
 Recent Changes:
+- 2018-04-12: AEM 6.4: GA download option and support
 - 2017-10-28: Major cleanup of the Git repo for the Demo Machine - back to 130Mb
 - 2017-09-06: Ability to create environments based on Docker images and containers
 - 2017-04-23: AEM 6.3: GA download option and support

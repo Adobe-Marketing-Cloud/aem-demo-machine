@@ -677,6 +677,14 @@ public class AemDemo {
 		});
 		mntmAemDownload.add(mntmAemSnapshot);
 
+		JMenuItem mntmAemDownloadAEM64 = new JMenuItem("Download AEM 6.4");
+		mntmAemDownloadAEM64.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_aem64");
+			}
+		});
+		mntmAemDownload.add(mntmAemDownloadAEM64);
+
 		JMenuItem mntmAemDownloadAEM63 = new JMenuItem("Download AEM 6.3");
 		mntmAemDownloadAEM63.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {

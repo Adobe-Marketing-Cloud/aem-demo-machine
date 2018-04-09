@@ -2541,6 +2541,15 @@
 		</if>
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
+	<target name="download_aem64" depends="download_prereqs">
+		<echo message="Downloading AEM 6.4"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="-s -L -o '${dist}/downloads/aem64.jar' ${demo.download.aem.artifactory}${demo.download.aem.64}"/>
+		</exec>
+		<echo message="AEM 6.4 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/aem64.jar" todir="${dist}/bin"/>
+	</target>
 	<target name="download_aem63" depends="download_prereqs">
 		<echo message="Downloading AEM 6.3"/>
 		<mkdir dir="${dist}/downloads"/>
@@ -3147,6 +3156,11 @@
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/communities-aem64-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.13.${latest113}/cq-socialcommunities-pkg-1.13.${latest113}.zip"/>
 		</exec>
+		<propertyregex property="latest114" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.14\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-socialcommunities-pkg-1.14.${latest114}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/communities-aem64-latest.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.14.${latest114}/cq-socialcommunities-pkg-1.14.${latest114}.zip"/>
+		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -3176,6 +3190,11 @@
 		<echo message="Downloading cq-social-expert-identification-pkg-1.2.${latest12}.zip"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.2.${latest12}/cq-social-expert-identification-pkg-1.2.${latest12}.zip"/>
+		</exec>
+		<propertyregex property="latest13" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.2\.)([0-9]*)(\,1\.^2\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-social-expert-identification-pkg-1.3.${latest13}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem65.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.3.${latest12}/cq-social-expert-identification-pkg-1.3.${latest13}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
@@ -3207,6 +3226,11 @@
 		<echo message="Downloading cq-social-scorm-pkg-1.2.${latest12}.zip"/>
 		<exec executable="curl">
 			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.2.${latest12}/cq-social-scorm-pkg-1.2.${latest12}.zip"/>
+		</exec>
+		<propertyregex property="latest13" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.3\.)([0-9]*)(\,1\.^3\.[0-9]*)*" select="\3"/>
+		<echo message="Downloading cq-social-scorm-pkg-1.3.${latest13}.zip"/>
+		<exec executable="curl">
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem65.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.3.${latest13}/cq-social-scorm-pkg-1.3.${latest12}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
@@ -3498,6 +3522,9 @@
 			</else>
 		</if>
 		<!-- These conditions are used to run specitic targets only on certain releases -->
+		<condition property="aem65">
+			<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+		</condition>
 		<condition property="aem64">
 			<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 		</condition>
@@ -3517,6 +3544,12 @@
 			<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
 		</condition>
 		<!-- This property determines where to load the demo packages from -->
+		<if>
+			<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem65"/>
+			</then>
+		</if>
 		<if>
 			<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 			<then>
@@ -3554,17 +3587,25 @@
 			</then>
 		</if>
 		<!-- These conditions are used to run specitic targets starting with a certain release or later -->
+		<condition property="aem65orlater">
+			<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+		</condition>
 		<condition property="aem64orlater">
-			<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+			<or>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+			</or>
 		</condition>
 		<condition property="aem63orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 			</or>
 		</condition>
 		<condition property="aem62orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
@@ -3572,6 +3613,7 @@
 		</condition>
 		<condition property="aem61orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
@@ -3580,6 +3622,7 @@
 		</condition>
 		<condition property="aem60orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
@@ -3589,6 +3632,7 @@
 		</condition>
 		<condition property="cq56orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.2" casesensitive="false"/>
@@ -6113,6 +6157,7 @@
 		<replace file="${template_distfile}" token="##demo.solr.path##" value="${demos}/${demo.build}/solr"/>
 		<replace file="${template_distfile}" token="##demo.mysql.path##" value="${demos}/${demo.build}/mysql"/>
 		<replace file="${template_distfile}" token="##demomachine.jar##" value="${demomachine.jar}"/>
+		<replace file="${template_distfile}" token="##demo.mode##" value="${demo.mode}"/>
 		<replace file="${template_distfile}" token="##AdobeAEM.memorymin##" value="${AdobeAEM.memorymin}"/>
 		<replace file="${template_distfile}" token="##AdobeAEM.memorymax##" value="${AdobeAEM.memorymax}"/>
 		<replace file="${template_distfile}" token="##demo.loglevel##" value="${demo.loglevel}"/>
