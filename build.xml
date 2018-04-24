@@ -7791,9 +7791,19 @@
 				<echo message="Rebuilding ${demo.build}"/>
 				<!-- Rebuilding via ANT -->
 				<mkdir dir="${validation}/build"/>
-				<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
-					<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' -Ddemo.build=${demo.build} create"/>
-				</exec>
+				<if>
+					<os family="mac"/>
+					<then>
+						<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
+							<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' -Ddemo.build=${demo.build} create"/>
+						</exec>
+					</then>
+					<else>
+						<exec executable="${ant}/bin/ant.cmd" dir="." spawn="false" output="${validation}/build/${demo.build}.log" failonerror="false">
+							<arg line="-propertyfile '${demos}/${demo.build}/demobuild.properties' -Ddemo.build=${demo.build} create"/>
+						</exec>
+					</else>
+				</if>
 			</then>
 		</if>
 	</target>
@@ -7937,9 +7947,19 @@
 					</not>
 					<then>
 						<echo message="Rebuilding demo environment: ${demo}"/>
-						<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
-							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
-						</exec>
+						<if>
+							<os family="mac"/>
+							<then>
+								<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
+									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
+								</exec>
+							</then>
+							<else>
+								<exec executable="${ant}/bin/ant.cmd" dir="." spawn="false" output="${validation}/build/${demo}.log" failonerror="false">
+									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} -Ddemo.gui=false -Ddemo.nobrowser=true create"/>
+								</exec>
+							</else>
+						</if>
 						<propertyfile file="${demos}/${demo}/demobuild.properties">
 							<entry key="demo.gui" value="true"/>
 							<entry key="demo.nobrowser" value="false"/>
@@ -8077,16 +8097,36 @@
 					<then>
 						<!-- Stopping in anycase -->
 						<echo message="Stopping demo environment: ${demo}"/>
-						<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-stop.log" failonerror="false">
-							<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} stop"/>
-						</exec>
+						<if>
+							<os family="mac"/>
+							<then>
+								<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-stop.log" failonerror="false">
+									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} stop"/>
+								</exec>
+							</then>
+							<else>
+								<exec executable="${ant}/bin/ant.cmd" dir="." spawn="false" output="${validation}/build/${demo}-stop.log" failonerror="false">
+									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} stop"/>
+								</exec>
+							</else>
+						</if>
 						<if>
 							<resourcecontains resource="${demos}/${demo}/demobuild.properties" substring="demo.validation.wipeout=true"/>
 							<then>
 								<echo message="Cleaning demo environment: ${demo}"/>
-								<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
-									<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
-								</exec>
+								<if>
+									<os family="mac"/>
+									<then>
+										<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+											<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
+										</exec>
+									</then>
+									<else>
+										<exec executable="${ant}/bin/ant.cmd" dir="." spawn="false" output="${validation}/build/${demo}-clean.log" failonerror="false">
+											<arg line="-propertyfile '${demos}/${demo}/demobuild.properties' -Ddemo.build=${demo} cleanup"/>
+										</exec>
+									</else>
+								</if>
 							</then>
 						</if>
 					</then>
@@ -8300,9 +8340,19 @@
 			</resourceexists>
 			<then>
 				<echo message="Stopping demo environment: ${demo}"/>
-				<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${logs}/stop.log" failonerror="false">
-					<arg line="-Ddemo.build=${demo} stop"/>
-				</exec>
+				<if>
+					<os family="mac"/>
+					<then>
+						<exec executable="${ant}/bin/ant" dir="." spawn="false" output="${logs}/stop.log" failonerror="false">
+							<arg line="-Ddemo.build=${demo} stop"/>
+						</exec>
+					</then>
+					<else>
+						<exec executable="${ant}/bin/ant.cmd" dir="." spawn="false" output="${logs}/stop.log" failonerror="false">
+							<arg line="-Ddemo.build=${demo} stop"/>
+						</exec>
+					</else>
+				</if>
 			</then>
 		</if>
 	</target>
