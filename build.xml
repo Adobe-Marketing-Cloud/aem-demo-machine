@@ -1455,7 +1455,22 @@
 				<echo message="Setting dynamic media runmode"/>
 			</then>
 			<else>
-				<property name="dynamicmedia.runmode" value=""/>
+				<if>
+					<and>
+						<equals arg1="${demomachine.dynamicmedia_scene7}" arg2="true" casesensitive="false"/>
+						<or>
+							<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+							<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+						</or>
+					</and>
+					<then>
+						<property name="dynamicmedia.runmode" value=",dynamicmedia_scene7"/>
+						<echo message="Setting dynamic media scene7 runmode"/>
+					</then>
+					<else>
+						<property name="dynamicmedia.runmode" value=""/>
+					</else>
+				</if>
 			</else>
 		</if>
 		<!-- Calculate if we need the nosamples runmode -->
