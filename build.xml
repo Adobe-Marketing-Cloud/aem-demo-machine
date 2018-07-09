@@ -7058,7 +7058,11 @@
 	<target name="community_srp" depends="version,configuration">
 		<!-- Configuration URL is changing with 6.4+ -->
 		<if>
-			<equals arg1="${demo.packages}" arg2="aem64" casesensitive="false"/>
+			<or>
+				<equals arg1="${demo.packages}" arg2="aem64" casesensitive="false"/>
+				<equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
+				<equals arg1="${demo.packages}" arg2="aem66" casesensitive="false"/>
+			</or>
 			<then>
 				<property name="srp.path" value="/conf/global/settings/community/srpc/defaultconfiguration"/>
 			</then>
