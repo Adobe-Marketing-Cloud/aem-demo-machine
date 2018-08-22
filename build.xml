@@ -922,10 +922,21 @@
 				<if>
 					<contains string="${demomachine.jar}" substring=":"/>
 					<then>
-						<copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.38-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.38/mysql-connector-java-5.1.38.jar" overwrite="true"/>
-						<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
-						<echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.38/jar${line.separator}"/>
-						<delete dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+						<if>
+                                                        <equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
+                                                        <then>
+                                                                <copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.46-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.46/mysql-connector-java-5.1.46.jar" overwrite="true"/>
+                                                                <property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+                                                                <echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.46/jar${line.separator}"/>
+                                                                <delete dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+                                                        </then>
+                                                        <else>
+								<copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.38-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.38/mysql-connector-java-5.1.38.jar" overwrite="true"/>
+								<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+								<echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.38/jar${line.separator}"/>
+								<delete dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+							</else>
+						</if>
 					</then>
 				</if>
 				<!-- Need to reset the schemas if already there -->
@@ -2017,18 +2028,31 @@
 				<if>
 					<equals arg1="${demo.communities.scorm}" arg2="true" casesensitive="false"/>
 					<then>
-						<antcall target="mysql_schema_instance">
-							<param name="mysql.path" value="${dist}/rdb"/>
-							<param name="mysql.file" value="database_scormengine"/>
-							<param name="mysql.schema" value="scorm"/>
-							<param name="mysql.db" value=""/>
-						</antcall>
-						<antcall target="mysql_schema_instance">
-							<param name="mysql.path" value="${dist}/rdb"/>
-							<param name="mysql.file" value="database_scorm_integration"/>
-							<param name="mysql.schema" value="scorm"/>
-							<param name="mysql.db" value=""/>
-						</antcall>
+						 <if>
+                                                        <equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
+                                                        <then>
+                                                                <antcall target="mysql_schema_instance">
+                                                                        <param name="mysql.path" value="${dist}/rdb"/>
+                                                                        <param name="mysql.file" value="database_scormengine_data"/>
+                                                                        <param name="mysql.schema" value="scorm"/>
+                                                                        <param name="mysql.db" value=""/>
+                                                                </antcall>
+                                                        </then>
+                                                        <else>
+								<antcall target="mysql_schema_instance">
+									<param name="mysql.path" value="${dist}/rdb"/>
+									<param name="mysql.file" value="database_scormengine"/>
+									<param name="mysql.schema" value="scorm"/>
+									<param name="mysql.db" value=""/>
+								</antcall>
+								<antcall target="mysql_schema_instance">
+									<param name="mysql.path" value="${dist}/rdb"/>
+									<param name="mysql.file" value="database_scorm_integration"/>
+									<param name="mysql.schema" value="scorm"/>
+									<param name="mysql.db" value=""/>
+								</antcall>
+							</else>
+						</if>
 					</then>
 				</if>
 			</then>
@@ -3243,9 +3267,9 @@
 			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.2.${latest12}/cq-social-scorm-pkg-1.2.${latest12}.zip"/>
 		</exec>
 		<propertyregex property="latest13" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.3\.)([0-9]*)(\,1\.^3\.[0-9]*)*" select="\3"/>
-		<echo message="Downloading cq-social-scorm-pkg-1.3.${latest13}.zip"/>
+		<echo message="Downloading cq-social-scorm-pkg-2.3.${latest13}.zip"/>
 		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem65.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.3.${latest13}/cq-social-scorm-pkg-1.3.${latest12}.zip"/>
+			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem65.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/2.3.${latest13}/cq-social-scorm-pkg-2.3.${latest12}.zip"/>
 		</exec>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
