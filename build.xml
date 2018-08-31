@@ -2899,14 +2899,18 @@
 		<antcall target="download_solr"/>
 		<antcall target="download_mysql"/>
 		<antcall target="download_james"/>
+		<!--
 		<antcall target="download_ffmpeg"/>
+		-->
 	</target>
 	<target name="infrastructure_install">
 		<antcall target="install_mongo"/>
 		<antcall target="install_solr"/>
 		<antcall target="install_mysql"/>
 		<antcall target="install_james"/>
+		<!--
 		<antcall target="install_ffmpeg"/>
+		-->
 	</target>
 	<!-- Target for downloading the MongoDB software -->
 	<target name="download_mongo">
