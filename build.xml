@@ -923,14 +923,14 @@
 					<contains string="${demomachine.jar}" substring=":"/>
 					<then>
 						<if>
-                                                        <equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
-                                                        <then>
-                                                                <copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.46-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.46/mysql-connector-java-5.1.46.jar" overwrite="true"/>
-                                                                <property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
-                                                                <echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.46/jar${line.separator}"/>
-                                                                <delete dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
-                                                        </then>
-                                                        <else>
+							<equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
+							<then>
+								<copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.46-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.46/mysql-connector-java-5.1.46.jar" overwrite="true"/>
+								<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
+								<echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.46/jar${line.separator}"/>
+								<delete dir="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install"/>
+							</then>
+							<else>
 								<copy file="${demos}/${demo.build}/${demo.instance}/crx-quickstart/install/mysql/9/mysql-connector-java-5.1.38-bin.jar" tofile="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/mysql-connector-java/5.1.38/mysql-connector-java-5.1.38.jar" overwrite="true"/>
 								<property name="provisioning.model" value="${demos}/${demo.build}/${demo.instance}/crx-quickstart/launcher/cache/com/adobe/aem/demomachine/demo/1.0.0-SNAPSHOT/demo-1.0.0-SNAPSHOT.txt"/>
 								<echo file="${provisioning.model}" append="true" message="${line.separator}[artifacts startLevel=9]${line.separator}com.adobe.aem.demomachine/mysql-connector-java/5.1.38/jar${line.separator}"/>
@@ -2029,16 +2029,16 @@
 					<equals arg1="${demo.communities.scorm}" arg2="true" casesensitive="false"/>
 					<then>
 						<if>
-                                                        <equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
-                                                        <then>
-                                                                <antcall target="mysql_schema_instance">
-                                                                        <param name="mysql.path" value="${dist}/rdb"/>
-                                                                        <param name="mysql.file" value="database_scormengine_data"/>
-                                                                        <param name="mysql.schema" value="scorm"/>
-                                                                        <param name="mysql.db" value=""/>
-                                                                </antcall>
-                                                        </then>
-                                                        <else>
+							<equals arg1="${demo.packages}" arg2="aem65" casesensitive="false"/>
+							<then>
+								<antcall target="mysql_schema_instance">
+									<param name="mysql.path" value="${dist}/rdb"/>
+									<param name="mysql.file" value="database_scormengine_data"/>
+									<param name="mysql.schema" value="scorm"/>
+									<param name="mysql.db" value=""/>
+								</antcall>
+							</then>
+							<else>
 								<antcall target="mysql_schema_instance">
 									<param name="mysql.path" value="${dist}/rdb"/>
 									<param name="mysql.file" value="database_scormengine"/>
@@ -2582,64 +2582,64 @@
 	<!-- Targets for downloading release versions of QuickStart -->
 	<target name="download_aem64" depends="download_prereqs">
 		<echo message="Downloading AEM 6.4"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/aem64.jar' ${demo.download.aem.artifactory}${demo.download.aem.64}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aem64.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.64}"/>
+		</antcall>
 		<echo message="AEM 6.4 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem64.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_aem63" depends="download_prereqs">
 		<echo message="Downloading AEM 6.3"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/aem63.jar' ${demo.download.aem.artifactory}${demo.download.aem.63}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aem63.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.63}"/>
+		</antcall>
 		<echo message="AEM 6.3 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem63.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_aem62" depends="download_prereqs">
 		<echo message="Downloading AEM 6.2"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/aem62.jar' ${demo.download.aem.artifactory}${demo.download.aem.62}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aem62.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.62}"/>
+		</antcall>
 		<echo message="AEM 6.2 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem62.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_aem61" depends="download_prereqs">
 		<echo message="Downloading AEM 6.1"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/aem61.jar' ${demo.download.aem.artifactory}${demo.download.aem.61}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aem61.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.61}"/>
+		</antcall>
 		<echo message="AEM 6.1 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem61.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_aem60" depends="download_prereqs">
 		<echo message="Downloading AEM 6.0"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/aem60.jar' ${demo.download.aem.artifactory}${demo.download.aem.60}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aem60.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.60}"/>
+		</antcall>
 		<echo message="AEM 6.0 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/aem60.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_cq561" depends="download_prereqs">
 		<echo message="Downloading CQ 5.6.1"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/cq561.jar' ${demo.download.aem.artifactory}${demo.download.aem.561}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq561.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.561}"/>
+		</antcall>
 		<echo message="CQ 5.6.1 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/cq561.jar" todir="${dist}/bin"/>
 	</target>
 	<target name="download_cq56" depends="download_prereqs">
 		<echo message="Downloading CQ 5.6"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -L -o '${dist}/downloads/cq56.jar' ${demo.download.aem.artifactory}${demo.download.aem.56}"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq56.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.56}"/>
+		</antcall>
 		<echo message="CQ 5.6 successfully downloaded in /dist/bin"/>
 		<move file="${dist}/downloads/cq56.jar" todir="${dist}/bin"/>
 	</target>
@@ -2830,50 +2830,52 @@
 	</target>
 	<!-- Target for downloading the latest AEM load  -->
 	<target name="download_load" depends="download_prereqs">
-		<mkdir dir="${dist}/downloads"/>
 		<echo message="Downloading cq-quickstart-${demo.load}.jar"/>
-		<exec executable="curl">
-			<arg line="-s -k -o '${dist}/downloads/${demo.load}.jar' ${demo.download.aem.artifactory}/artifactory/maven-aem-release-local/com/day/cq/cq-quickstart/${demo.load}/cq-quickstart-${demo.load}.jar"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="${demo.load}.jar"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-release-local/com/day/cq/cq-quickstart/${demo.load}/cq-quickstart-${demo.load}.jar"/>
+		</antcall>
 		<echo message="AEM Load downloaded as ${demo.load}.jar in /dist/bin"/>
 		<move file="${dist}/downloads/${demo.load}.jar" todir="${dist}/bin" overwrite="true"/>
 	</target>
 	<!-- Target for downloading the latest QuickStart snapshot -->
 	<target name="download_snapshot" depends="download_prereqs">
 		<echo message="Downloading a AEM QuickStart snapshot build ${demo.snapshot}"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/maven-metadata.xml' ${demo.download.aem.artifactory}/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/maven-metadata.xml"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="maven-metadata.xml"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/maven-metadata.xml"/>
+		</antcall>
 		<xmlproperty file="${dist}/downloads/maven-metadata.xml"/>
 		<if>
 			<equals arg1="${demo.snapshot}" arg2="latest" casesensitive="false"/>
 			<then>
-				<exec executable="curl">
-					<arg line="-s -k -o '${dist}/downloads/maven-metadata-snapshot.xml' ${demo.download.aem.artifactory}/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${metadata.versioning.latest}/maven-metadata.xml"/>
-				</exec>
+				<antcall target="download_artifactory">
+					<param name="download.filename" value="maven-metadata-snapshot.xml"/>
+					<param name="download.artifact" value="/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${metadata.versioning.latest}/maven-metadata.xml"/>
+				</antcall>
 			</then>
 			<else>
-				<exec executable="curl">
-					<arg line="-s -k -o '${dist}/downloads/maven-metadata-snapshot.xml' ${demo.download.aem.artifactory}/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${demo.snapshot}/maven-metadata.xml"/>
-				</exec>
+				<antcall target="download_artifactory">
+					<param name="download.filename" value="maven-metadata-snapshot.xml"/>
+					<param name="download.artifact" value="/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${demo.snapshot}/maven-metadata.xml"/>
+				</antcall>
 			</else>
 		</if>
 		<if>
 			<resourcecontains resource="${dist}/downloads/maven-metadata-snapshot.xml" substring="404 - Path /com/day/cq"/>
 			<then>
-				<echo message="Downloading cq-quickstart-${demo.snapshot}.jar"/>
-				<exec executable="curl">
-					<arg line="-s -k -o '${dist}/downloads/snapshot.jar' ${demo.download.aem.artifactory}/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${demo.snapshot}.jar"/>
-				</exec>
+				<antcall target="download_artifactory">
+					<param name="download.filename" value="snapshot.jar"/>
+					<param name="download.artifact" value="/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${demo.snapshot}.jar"/>
+				</antcall>
 			</then>
 			<else>
 				<xmlproperty file="${dist}/downloads/maven-metadata-snapshot.xml"/>
 				<propertyregex property="snapshotfile" input="${metadata.versioning.snapshotVersions.snapshotVersion.value}" regexp="(^\b.*?)," select="\1" casesensitive="false"/>
-				<echo message="Downloading cq-quickstart-${snapshotfile}.jar"/>
-				<exec executable="curl">
-					<arg line="-s -k -o '${dist}/downloads/snapshot.jar' ${demo.download.aem.artifactory}/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${snapshotfile}.jar"/>
-				</exec>
+				<antcall target="download_artifactory">
+					<param name="download.filename" value="snapshot.jar"/>
+					<param name="download.artifact" value="/artifactory/maven-aem-snapshot-local/com/day/cq/cq-quickstart/${demo.snapshot}/cq-quickstart-${snapshotfile}.jar"/>
+				</antcall>
 			</else>
 		</if>
 		<echo message="AEM Snapshot downloaded as snapshot.jar in /dist/bin"/>
@@ -3159,51 +3161,59 @@
 	<!-- Target for downloading latest Communities bundles -->
 	<target name="download_communities_bundles" depends="download_prereqs">
 		<echo message="Downloading latest Communities bundles for various versions (service packs and feature packs)"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/maven-metadata.xml"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="nexus.xml"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/maven-metadata.xml"/>
+		</antcall>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
 		<propertyregex property="latest17" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.7\.)([0-9]*)(\,1\.^7\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem61-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.7.${latest17}/cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem61-release.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.7.${latest17}/cq-socialcommunities-pkg-1.7.${latest17}.zip"/>
+		</antcall>
 		<propertyregex property="latest18" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.8\.)([0-9]*)(\,1\.^8\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem61-latest.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.8.${latest18}/cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem61-latest.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.8.${latest18}/cq-socialcommunities-pkg-1.8.${latest18}.zip"/>
+		</antcall>
 		<propertyregex property="latest19" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.9\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem62-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.9.${latest19}/cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem62-release.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.9.${latest19}/cq-socialcommunities-pkg-1.9.${latest19}.zip"/>
+		</antcall>
 		<propertyregex property="latest110" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.10\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem62-latest.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.10.${latest110}/cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem62-latest.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.10.${latest110}/cq-socialcommunities-pkg-1.10.${latest110}.zip"/>
+		</antcall>
 		<propertyregex property="latest111" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.11\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem63-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.11.${latest111}/cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem63-release.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.11.${latest111}/cq-socialcommunities-pkg-1.11.${latest111}.zip"/>
+		</antcall>
 		<propertyregex property="latest112" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.12\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.12.${latest112}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem63-latest.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.12.${latest112}/cq-socialcommunities-pkg-1.12.${latest112}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem63-latest.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.12.${latest112}/cq-socialcommunities-pkg-1.12.${latest112}.zip"/>
+		</antcall>
 		<propertyregex property="latest113" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.13\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.13.${latest113}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem64-release.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.13.${latest113}/cq-socialcommunities-pkg-1.13.${latest113}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem64-release.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.13.${latest113}/cq-socialcommunities-pkg-1.13.${latest113}.zip"/>
+		</antcall>
 		<propertyregex property="latest114" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.14\.)([0-9]*)(\,1\.^9\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-socialcommunities-pkg-1.14.${latest114}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/communities-aem64-latest.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.14.${latest114}/cq-socialcommunities-pkg-1.14.${latest114}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="communities-aem64-latest.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-socialcommunities-pkg/1.14.${latest114}/cq-socialcommunities-pkg-1.14.${latest114}.zip"/>
+		</antcall>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -3211,34 +3221,39 @@
 	<!-- Target for downloading latest Advanced Scoring and Badging Packages -->
 	<target name="download_communities_advanced" depends="download_prereqs">
 		<echo message="Downloading latest advanced scoring package"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/maven-metadata.xml"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="nexus.xml"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/maven-metadata.xml"/>
+		</antcall>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
 		<propertyregex property="latest10" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.0\.)([0-9]*)(\,1\.^0\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem61.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.0.${latest10}/cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-expert-identification-pkg-aem61.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.0.${latest10}/cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
+		</antcall>
 		<echo message="Downloading cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem62.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.0.${latest10}/cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-expert-identification-pkg-aem62.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.0.${latest10}/cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
+		</antcall>
 		<echo message="Downloading cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem63.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.0.${latest10}/cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-expert-identification-pkg-aem63.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.0.${latest10}/cq-social-expert-identification-pkg-1.0.${latest10}.zip"/>
+		</antcall>
 		<propertyregex property="latest12" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.2\.)([0-9]*)(\,1\.^2\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-expert-identification-pkg-1.2.${latest12}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.2.${latest12}/cq-social-expert-identification-pkg-1.2.${latest12}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-expert-identification-pkg-aem64.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.2.${latest12}/cq-social-expert-identification-pkg-1.2.${latest12}.zip"/>
+		</antcall>
 		<propertyregex property="latest13" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.2\.)([0-9]*)(\,1\.^2\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-expert-identification-pkg-1.3.${latest13}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-expert-identification-pkg-aem65.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.3.${latest12}/cq-social-expert-identification-pkg-1.3.${latest13}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-expert-identification-pkg-aem65.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-expert-identification-pkg/1.3.${latest12}/cq-social-expert-identification-pkg-1.3.${latest13}.zip"/>
+		</antcall>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -3246,35 +3261,40 @@
 	<!-- Target for downloading latest Scorm bundle -->
 	<target name="download_communities_scorm" depends="download_prereqs">
 		<echo message="Downloading latest SCORM bundle"/>
-		<mkdir dir="${dist}/downloads"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/nexus.xml' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/maven-metadata.xml"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="nexus.xml"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/maven-metadata.xml"/>
+		</antcall>
 		<xmlproperty file="${dist}/downloads/nexus.xml"/>
 		<propertyregex property="latest10" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.0\.)([0-9]*)(\,1\.^0\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-scorm-pkg-1.0.${latest10}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem61.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.0.${latest10}/cq-social-scorm-pkg-1.0.${latest10}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-scorm-pkg-aem61.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.0.${latest10}/cq-social-scorm-pkg-1.0.${latest10}.zip"/>
+		</antcall>
 		<echo message="Downloading cq-social-scorm-pkg-1.0.${latest10}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem62.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.0.${latest10}/cq-social-scorm-pkg-1.0.${latest10}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-scorm-pkg-aem62.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.0.${latest10}/cq-social-scorm-pkg-1.0.${latest10}.zip"/>
+		</antcall>
 		<propertyregex property="latest11" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.1\.)([0-9]*)(\,1\.^1\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-scorm-pkg-1.1.${latest11}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem63.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-scorm-pkg-aem63.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.1.${latest11}/cq-social-scorm-pkg-1.1.${latest11}.zip"/>
+		</antcall>
 		<propertyregex property="latest12" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.2\.)([0-9]*)(\,1\.^2\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-scorm-pkg-1.2.${latest12}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem64.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.2.${latest12}/cq-social-scorm-pkg-1.2.${latest12}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-scorm-pkg-aem64.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/1.2.${latest12}/cq-social-scorm-pkg-1.2.${latest12}.zip"/>
+		</antcall>
 		<propertyregex property="latest13" input="${metadata.versioning.versions.version}" regexp="(.*)(1\.3\.)([0-9]*)(\,1\.^3\.[0-9]*)*" select="\3"/>
 		<echo message="Downloading cq-social-scorm-pkg-2.3.${latest13}.zip"/>
-		<exec executable="curl">
-			<arg line="-s -o '${dist}/downloads/cq-social-scorm-pkg-aem65.zip' ${demo.download.aem.artifactory}/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/2.3.${latest13}/cq-social-scorm-pkg-2.3.${latest13}.zip"/>
-		</exec>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="cq-social-scorm-pkg-aem65.zip"/>
+			<param name="download.artifact" value="/artifactory/maven-aem-dev/com/adobe/cq/social/cq-social-scorm-pkg/2.3.${latest13}/cq-social-scorm-pkg-2.3.${latest13}.zip"/>
+		</antcall>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -3283,14 +3303,24 @@
 	<target name="download_prereqs">
 		<if>
 			<or>
+				<equals arg1="${demo.download.user}" arg2="AdobeOnlyValueRequired" casesensitive="false"/>
+				<equals arg1="${demo.download.password}" arg2="AdobeOnlyValueRequired" casesensitive="false"/>
 				<equals arg1="${demo.download.aem.artifactory}" arg2="AdobeOnlyValueRequired" casesensitive="false"/>
 				<equals arg1="${demo.download}" arg2="AdobeOnlyValueRequired" casesensitive="false"/>
 				<equals arg1="${demo.scripts}" arg2="AdobeOnlyValueRequired" casesensitive="false"/>
 			</or>
 			<then>
-				<fail message="Please install the Adobe-only properties before using this feature (Search for the main AEM Demo Machine page in Adobe's corporate Wiki for detailed instructions and the attached set of properties). The following properties need new values: demo.download.aem.artifactory, demo.download and demo.scripts."/>
+				<fail message="Please install the Adobe-only properties before using this feature (Search for the main AEM Demo Machine page in Adobe's corporate Wiki for detailed instructions and the attached set of properties). The following properties need new values: demo.download.aem.artifactory, demo.download and demo.scripts. demo.download.user and demo.download.password must be set to your Adobe LDAP credentials"/>
 			</then>
 		</if>
+	</target>
+	<!-- Target for downloading from Artifactory -->
+	<target name="download_artifactory">
+		<echo message="Downloading ${download.filename}"/>
+		<mkdir dir="${dist}/downloads"/>
+		<exec executable="curl">
+			<arg line="--basic --user '${demo.download.user}:${demo.download.password}' -s -k -L -o '${dist}/downloads/${download.filename}' ${demo.download.aem.artifactory}${download.artifact}"/>
+		</exec>
 	</target>
 	<!-- Target for installing the FFMPEG software -->
 	<target name="install_ffmpeg" if="isMac">
