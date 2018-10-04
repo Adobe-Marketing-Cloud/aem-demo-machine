@@ -227,6 +227,14 @@
 				</if>
 				<if>
 					<not>
+						<isset property="demomachine.dynamicmedia_scene7"/>
+					</not>
+					<then>
+						<property name="demomachine.dynamicmedia_scene7" value="${demo.dynamicmedia_scene7}"/>
+					</then>
+				</if>
+				<if>
+					<not>
 						<isset property="demomachine.emailserver"/>
 					</not>
 					<then>
@@ -250,6 +258,7 @@
 				<property name="demomachine.jvmargs" value="${AdobeAEM.jvmargs}"/>
 				<property name="demomachine.jvmdebug" value="${AdobeAEM.jvmdebug}"/>
 				<property name="demomachine.dynamicmedia" value="${demo.dynamicmedia}"/>
+				<property name="demomachine.dynamicmedia_scene7" value="${demo.dynamicmedia_scene7}"/>
 				<property name="demomachine.authorport" value="${AdobeAEM.authorport}"/>
 				<property name="demomachine.clusterport" value="${AdobeAEM.clusterport}"/>
 				<property name="demomachine.publishport" value="${AdobeAEM.publishport}"/>
@@ -294,6 +303,7 @@
 		<echo message="Demo Author Port: ${demomachine.authorport}"/>
 		<echo message="Demo Publish Port: ${demomachine.publishport}"/>
 		<echo message="Demo Dynamic Media: ${demomachine.dynamicmedia}"/>
+		<echo message="Demo Dynamic Media S7: ${demomachine.dynamicmedia_scene7}"/>
 		<echo message="Demo JVM debug: ${demomachine.jvmdebug}"/>
 		<echo message="Demo JVM args: ${demomachine.jvmargs}"/>
 	</target>
@@ -311,6 +321,7 @@
 			<entry key="demomachine.type" value="${demo.type}"/>
 			<entry key="demomachine.store" value="${demo.store}"/>
 			<entry key="demomachine.dynamicmedia" value="${demo.dynamicmedia}"/>
+			<entry key="demomachine.dynamicmedia_scene7" value="${demo.dynamicmedia_scene7}"/>
 			<entry key="demomachine.authorport" value="${AdobeAEM.authorport}"/>
 			<entry key="demomachine.clusterport" value="${AdobeAEM.clusterport}"/>
 			<entry key="demomachine.publishport" value="${AdobeAEM.publishport}"/>
