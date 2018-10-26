@@ -188,7 +188,7 @@ public class AemDemo {
 		mnAbout.add(mntmUpdates);
 
 		JMenuItem mntmDoc = new JMenuItem("Help and Documentation");
-		mntmDoc.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+		mntmDoc.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		mntmDoc.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				AemDemoUtils.openWebpage(AemDemoUtils.getActualPropertyValue(defaultProperties, personalProperties, AemDemoConstants.OPTIONS_DOCUMENTATION));
