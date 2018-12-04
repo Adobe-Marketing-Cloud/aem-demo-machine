@@ -1499,7 +1499,7 @@
 		<if>
 			<equals arg1="${demo.nosamples}" arg2="true" casesensitive="false"/>
 			<then>
-				<property name="nosamples.runmode" value=",nosamples"/>
+				<property name="nosamples.runmode" value=",nosamplecontent"/>
 				<echo message="Setting no samples runmode"/>
 			</then>
 			<else>
@@ -1523,6 +1523,7 @@
 					<then>
 						<!-- AEM6.x use case -->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
+						<echo message="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
 						<antcall target="aem_start_java">
 							<param name="aem.start.jvmargs" value="${demomachine.jvmargs} ${demomachine.jvmargs.startupmode}"/>
 							<param name="aem.start.args" value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
@@ -3330,7 +3331,7 @@
 		<echo message="Downloading ${download.filename}"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
-			<arg line="--basic --user '${demo.download.user}:${demo.download.password}' -s -k -L -o '${dist}/downloads/${download.filename}' ${demo.download.aem.artifactory}${download.artifact}"/>
+			<arg line="--basic --user '${demo.download.artifactory.user}:${demo.download.artifactory.password}' -s -k -L -o '${dist}/downloads/${download.filename}' ${demo.download.aem.artifactory}${download.artifact}"/>
 		</exec>
 	</target>
 	<!-- Target for installing the FFMPEG software -->
@@ -8502,6 +8503,21 @@
 			<else>
 				<echo>No image to remove</echo>
 			</else>
+		</if>
+	</target>
+	<target name="demo_enable_crxde">
+		<exec executable="curl">
+			<arg line='-u admin:${demo.admin.password} -F "jcr:primaryType=sling:OsgiConfig" -F "alias=/crx/server" -F "dav.create-absolute-uri=true" -F "dav.create-absolute-uri@TypeHint=Boolean"'/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/apps/system/config/org.apache.sling.jcr.davex.impl.servlets.SlingDavExServlet"/>
+		</exec>
+		<if>
+			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
+			<then>
+				<exec executable="curl">
+					<arg line='-u admin:${demo.admin.password} -F "jcr:primaryType=sling:OsgiConfig" -F "alias=/crx/server" -F "dav.create-absolute-uri=true" -F "dav.create-absolute-uri@TypeHint=Boolean"'/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/apps/system/config/org.apache.sling.jcr.davex.impl.servlets.SlingDavExServlet"/>
+				</exec>
+			</then>
 		</if>
 	</target>
 	<target name="demo_encrypt">
