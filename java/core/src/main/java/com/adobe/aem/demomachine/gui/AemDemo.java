@@ -677,6 +677,23 @@ public class AemDemo {
 		});
 		mntmAemDownload.add(mntmAemSnapshot);
 
+		JMenuItem mntmAemDownloadAEMCloud = new JMenuItem("Download AEM Cloud SDK");
+		mntmAemDownloadAEMCloud.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+		mntmAemDownloadAEMCloud.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_aemcloudsdk");
+			}
+		});
+		mntmAemDownload.add(mntmAemDownloadAEMCloud);
+		
+		JMenuItem mntmAemDownloadAEM65 = new JMenuItem("Download AEM 6.5");
+		mntmAemDownloadAEM65.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AemDemoUtils.antTarget(AemDemo.this, "download_aem65");
+			}
+		});
+		mntmAemDownload.add(mntmAemDownloadAEM65);
+
 		JMenuItem mntmAemDownloadAEM64 = new JMenuItem("Download AEM 6.4");
 		mntmAemDownloadAEM64.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {

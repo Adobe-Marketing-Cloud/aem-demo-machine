@@ -1470,6 +1470,7 @@
 					<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
 					<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 					<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+					<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				</or>
 			</and>
 			<then>
@@ -1483,6 +1484,7 @@
 						<or>
 							<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 							<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+							<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 						</or>
 					</and>
 					<then>
@@ -1523,7 +1525,6 @@
 					<then>
 						<!-- AEM6.x use case -->
 						<echo message="Starting in ${demo.mode} run mode, on port ${demo.port} using ${demo.store}..."/>
-						<echo message="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
 						<antcall target="aem_start_java">
 							<param name="aem.start.jvmargs" value="${demomachine.jvmargs} ${demomachine.jvmargs.startupmode}"/>
 							<param name="aem.start.args" value="-r ${demo.mode},${demomachine.store}${nosamples.runmode}${dynamicmedia.runmode} ${startup.options}"/>
@@ -2592,6 +2593,15 @@
 		</if>
 	</target>
 	<!-- Targets for downloading release versions of QuickStart -->
+	<target name="download_aem65" depends="download_prereqs">
+		<echo message="Downloading AEM 6.5"/>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aem65.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.65}"/>
+		</antcall>
+		<echo message="AEM 6.4 successfully downloaded in /dist/bin"/>
+		<move file="${dist}/downloads/aem65.jar" todir="${dist}/bin"/>
+	</target>
 	<target name="download_aem64" depends="download_prereqs">
 		<echo message="Downloading AEM 6.4"/>
 		<antcall target="download_artifactory">
@@ -2892,6 +2902,24 @@
 		</if>
 		<echo message="AEM Snapshot downloaded as snapshot.jar in /dist/bin"/>
 		<move file="${dist}/downloads/snapshot.jar" todir="${dist}/bin" overwrite="true"/>
+		<delete>
+			<fileset dir="${dist}/downloads" includes="*.xml"/>
+		</delete>
+	</target>
+	<!-- Target for downloading the latest AEM Cloud SDK -->
+	<target name="download_aemcloudsdk" depends="download_prereqs">
+		<echo message="Downloading a AEM Cloud SDK build"/>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="maven-metadata.xml"/>
+			<param name="download.artifact" value="${demo.download.aem.cloudsdk}/maven-metadata.xml"/>
+		</antcall>
+		<xmlproperty file="${dist}/downloads/maven-metadata.xml"/>
+		<antcall target="download_artifactory">
+			<param name="download.filename" value="aemcloudsdk.jar"/>
+			<param name="download.artifact" value="${demo.download.aem.cloudsdk}/${metadata.versioning.latest}/cq-quickstart-cloudready-${metadata.versioning.latest}.jar"/>
+		</antcall>
+		<echo message="AEM Cloud SDK downloaded as aemcloudsdk.jar in /dist/bin"/>
+		<move file="${dist}/downloads/aemcloudsdk.jar" todir="${dist}/bin" overwrite="true"/>
 		<delete>
 			<fileset dir="${dist}/downloads" includes="*.xml"/>
 		</delete>
@@ -3328,11 +3356,20 @@
 	</target>
 	<!-- Target for downloading from Artifactory -->
 	<target name="download_artifactory">
-		<echo message="Downloading ${download.filename}"/>
+		<echo message="Downloading ${download.filename} at ${demo.download.aem.artifactory}${download.artifact}"/>
 		<mkdir dir="${dist}/downloads"/>
 		<exec executable="curl">
 			<arg line="--basic --user '${demo.download.artifactory.user}:${demo.download.artifactory.password}' -s -k -L -o '${dist}/downloads/${download.filename}' ${demo.download.aem.artifactory}${download.artifact}"/>
 		</exec>
+		<if>
+			<and>
+				<contains string="${download.filename}" substring=".xml"/>
+				<resourcecontains resource="${dist}/downloads/${download.filename}" substring="Bad credentials"/>
+			</and>
+			<then>
+				<fail message="Please check your credentials for Artifactory"/>
+			</then>
+		</if>
 	</target>
 	<!-- Target for installing the FFMPEG software -->
 	<target name="install_ffmpeg" if="isMac">
@@ -3472,6 +3509,7 @@
 					<or>
 						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 						<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 					</or>
 					<then>
 						<property name="cloudservice.root" value="/conf/we-retail/settings/cloudconfigs"/>
@@ -3607,6 +3645,9 @@
 			</else>
 		</if>
 		<!-- These conditions are used to run specitic targets only on certain releases -->
+		<condition property="aem66">
+			<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
+		</condition>
 		<condition property="aem65">
 			<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 		</condition>
@@ -3629,6 +3670,12 @@
 			<equals arg1="${cq.version}" arg2="5.6" casesensitive="false"/>
 		</condition>
 		<!-- This property determines where to load the demo packages from -->
+		<if>
+			<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
+			<then>
+				<property name="demo.packages" value="aem66"/>
+			</then>
+		</if>
 		<if>
 			<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 			<then>
@@ -3672,17 +3719,25 @@
 			</then>
 		</if>
 		<!-- These conditions are used to run specitic targets starting with a certain release or later -->
+		<condition property="aem66orlater">
+			<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
+		</condition>
 		<condition property="aem65orlater">
-			<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
+				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+			</or>
 		</condition>
 		<condition property="aem64orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 			</or>
 		</condition>
 		<condition property="aem63orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
@@ -3690,6 +3745,7 @@
 		</condition>
 		<condition property="aem62orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
@@ -3698,6 +3754,7 @@
 		</condition>
 		<condition property="aem61orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
@@ -3707,6 +3764,7 @@
 		</condition>
 		<condition property="aem60orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
@@ -3717,6 +3775,7 @@
 		</condition>
 		<condition property="cq56orlater">
 			<or>
+				<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 				<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
@@ -5115,7 +5174,7 @@
 						</exec>
 					</then>
 					<else>
-						<echo message="ERROR: A required certificate file in /dist/certificates is not available"/>
+						<echo message="ERROR: A required certificate file in /dist/certificates is not available, ${certificates}/${demo.assets.smarttags.certificate} provided"/>
 					</else>
 				</if>
 				<echo message="Configuring AEM Assets Smart Tags"/>
@@ -5178,12 +5237,9 @@
 				</exec>
 				<!-- Inserting the Smart Tag extraction task to the DAM update workflow -->
 				<if>
-					<or>
-						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
-						<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
-					</or>
+					<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 					<then>
-						<!-- Doing the workflow override -->
+						<!-- Doing the workflow override for 6.4 since it's there by default on 6.5 and beyond -->
 						<exec executable="curl">
 							<arg line="-o '${logs}/${port}_assets_damupdateworkflowoverride.json'"/>
 							<arg line="-X POST"/>
@@ -5196,41 +5252,50 @@
 						<property name="workflow.root" value="/etc/workflow/models"/>
 					</else>
 				</if>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_assetsworkflowinserttask.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="--globoff"/>
-					<arg line="-d ./jcr:description='This process will add smart tags to assets.'"/>
-					<arg line="-d ./jcr:title='Smart Tag Asset Process'"/>
-					<arg line="-d ./PROCESS_AUTO_ADVANCE=true"/>
-					<arg line="-d ./PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
-					<arg line="-d _charset_=utf-8"/>
-					<arg line="-d ./sling:resourceType=dam/components/workflow/autotagassetprocess"/>
-					<arg line="-d :nameHint=autotagassetprocess"/>
-					<arg line="-d parentResourceType=cq/flow/components/parsys"/>
-					<arg line="-d :order='before commandlineprocess'"/>
-					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/"/>
-				</exec>
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_assetsworkflowupdatetask.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="--globoff"/>
-					<arg line="-d _charset_=utf-8"/>
-					<arg line="-d ./PROCESS_AUTO_ADVANCE@Delete="/>
-					<arg line="-d ./metaData/PROCESS_AUTO_ADVANCE=true"/>
-					<arg line="-d ./PROCESS@Delete="/>
-					<arg line="-d ./metaData/PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
-					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/autotagassetprocess"/>
-				</exec>
-				<!-- Saving the workflow model -->
-				<exec executable="curl">
-					<arg line="--output '${logs}/${port}_assetsworkflowsave.html'"/>
-					<arg line="-u admin:${demo.admin.password}"/>
-					<arg line="-X POST"/>
-					<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content.generate.json"/>
-				</exec>
+				<if>
+					<or>
+						<equals arg1="${cq.version}" arg2="6.3" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
+					</or>
+					<then>
+						<!-- Inserting the workflow task on 6.3 and 6.4 with the classic UI editor -->
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_assetsworkflowinserttask.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="--globoff"/>
+							<arg line="-d ./jcr:description='This process will add smart tags to assets.'"/>
+							<arg line="-d ./jcr:title='Smart Tag Asset Process'"/>
+							<arg line="-d ./PROCESS_AUTO_ADVANCE=true"/>
+							<arg line="-d ./PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
+							<arg line="-d _charset_=utf-8"/>
+							<arg line="-d ./sling:resourceType=dam/components/workflow/autotagassetprocess"/>
+							<arg line="-d :nameHint=autotagassetprocess"/>
+							<arg line="-d parentResourceType=cq/flow/components/parsys"/>
+							<arg line="-d :order='before commandlineprocess'"/>
+							<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/"/>
+						</exec>
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_assetsworkflowupdatetask.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="--globoff"/>
+							<arg line="-d _charset_=utf-8"/>
+							<arg line="-d ./PROCESS_AUTO_ADVANCE@Delete="/>
+							<arg line="-d ./metaData/PROCESS_AUTO_ADVANCE=true"/>
+							<arg line="-d ./PROCESS@Delete="/>
+							<arg line="-d ./metaData/PROCESS=com.day.cq.dam.similaritysearch.internal.workflow.process.AutoTagAssetProcess"/>
+							<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content/flow/autotagassetprocess"/>
+						</exec>
+						<!-- Saving the workflow model -->
+						<exec executable="curl">
+							<arg line="--output '${logs}/${port}_assetsworkflowsave.html'"/>
+							<arg line="-u admin:${demo.admin.password}"/>
+							<arg line="-X POST"/>
+							<arg line="http://${demo.host}:${port}${workflow.root}/dam/update_asset/jcr:content.generate.json"/>
+						</exec>
+					</then>
+				</if>
 				<!-- For each folder where we need to set the Smart Tag property -->
 				<propertyselector property="folders" match="demo.assets.smarttags.folders\.([^\.]*)" select="\1" casesensitive="false"/>
 				<foreach list="${folders}" target="assetsfolder" param="myparam"/>
@@ -5328,6 +5393,7 @@
 					<or>
 						<equals arg1="${cq.version}" arg2="6.4" casesensitive="false"/>
 						<equals arg1="${cq.version}" arg2="6.5" casesensitive="false"/>
+						<equals arg1="${cq.version}" arg2="6.6" casesensitive="false"/>
 					</or>
 					<then>
 						<!-- Doing the workflow override -->
@@ -8507,15 +8573,15 @@
 	</target>
 	<target name="demo_enable_crxde">
 		<exec executable="curl">
-			<arg line='-u admin:${demo.admin.password} -F "jcr:primaryType=sling:OsgiConfig" -F "alias=/crx/server" -F "dav.create-absolute-uri=true" -F "dav.create-absolute-uri@TypeHint=Boolean"'/>
-			<arg line="http://${demo.host}:${AdobeAEM.authorport}/apps/system/config/org.apache.sling.jcr.davex.impl.servlets.SlingDavExServlet"/>
+			<arg line="-u admin:${demo.admin.password} -d &quot;alias=/crx/server&quot; -d &quot;apply=true&quot; -d &quot;action=ajaxConfigManager&quot; -d &quot;dav.create-absolute-uri=true&quot; -d &quot;dav.create-absolute-uri@TypeHint=Boolean&quot; -d &quot;dav.protectedhandlers=&quot; -d &quot;propertylist=alias,dav.create-absolute-uri,dav.protectedhandlers&quot; -d &quot;$location=&quot;"/>
+			<arg line="http://${demo.host}:${AdobeAEM.authorport}/system/console/configMgr/org.apache.sling.jcr.davex.impl.servlets.SlingDavExServlet"/>
 		</exec>
 		<if>
 			<socket server="${demo.host}" port="${AdobeAEM.publishport}"/>
 			<then>
 				<exec executable="curl">
-					<arg line='-u admin:${demo.admin.password} -F "jcr:primaryType=sling:OsgiConfig" -F "alias=/crx/server" -F "dav.create-absolute-uri=true" -F "dav.create-absolute-uri@TypeHint=Boolean"'/>
-					<arg line="http://${demo.host}:${AdobeAEM.publishport}/apps/system/config/org.apache.sling.jcr.davex.impl.servlets.SlingDavExServlet"/>
+					<arg line="-u admin:${demo.admin.password} -d &quot;alias=/crx/server&quot; -d &quot;apply=true&quot; -d &quot;action=ajaxConfigManager&quot; -d &quot;dav.create-absolute-uri=true&quot; -d &quot;dav.create-absolute-uri@TypeHint=Boolean&quot; -d &quot;dav.protectedhandlers=&quot; -d &quot;propertylist=alias,dav.create-absolute-uri,dav.protectedhandlers&quot; -d &quot;$location=&quot;"/>
+					<arg line="http://${demo.host}:${AdobeAEM.publishport}/system/console/configMgr/org.apache.sling.jcr.davex.impl.servlets.SlingDavExServlet"/>
 				</exec>
 			</then>
 		</if>
