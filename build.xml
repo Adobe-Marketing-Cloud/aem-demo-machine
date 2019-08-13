@@ -2959,9 +2959,9 @@
 			<os family="mac"/>
 			<then>
 				<echo message="Downloading MySQL DB for MacOS"/>
-				<echo message="Downloading http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
+				<echo message="Downloading http://downloads.mysql.com/archives/get/file/mysql-${demo.mysql}.tar.gz"/>
 				<exec executable="curl">
-					<arg line="-s -o '${dist}/downloads/mysql.tgz' http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${demo.mysql}.tar.gz"/>
+					<arg line="-s -o '${dist}/downloads/mysql.tgz' http://downloads.mysql.com/archives/get/file/mysql-${demo.mysql}.tar.gz"/>
 				</exec>
 			</then>
 			<else>
